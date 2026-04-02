@@ -133,18 +133,24 @@ const SKILLS: SkillConfig[] = [
     name: 'inteligencia_empresarial',
     label: 'Inteligência Empresarial',
     content: EMPRESA,
-    // Keywords intencionalmente específicos: só ativa quando o usuário pergunta
-    // EXPLICITAMENTE sobre a empresa, grupo ou origem de capital — não sobre o investimento
+    // Keywords ativam quando o usuário pergunta sobre a EMPRESA EM SI — não sobre o investimento
     keywords: [
-      'quem e a empresa', 'quem sao', 'me fale sobre a empresa', 'me conte sobre',
-      'origem de capital', 'capital estrangeiro', 'capital nacional', 'capital brasileiro',
-      'grupo empresarial', 'grupo economico', 'holding', 'controladora', 'subsidiaria',
-      'multinacional', 'empresa estrangeira', 'empresa nacional', 'empresa brasileira',
+      // Perguntas diretas sobre a empresa
+      'o que e', 'o que sao', 'quem e', 'quem sao', 'me fale sobre', 'me conte sobre',
+      'me explique', 'pode me falar', 'pode me contar', 'saiba mais',
+      // Tipos de entidade
+      'consorcio', 'consorcios', 'holding', 'controladora', 'subsidiaria',
+      'grupo empresarial', 'grupo economico', 'spe', 'joint venture',
+      // Origem e estrutura de capital
+      'origem de capital', 'capital nacional', 'capital brasileiro',
+      'empresa estrangeira', 'empresa nacional', 'empresa brasileira',
       'porte da empresa', 'tamanho da empresa', 'sede', 'matriz',
-      'historia da empresa', 'fundacao', 'quando foi fundada',
+      // Histórico e controle
+      'historia da empresa', 'fundacao', 'quando foi fundada', 'desde quando',
       'quem controla', 'quem e o dono', 'acionista', 'socio',
+      // Finanças corporativas
       'faturamento', 'receita', 'bolsa de valores', 'capital aberto',
-      'private equity', 'fundo de investimento', 'spe', 'joint venture'
+      'private equity', 'fundo de investimento'
     ]
   }
 ];
@@ -194,12 +200,19 @@ export function buildSystemInstructionWithSkill(
   const skill = detectSkill(userMessage);
   if (!skill) return baseInstruction;
 
+  // A skill de inteligencia empresarial usa framing diferente:
+  // o usuário está perguntando sobre a empresa EM SI, não sobre os dados PIESP.
+  // Portanto autorizamos explicitamente o uso do conhecimento geral do modelo.
+  const instrucaoContexto = skill.name === 'inteligencia_empresarial'
+    ? `Para esta resposta, o usuário quer saber sobre a própria empresa ou grupo econômico — não apenas sobre seus investimentos na PIESP. USE seu conhecimento geral público sobre a empresa, grupo, origem de capital e estrutura corportiva. Não se limite ao banco de dados PIESP nem recuse responder alegando falta de acesso. Se o usuário quiser também ver os investimentos registrados, ofereça consultar a base após contextualizar quem é a empresa.`
+    : `Para esta resposta, analise os dados da PIESP aplicando a perspectiva especializada descrita abaixo. Integre naturalmente essa visão especializada à sua resposta — sem mencionar explicitamente que está usando uma "skill" ou "lente". Apenas demonstre o conhecimento especializado na forma como você interpreta e apresenta os dados.`;
+
   return `${baseInstruction}
 
 ---
 ## LENTE ANALÍTICA ATIVADA: ${skill.label.toUpperCase()}
 
-Para esta resposta, analise os dados da PIESP aplicando a perspectiva especializada descrita abaixo. Integre naturalmente essa visão especializada à sua resposta — sem mencionar explicitamente que está usando uma "skill" ou "lente". Apenas demonstre o conhecimento especializado na forma como você interpreta e apresenta os dados.
+${instrucaoContexto}
 
 ${skill.content}`;
 }
