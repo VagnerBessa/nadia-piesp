@@ -7,6 +7,7 @@ import DESENVOLVIMENTO from '../skills/desenvolvimento_regional.md?raw';
 import CADEIAS from '../skills/cadeias_produtivas.md?raw';
 import TRANSICAO from '../skills/transicao_energetica.md?raw';
 import COMERCIO from '../skills/comercio_exterior.md?raw';
+import EMPRESA from '../skills/inteligencia_empresarial.md?raw';
 
 interface SkillConfig {
   name: string;
@@ -126,6 +127,24 @@ const SKILLS: SkillConfig[] = [
       'capital estrangeiro', 'ide', 'investimento estrangeiro', 'tarifa',
       'barreira tarifaria', 'anti-dumping', 'complexidade economica',
       'commodities', 'valor agregado', 'taxa de cambio'
+    ]
+  },
+  {
+    name: 'inteligencia_empresarial',
+    label: 'Inteligência Empresarial',
+    content: EMPRESA,
+    // Keywords intencionalmente específicos: só ativa quando o usuário pergunta
+    // EXPLICITAMENTE sobre a empresa, grupo ou origem de capital — não sobre o investimento
+    keywords: [
+      'quem e a empresa', 'quem sao', 'me fale sobre a empresa', 'me conte sobre',
+      'origem de capital', 'capital estrangeiro', 'capital nacional', 'capital brasileiro',
+      'grupo empresarial', 'grupo economico', 'holding', 'controladora', 'subsidiaria',
+      'multinacional', 'empresa estrangeira', 'empresa nacional', 'empresa brasileira',
+      'porte da empresa', 'tamanho da empresa', 'sede', 'matriz',
+      'historia da empresa', 'fundacao', 'quando foi fundada',
+      'quem controla', 'quem e o dono', 'acionista', 'socio',
+      'faturamento', 'receita', 'bolsa de valores', 'capital aberto',
+      'private equity', 'fundo de investimento', 'spe', 'joint venture'
     ]
   }
 ];
