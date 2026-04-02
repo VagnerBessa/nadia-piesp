@@ -32,6 +32,7 @@ const initialMessage: Message = {
 
 // Declarações de ferramentas para o modo chat
 const piespTools = [
+  { googleSearch: {} }, // Pesquisa Google — usada apenas quando a pergunta requer contexto externo
   {
     functionDeclarations: [
       {
