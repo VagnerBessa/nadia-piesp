@@ -1,0 +1,8 @@
+{
+  "name": "Nadia AI",
+  "description": "A real-time conversational AI assistant powered by the Gemini Live API. Speak with Nadia, a visually represented AI, and receive instant audio responses.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}

@@ -1,0 +1,197 @@
+# Nadia - Assistente de IA com Voz e Mapas 3D
+
+Nadia é uma assistente de IA interativa que combina conversação por voz usando a API Gemini 2.5 Flash Native Audio com visualização de mapas 3D do Google Maps. O projeto oferece uma experiência imersiva para análise de dados econômicos, geolocalização e exploração urbana.
+
+## ✨ Funcionalidades
+
+- **Conversação por Voz**: Interação natural com a IA usando o Gemini 2.5 Flash Native Audio API
+- **Mapas 3D Interativos**: Navegação por mapas 3D controlada por voz usando Google Maps JavaScript API
+- **Análise Econômica**: Visualização de dados econômicos com gráficos interativos
+- **Interface Responsiva**: Design moderno com Material-UI e Tailwind CSS
+- **Esfera 3D Animada**: Visualização da Nadia com shaders personalizados usando Three.js
+
+## 🚀 Como Executar Localmente
+
+### Pré-requisitos
+
+- Node.js (versão 16 ou superior)
+- npm ou yarn
+- Google Chrome, Firefox ou Edge (para suporte a microfone)
+
+### 1. Instalar Dependências
+
+```bash
+npm install
+```
+
+### 2. Configurar Chaves de API
+
+O projeto requer **duas chaves de API diferentes**:
+
+#### a) Chave para Gemini AI (Google AI Studio)
+
+1. Acesse: https://aistudio.google.com/app/apikey
+2. Clique em "Create API Key"
+3. Copie a chave gerada
+
+#### b) Chave para Google Maps (Google Cloud Console)
+
+1. Acesse: https://console.cloud.google.com/apis/credentials
+2. Clique em "Create Credentials" → "API Key"
+3. Clique em "Restrict Key" e habilite:
+   - Maps JavaScript API
+   - Places API
+   - Geocoding API
+4. Copie a chave gerada
+
+#### c) Criar arquivo de configuração
+
+1. Copie o arquivo de exemplo:
+   ```bash
+   cp config.example.ts config.ts
+   ```
+
+2. Edite o arquivo `config.ts` e insira suas chaves:
+   ```typescript
+   const GEMINI_API_KEY = "SUA_CHAVE_GEMINI_AQUI";
+   const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_MAPS_AQUI";
+   export { GEMINI_API_KEY, GOOGLE_MAPS_API_KEY };
+   ```
+
+⚠️ **IMPORTANTE**: O arquivo `config.ts` está no `.gitignore` e **nunca deve ser commitado** para evitar expor suas chaves de API.
+
+### 3. Executar o Servidor de Desenvolvimento
+
+```bash
+npm run dev
+```
+
+O aplicativo estará disponível em: http://localhost:3001
+
+### 4. Usar a Aplicação
+
+1. **Abra no navegador**: Use Google Chrome, Firefox ou Edge
+2. **Permita o microfone**: Quando solicitado, clique em "Permitir"
+3. **Interaja com a Nadia**:
+   - Clique no ícone de microfone para ativar a conversa por voz
+   - No modo Municipal, use comandos como "vá para Campinas" ou "mostre São Paulo"
+
+## 📁 Estrutura do Projeto
+
+```
+Nadia-2/
+├── components/          # Componentes React
+│   ├── NadiaSphere.tsx         # Esfera 3D animada
+│   ├── GoogleMaps3DView.tsx    # Visualização de mapas 3D
+│   ├── PerfilMunicipalView.tsx # Modo de navegação municipal
+│   └── ...
+├── hooks/               # Custom React Hooks
+│   └── useLiveConnection.ts    # Hook para Gemini Live API
+├── shaders/             # Shaders GLSL para Three.js
+├── utils/               # Utilitários e constantes
+├── config.ts            # Chaves de API (não versionado)
+├── config.example.ts    # Template de configuração
+└── ...
+```
+
+## 🛠️ Tecnologias Utilizadas
+
+- **React 19** com TypeScript
+- **Vite** para build e HMR
+- **Google Gemini 2.5 Flash** (Native Audio API)
+- **Google Maps JavaScript API** com renderização 3D
+- **Three.js** para gráficos 3D
+- **Material-UI** para componentes de interface
+- **Tailwind CSS** para estilização
+- **Web Speech API** para reconhecimento de voz
+
+## 🐛 Troubleshooting
+
+### Nadia não responde aos comandos de voz
+
+1. Verifique se você está usando Chrome, Firefox ou Edge
+2. Confirme que deu permissão para o microfone
+3. Abra o Console (F12) e procure por erros com o prefixo `[Nadia]`
+4. Verifique se a chave `GEMINI_API_KEY` está correta no `config.ts`
+
+### Mapas não carregam no modo Municipal
+
+1. Verifique se a chave `GOOGLE_MAPS_API_KEY` está correta no `config.ts`
+2. Confirme que as APIs necessárias estão habilitadas no Google Cloud Console:
+   - Maps JavaScript API
+   - Places API
+   - Geocoding API
+3. Aguarde 2-3 minutos após habilitar as APIs (tempo de propagação)
+4. Limpe o cache do navegador (Cmd+Shift+R ou Ctrl+Shift+F5)
+
+### Erro: "API has not been used in project before or it is disabled"
+
+Isso significa que a API não está habilitada no projeto da sua chave:
+
+1. Para Gemini: Acesse https://aistudio.google.com/app/apikey
+2. Para Maps: Acesse https://console.cloud.google.com/apis/library
+3. Habilite as APIs necessárias
+4. Aguarde alguns minutos para a propagação
+
+### Erro no Console: "Cannot read properties of undefined (reading 'lat')"
+
+Esse erro foi corrigido. Se ainda aparecer:
+1. Recarregue a página completamente
+2. Certifique-se de que está usando a versão mais recente do código
+
+## 🔒 Segurança
+
+- **Nunca faça commit** do arquivo `config.ts`
+- As chaves de API são pessoais e não devem ser compartilhadas
+- Em produção, use variáveis de ambiente ao invés de arquivos de configuração
+- Monitore o uso das suas APIs em:
+  - Gemini: https://aistudio.google.com/app/apikey
+  - Maps: https://console.cloud.google.com/apis/dashboard
+
+## 💰 Custos
+
+### Google Gemini AI
+- Plano gratuito disponível com limites generosos
+- Verifique os limites em: https://ai.google.dev/pricing
+
+### Google Maps
+- **Gratuito** até 28.000 carregamentos de mapa por mês
+- Plano gratuito inclui $200 de crédito mensal
+- Monitore o uso em: https://console.cloud.google.com/apis/dashboard
+
+## 📚 Documentação Adicional
+
+- [COMO_ABRIR.md](COMO_ABRIR.md) - Guia detalhado para abrir o projeto
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Soluções para problemas comuns
+- [HABILITAR_API.md](HABILITAR_API.md) - Como habilitar a API do Gemini
+- [CRIAR_API_KEY_MAPS.md](CRIAR_API_KEY_MAPS.md) - Como criar chave para Google Maps
+- [DEBUG_CONSOLE.md](DEBUG_CONSOLE.md) - Como usar o console para debug
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Por favor:
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
+3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
+4. Push para a branch (`git push origin feature/MinhaFeature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto é privado e proprietário. Todos os direitos reservados.
+
+## 🙋 Suporte
+
+Se encontrar problemas ou tiver dúvidas:
+
+1. Consulte a documentação na pasta do projeto
+2. Verifique o Console do navegador (F12) para mensagens de erro
+3. Abra uma issue no GitHub com:
+   - Descrição do problema
+   - Mensagens de erro do console
+   - Passos para reproduzir o problema
+
+---
+
+Desenvolvido com ❤️ usando Google Gemini AI e Google Maps

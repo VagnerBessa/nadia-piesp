@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Nadia-2 (Vite Dev)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Nadia White (Vite Preview)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd '/Users/vagnerbessa/Documents/projetos/Nadia White' && npm run preview"],
+      "port": 4173
+    },
+    {
+      "name": "Nadia White (Vite Dev)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd '/Users/vagnerbessa/Documents/projetos/Nadia White' && npm run dev"],
+      "port": 3000
+    }
+  ]
+}

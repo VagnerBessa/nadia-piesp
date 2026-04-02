@@ -1,0 +1,17 @@
+id_variavel;descricao;fonte;serie_disponivel;observacao
+anuncio_data;Data do anúncio do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;jan.2012-fev.2026;
+anuncio_ano;Ano do anúncio do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;jan.2012-fev.2026;
+anuncio_mes;Mês do anúncio do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+empresa_alvo;Nome da empresa-alvo do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+investidora_s;Nome da(s) empresa(s) investidora(s);Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+reais_milhoes;Valor do investimento (em R$ milhões);Fundação Sistema Estadual de Análise de Dados – Seade;jan.2012-fev.2026;
+dolares_milhoes ;Valor do investimento (em US$ milhões);Fundação Sistema Estadual de Análise de Dados – Seade;jan.2012-fev.2026;
+municipio;Nome do município de destino do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+regiao;Nome da região de destino do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+descr_investimento;Descrição do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+setor_desc;Descrição do setor (grupo de divisões CNAE) da empresa-alvo do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+cnae_inv_2_desc;Descrição da divisão CNAE da empresa-alvo do investimento;"Instituto Brasileiro de Geografia e Estatística – IBGE; Fundação Sistema Estadual de Análise de Dados – Seade";Não se aplica;
+cnae_inv_5_cod_desc;Código e descrição da classe CNAE da empresa-alvo do investimento;"Instituto Brasileiro de Geografia e Estatística – IBGE; Fundação Sistema Estadual de Análise de Dados – Seade";Não se aplica;
+cnae_empresa_5_cod_desc;Código e descrição da classe CNAE da(s) empresa(s) investidora(s);"Instituto Brasileiro de Geografia e Estatística – IBGE; Fundação Sistema Estadual de Análise de Dados – Seade";Não se aplica;
+tipo;"Tipo de investimento: implantação; ampliação; ampliação/modernização; modernização";Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;
+periodo;Ano de início e de término do investimento;Fundação Sistema Estadual de Análise de Dados – Seade;Não se aplica;Pode conter missing
