@@ -1,4 +1,70 @@
-# Nadia - Assistente de IA com Voz e Mapas 3D
+# Nadia-PIESP
+
+**Assistente de IA para análise de investimentos no Estado de São Paulo**  
+Baseado no projeto Nadia (Fundação Seade) — adaptado para a PIESP.
+
+---
+
+## ⚠️ Configuração Após Clonar (Leitura Obrigatória)
+
+Este repositório **não inclui** arquivos secretos nem bases de dados grandes por segurança e limite do GitHub. Após clonar, você precisa restaurar manualmente três coisas:
+
+### 1. Chave de API do Gemini (`config.ts`)
+
+Crie o arquivo `config.ts` na raiz do projeto (ele está no `.gitignore` — nunca sobe para o GitHub):
+
+```ts
+const API_KEY = "SUA_CHAVE_ANTIGA_OU_RESERVA";
+
+export const GEMINI_API_KEY = "SUA_CHAVE_GEMINI_VALIDA";
+export const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_GOOGLE_MAPS";
+```
+
+- A chave do Gemini deve ser gerada em: **https://aistudio.google.com/apikey**
+- Certifique-se de que a *Generative Language API* está habilitada no projeto do Google Cloud
+- O modelo usado no modo Voz é: `gemini-2.5-flash-native-audio-preview-12-2025`
+- O modelo usado no modo Chat é: `gemini-2.5-flash`
+
+### 2. Bases de Dados PIESP (`knowledge_base/`)
+
+Copie os seguintes arquivos para a pasta `knowledge_base/` (não estão no repositório por serem grandes demais):
+
+| Arquivo | Tamanho | Usado por | Descrição |
+|---|---|---|---|
+| `piesp_mini.csv` | ~1 MB | `piespDataService.ts` (Tool 1) | Base principal de investimentos **com valor** (5.147 linhas, sem coluna `descr_investimento`) |
+| `piesp_confirmados_sem_valor.csv` | ~1,8 MB | `piespDataService.ts` (Tool 2) | Anúncios confirmados **sem valor financeiro** divulgado |
+| `piesp_confirmados_com_valor.csv` | ~2,1 MB | — (backup/fonte) | Base original completa com todas as colunas |
+
+> **Onde encontrar:** Esses arquivos estão na pasta `/Seade/Piesp/` no iCloud Drive do autor.
+
+### 3. Instalar dependências e rodar
+
+```bash
+npm install
+npm run dev
+```
+
+O projeto estará disponível em **http://localhost:3000**
+
+---
+
+## Repositório GitHub
+
+- **URL:** https://github.com/VagnerBessa/nadia-piesp
+- **Visibilidade:** Privado
+- **Criado em:** Abril de 2026
+- **Branch principal:** `main`
+
+Para salvar novas alterações:
+```bash
+git add .
+git commit -m "descrição da mudança"
+git push
+```
+
+---
+
+ - Assistente de IA com Voz e Mapas 3D
 
 Nadia é uma assistente de IA interativa que combina conversação por voz usando a API Gemini 2.5 Flash Native Audio com visualização de mapas 3D do Google Maps. O projeto oferece uma experiência imersiva para análise de dados econômicos, geolocalização e exploração urbana.
 
