@@ -4,7 +4,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
-import { buildSystemInstructionWithSkill } from '../services/skillDetector';
+import { buildSystemInstructionWithSkill, detectSkill } from '../services/skillDetector';
 
 export interface Source {
   uri: string;
@@ -30,9 +30,9 @@ const initialMessage: Message = {
     text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
 };
 
-// Declarações de ferramentas para o modo chat
+// Ferramentas PIESP: function calling para dados estruturados
+// (não pode ser combinado com googleSearch na mesma chamada)
 const piespTools = [
-  { googleSearch: {} }, // Pesquisa Google — usada apenas quando a pergunta requer contexto externo
   {
     functionDeclarations: [
       {
@@ -59,6 +59,12 @@ const piespTools = [
       }
     ]
   }
+];
+
+// Ferramentas de pesquisa: Google Search para contexto externo
+// (não pode ser combinado com functionDeclarations na mesma chamada)
+const searchTools = [
+  { googleSearch: {} }
 ];
 
 // Executa a ferramenta localmente e retorna o resultado
@@ -113,13 +119,25 @@ export const useChat = () => {
       // Detecta e injeta a skill especializada (se houver) para esta pergunta específica
       const systemInstructionWithSkill = buildSystemInstructionWithSkill(SYSTEM_INSTRUCTION, text);
 
-      // Primeira chamada: envia a mensagem com as ferramentas disponíveis
+      // Detecta a skill e decide qual conjunto de ferramentas usar:
+      // - inteligencia_empresarial e buscas de contexto usam Google Search
+      // - tudo mais usa function calling PIESP
+      // (as duas não podem ser combinadas na mesma chamada da generateContent API)
+      const detectedSkill = detectSkill(text);
+      const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
+      const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
+
+      if (usarPesquisa) {
+        console.log('🔍 Modo: Google Search (skill empresa detectada)');
+      }
+
+      // Primeira chamada: envia a mensagem com as ferramentas selecionadas
       let response = await ai.models.generateContent({
         model: modelName,
         contents: contents,
         config: {
           systemInstruction: systemInstructionWithSkill,
-          tools: piespTools,
+          tools: ferramentasAtivas,
           ...thinkingConfig
         }
       });
@@ -148,13 +166,13 @@ export const useChat = () => {
           { role: 'user' as const, parts: [{ functionResponse: { name: fcall.name!, response: resultado } }] }
         ];
 
-        // Segunda chamada: envia o resultado da ferramenta de volta ao modelo (mantém a skill)
+        // Segunda chamada: usa as mesmas ferramentas ativas (mantém a skill)
         response = await ai.models.generateContent({
           model: modelName,
           contents: updatedContents,
           config: {
             systemInstruction: systemInstructionWithSkill,
-            tools: piespTools,
+            tools: ferramentasAtivas,
             ...thinkingConfig
           }
         });
