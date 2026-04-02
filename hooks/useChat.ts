@@ -4,6 +4,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { buildSystemInstructionWithSkill } from '../services/skillDetector';
 
 export interface Source {
   uri: string;
@@ -108,12 +109,15 @@ export const useChat = () => {
         ? { thinkingConfig: { thinkingBudget: 2048 } } 
         : { thinkingConfig: { thinkingBudget: 0 } };
 
+      // Detecta e injeta a skill especializada (se houver) para esta pergunta específica
+      const systemInstructionWithSkill = buildSystemInstructionWithSkill(SYSTEM_INSTRUCTION, text);
+
       // Primeira chamada: envia a mensagem com as ferramentas disponíveis
       let response = await ai.models.generateContent({
         model: modelName,
         contents: contents,
         config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: systemInstructionWithSkill,
           tools: piespTools,
           ...thinkingConfig
         }
@@ -143,12 +147,12 @@ export const useChat = () => {
           { role: 'user' as const, parts: [{ functionResponse: { name: fcall.name!, response: resultado } }] }
         ];
 
-        // Segunda chamada: envia o resultado da ferramenta de volta ao modelo
+        // Segunda chamada: envia o resultado da ferramenta de volta ao modelo (mantém a skill)
         response = await ai.models.generateContent({
           model: modelName,
           contents: updatedContents,
           config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
+            systemInstruction: systemInstructionWithSkill,
             tools: piespTools,
             ...thinkingConfig
           }
