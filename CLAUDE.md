@@ -155,12 +155,70 @@ Google Search é usado como terceira ferramenta exclusivamente para `inteligenci
 
 ---
 
-## Histórico de Decisões
+## Histórico de Sessões
+
+### Sessão 1 — Abr/2026 (data exata não registrada)
+
+**Problema 1: WebSocket recusado — payload grande demais**
+A base completa `piesp_confirmados_com_valor.csv` (2,1 MB) foi injetada no `systemInstruction` do WebSocket da API Gemini Live. O browser rejeitou a conexão por exceder o limite de payload de streaming de áudio. Validado com scripts Node.js (`test_api.js`, `test_api_size.js`) que confirmaram: a API aceitava payloads grandes via Node, mas o browser colapsava.
+
+**Solução:** criado `piesp_mini.csv` (~1 MB) removendo a coluna `descr_investimento`. Essa é a razão pela qual `piesp_mini.csv` não tem descrição — não foi esquecimento, foi decisão arquitetural para caber no WebSocket.
+
+---
+
+**Problema 2: API Key bloqueada (`API_KEY_SERVICE_BLOCKED`)**
+A chave herdada do projeto Nadia-2 original não tinha permissão para a *Generative Language API*. Diagnosticado via script `test_quota.js`.
+
+**Solução:** nova chave gerada no Google AI Studio com as permissões corretas.
+
+---
+
+**Problema 3: Tela em branco após troca de chave**
+Ao colar a nova chave no `config.ts`, o valor foi colado sem aspas. O TypeScript interpretou `AIzaSy... - Zw` como expressão aritmética, causando erro de compilação e tela branca.
+
+**Solução:** adicionar aspas duplas nos valores das constantes em `config.ts`.
+
+---
+
+**Problema 4: Nadia conecta, mas alucina os dados**
+Mesmo com a base reduzida no contexto longo, o modelo de áudio nativo (`gemini-2.5-flash-native-audio`) não consegue realizar filtragem, ranking ou agregação em dados tabulares densos. Confundia linhas, misturava anos e inventava valores.
+
+**Diagnóstico:** empírico — ao perguntar "cite os principais investimentos de 2026", a Nadia retornava empresas e valores inexistentes na planilha.
+
+**Solução:** abandonado o paradigma de contexto longo para dados estruturados; implementado **Function Calling** com `piespDataService.ts`.
+
+---
+
+**Problema 5: Expansão de escopo — nova base + metodologia**
+O usuário quis adicionar a metodologia oficial da PIESP e uma segunda base (anúncios sem valor financeiro).
+
+**Solução arquitetural:**
+- Metodologia (`piesp_anexo_metodologico.md`, ~6 KB) → contexto longo: texto narrativo que LLMs compreendem bem
+- Segunda base CSV → nova ferramenta `consultar_anuncios_sem_valor`
+- UX: instrução para mencionar a base secundária apenas na primeira fala, evitando repetição robótica
+
+---
+
+### Sessão 2 — 03/04/2026
+
+**Ampliação dos filtros:** de 2 campos (`ano`, `municipio`) para 7 (`ano`, `municipio`, `regiao`, `tipo`, `setor`, `empresa`, `descricao`).
+
+**Busca semântica:** campo `descricao` adicionado com lógica OR por vírgula — o modelo passa `"solar,eólic,fotovoltaic"` e o JS retorna qualquer linha que contenha um dos termos. Uma única chamada à ferramenta, sem impacto de latência.
+
+**Bug encontrado em teste:** `"eólica"` não dá match em `"parque eólico"` — variação de gênero em português. Solução: radicais (`"eólic"` captura ambas as formas). Descoberto via 16 casos de teste automatizados com CSV mockado.
+
+**Análise das skills:** funcionam bem no chat (injeção por mensagem); não chegam à voz (limitação arquitetural do Gemini Live — `systemInstruction` imutável após abertura do WebSocket).
+
+---
+
+## Tabela de Decisões
 
 | Data | Decisão |
 |---|---|
-| Abr/2026 (sessão 1) | Descartado contexto longo para CSV; adotado Function Calling |
-| Abr/2026 (sessão 1) | `piesp_mini.csv` criado sem `descr_investimento` para reduzir payload WebSocket |
+| Abr/2026 | Descartado contexto longo para CSV; adotado Function Calling |
+| Abr/2026 | `piesp_mini.csv` criado sem `descr_investimento` para caber no WebSocket |
+| Abr/2026 | Metodologia e dicionário mantidos no contexto (texto narrativo, ~8 KB total) |
+| Abr/2026 | Skills injetadas por mensagem no chat; voz não suportada pelo Gemini Live |
 | 03/04/2026 | Filtros expandidos de 2 para 7 campos |
-| 03/04/2026 | Busca semântica via `descricao` com OR por vírgula, sem round-trips extras |
-| 03/04/2026 | Bug de variação de gênero em português: usar radicais (`eólic`, não `eólica`) |
+| 03/04/2026 | Busca semântica via `descricao` com OR por vírgula |
+| 03/04/2026 | Radicais portugueses nos exemplos do prompt (`eólic`, não `eólica`) |
