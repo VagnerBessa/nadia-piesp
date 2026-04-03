@@ -366,8 +366,12 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' }
+                      ano: { type: Type.STRING, description: 'Ano do investimento, ex: "2026"' },
+                      municipio: { type: Type.STRING, description: 'Nome do município de destino, ex: "Campinas"' },
+                      regiao: { type: Type.STRING, description: 'Região administrativa de SP, ex: "RA Campinas", "RMSP"' },
+                      tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
+                      setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
+                      empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' }
                     }
                   }
                 },
@@ -377,8 +381,12 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' }
+                      ano: { type: Type.STRING, description: 'Ano do investimento, ex: "2026"' },
+                      municipio: { type: Type.STRING, description: 'Nome do município de destino, ex: "Campinas"' },
+                      regiao: { type: Type.STRING, description: 'Região administrativa de SP, ex: "RA Campinas", "RMSP"' },
+                      tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
+                      setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
+                      empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' }
                     }
                   }
                 }
