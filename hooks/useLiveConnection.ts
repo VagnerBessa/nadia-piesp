@@ -372,7 +372,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
                       setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
                       empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' },
-                      descricao: { type: Type.STRING, description: 'Palavra-chave presente na descrição do investimento, ex: "solar", "fotovoltaica", "hidrogênio", "data center". Use para buscas semânticas que o campo setor não cobre.' }
+                      descricao: { type: Type.STRING, description: 'Termos de busca na descrição do investimento, separados por vírgula para lógica OR. Ex: "solar,eólica,fotovoltaica" busca qualquer um dos termos. Use para expandir conceitos semânticos em uma única chamada.' }
                     }
                   }
                 },
@@ -388,7 +388,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
                       setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
                       empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' },
-                      descricao: { type: Type.STRING, description: 'Palavra-chave presente na descrição do investimento, ex: "solar", "fotovoltaica", "hidrogênio", "data center". Use para buscas semânticas que o campo setor não cobre.' }
+                      descricao: { type: Type.STRING, description: 'Termos de busca na descrição do investimento, separados por vírgula para lógica OR. Ex: "solar,eólica,fotovoltaica" busca qualquer um dos termos. Use para expandir conceitos semânticos em uma única chamada.' }
                     }
                   }
                 }
