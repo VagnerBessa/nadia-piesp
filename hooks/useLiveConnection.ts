@@ -371,7 +371,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       regiao: { type: Type.STRING, description: 'Região administrativa de SP, ex: "RA Campinas", "RMSP"' },
                       tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
                       setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
-                      empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' }
+                      empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' },
+                      descricao: { type: Type.STRING, description: 'Palavra-chave presente na descrição do investimento, ex: "solar", "fotovoltaica", "hidrogênio", "data center". Use para buscas semânticas que o campo setor não cobre.' }
                     }
                   }
                 },
@@ -386,7 +387,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       regiao: { type: Type.STRING, description: 'Região administrativa de SP, ex: "RA Campinas", "RMSP"' },
                       tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
                       setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
-                      empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' }
+                      empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' },
+                      descricao: { type: Type.STRING, description: 'Palavra-chave presente na descrição do investimento, ex: "solar", "fotovoltaica", "hidrogênio", "data center". Use para buscas semânticas que o campo setor não cobre.' }
                     }
                   }
                 }

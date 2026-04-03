@@ -21,15 +21,15 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   } = useLiveConnection({
     onToolCall: async (toolCall) => {
       if (toolCall.name === 'consultar_projetos_piesp') {
-        const { ano, municipio, regiao, tipo, setor, empresa } = toolCall.args;
-        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, tipo, setor, empresa });
-        const resultados = consultarPiespData({ ano, municipio, regiao, tipo, setor, empresa });
+        const { ano, municipio, regiao, tipo, setor, empresa, descricao } = toolCall.args;
+        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, tipo, setor, empresa, descricao });
+        const resultados = consultarPiespData({ ano, municipio, regiao, tipo, setor, empresa, descricao });
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
-        const { ano, municipio, regiao, tipo, setor, empresa } = toolCall.args;
-        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, tipo, setor, empresa });
-        const resultados = consultarAnunciosSemValor({ ano, municipio, regiao, tipo, setor, empresa });
+        const { ano, municipio, regiao, tipo, setor, empresa, descricao } = toolCall.args;
+        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, tipo, setor, empresa, descricao });
+        const resultados = consultarAnunciosSemValor({ ano, municipio, regiao, tipo, setor, empresa, descricao });
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       return { error: 'Tool não reconhecido' };

@@ -46,7 +46,8 @@ const piespTools = [
             regiao: { type: Type.STRING, description: 'Região administrativa de SP, ex: "RA Campinas", "RMSP"' },
             tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
             setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
-            empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' }
+            empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' },
+            descricao: { type: Type.STRING, description: 'Palavra-chave presente na descrição do investimento, ex: "solar", "fotovoltaica", "hidrogênio", "data center". Use para buscas semânticas que o campo setor não cobre.' }
           }
         }
       },
@@ -61,7 +62,8 @@ const piespTools = [
             regiao: { type: Type.STRING, description: 'Região administrativa de SP, ex: "RA Campinas", "RMSP"' },
             tipo: { type: Type.STRING, description: 'Tipo de investimento: "implantação", "ampliação", "modernização" ou "ampliação/modernização"' },
             setor: { type: Type.STRING, description: 'Setor ou segmento econômico, ex: "automotivo", "alimentos", "energia"' },
-            empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' }
+            empresa: { type: Type.STRING, description: 'Nome (parcial) da empresa-alvo, ex: "Petrobras", "Embraer"' },
+            descricao: { type: Type.STRING, description: 'Palavra-chave presente na descrição do investimento, ex: "solar", "fotovoltaica", "hidrogênio", "data center". Use para buscas semânticas que o campo setor não cobre.' }
           }
         }
       }
@@ -85,6 +87,7 @@ function executarFerramenta(nome: string, args: any): any {
       tipo: args.tipo,
       setor: args.setor,
       empresa: args.empresa,
+      descricao: args.descricao,
     });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
@@ -96,6 +99,7 @@ function executarFerramenta(nome: string, args: any): any {
       tipo: args.tipo,
       setor: args.setor,
       empresa: args.empresa,
+      descricao: args.descricao,
     });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }

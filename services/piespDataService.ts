@@ -8,6 +8,7 @@ export interface FiltroPiesp {
   tipo?: string;
   setor?: string;
   empresa?: string;
+  descricao?: string;
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
@@ -22,12 +23,13 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     const colunas = linhas[i].split(';');
     if (colunas.length < 10) continue;
 
-    const anoLinha      = colunas[1]?.trim();
+    const anoLinha       = colunas[1]?.trim();
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
-    const regiaoLinha   = colunas[8]?.trim()?.toLowerCase() || '';
-    const setorLinha    = colunas[10]?.trim()?.toLowerCase() || '';
-    const tipoLinha     = colunas[14]?.trim()?.toLowerCase() || '';
-    const empresaLinha  = colunas[3]?.trim()?.toLowerCase() || '';
+    const regiaoLinha    = colunas[8]?.trim()?.toLowerCase() || '';
+    const descricaoLinha = colunas[9]?.trim()?.toLowerCase() || '';
+    const setorLinha     = colunas[10]?.trim()?.toLowerCase() || '';
+    const tipoLinha      = colunas[14]?.trim()?.toLowerCase() || '';
+    const empresaLinha   = colunas[3]?.trim()?.toLowerCase() || '';
 
     let match = true;
 
@@ -37,6 +39,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     if (filtro.setor && !setorLinha.includes(filtro.setor.toLowerCase())) match = false;
     if (filtro.tipo && !tipoLinha.includes(filtro.tipo.toLowerCase())) match = false;
     if (filtro.empresa && !empresaLinha.includes(filtro.empresa.toLowerCase())) match = false;
+    if (filtro.descricao && !descricaoLinha.includes(filtro.descricao.toLowerCase())) match = false;
 
     if (match) {
       resultados.push({
@@ -75,12 +78,13 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     const colunas = linhas[i].split(';');
     if (colunas.length < 8) continue;
 
-    const anoLinha      = colunas[1]?.trim();
+    const anoLinha       = colunas[1]?.trim();
     const municipioLinha = colunas[5]?.trim()?.toLowerCase() || '';
-    const regiaoLinha   = colunas[6]?.trim()?.toLowerCase() || '';
-    const setorLinha    = colunas[8]?.trim()?.toLowerCase() || '';
-    const tipoLinha     = colunas[12]?.trim()?.toLowerCase() || '';
-    const empresaLinha  = colunas[3]?.trim()?.toLowerCase() || '';
+    const regiaoLinha    = colunas[6]?.trim()?.toLowerCase() || '';
+    const descricaoLinha = colunas[7]?.trim()?.toLowerCase() || '';
+    const setorLinha     = colunas[8]?.trim()?.toLowerCase() || '';
+    const tipoLinha      = colunas[12]?.trim()?.toLowerCase() || '';
+    const empresaLinha   = colunas[3]?.trim()?.toLowerCase() || '';
 
     let match = true;
 
@@ -90,6 +94,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     if (filtro.setor && !setorLinha.includes(filtro.setor.toLowerCase())) match = false;
     if (filtro.tipo && !tipoLinha.includes(filtro.tipo.toLowerCase())) match = false;
     if (filtro.empresa && !empresaLinha.includes(filtro.empresa.toLowerCase())) match = false;
+    if (filtro.descricao && !descricaoLinha.includes(filtro.descricao.toLowerCase())) match = false;
 
     if (match) {
       resultados.push({
