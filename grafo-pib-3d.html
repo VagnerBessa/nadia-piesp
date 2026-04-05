@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Grafo 3D - Metodologia do PIB</title>
+    <script src="https://unpkg.com/3d-force-graph"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000011; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Passe o mouse sobre os nós para ver os conceitos. Arraste para rotacionar.</div>
+    <div id="3d-graph"></div>
+
+    <script>
+        // Estrutura de dados: Nós (Conceitos) e Links (Relações)
+        const gData = {
+            nodes: [
+                { id: 'PIB', group: 1, label: 'PIB (Produto Interno Bruto)', val: 20 },
+
+                // Ótica da Produção
+                { id: 'Prod', group: 2, label: 'Ótica da Produção', val: 10 },
+                { id: 'VA', group: 2, label: 'Valor Adicionado (VA)', val: 8 },
+
+                // Ótica da Despesa
+                { id: 'Desp', group: 3, label: 'Ótica da Despesa', val: 10 },
+                { id: 'FBCF', group: 3, label: 'Investimento (FBCF)', val: 8 },
+                { id: 'Consumo', group: 3, label: 'Consumo das Famílias', val: 8 },
+
+                // Ótica da Renda
+                { id: 'Renda', group: 4, label: 'Ótica da Renda', val: 10 },
+                { id: 'Salarios', group: 4, label: 'Remuneração dos Empregados', val: 8 },
+                { id: 'Lucros', group: 4, label: 'Excedente Operacional Bruto', val: 8 },
+
+                // Pesquisas IBGE
+                { id: 'IBGE', group: 5, label: 'Pesquisas IBGE', val: 15 },
+                { id: 'Conjunturais', group: 5, label: 'Conjunturais (PIM-PF, PMC, PMS)', val: 6 },
+                { id: 'Estruturais', group: 5, label: 'Estruturais (PIA, PAC, PAS)', val: 6 },
+
+                // Quebras de Paradigma / Limites
+                { id: 'Fronteiras', group: 6, label: 'Fronteiras da Produção', val: 10 },
+                { id: 'Informal', group: 6, label: 'Economia Subterrânea', val: 6 },
+                { id: 'Domestico', group: 6, label: 'Trabalho Doméstico Não Remunerado', val: 6 },
+                { id: 'Aluguel', group: 6, label: 'Aluguel Imputado', val: 6 }
+            ],
+            links: [
+                // Ligações Centrais
+                { source: 'PIB', target: 'Prod' },
+                { source: 'PIB', target: 'Desp' },
+                { source: 'PIB', target: 'Renda' },
+
+                // Ligações Produção
+                { source: 'Prod', target: 'VA' },
+
+                // Ligações Despesa
+                { source: 'Desp', target: 'FBCF' },
+                { source: 'Desp', target: 'Consumo' },
+
+                // Ligações Renda
+                { source: 'Renda', target: 'Salarios' },
+                { source: 'Renda', target: 'Lucros' },
+
+                // Ligações IBGE -> Óticas
+                { source: 'IBGE', target: 'Conjunturais' },
+                { source: 'IBGE', target: 'Estruturais' },
+                { source: 'Conjunturais', target: 'Prod' }, // Termômetro de curto prazo do VA
+                { source: 'Estruturais', target: 'VA' },   // Raio-X estrutural do VA
+
+                // Ligações Limites / Casos Especiais
+                { source: 'PIB', target: 'Fronteiras' },
+                { source: 'Fronteiras', target: 'Informal' },
+                { source: 'Fronteiras', target: 'Domestico' },
+                { source: 'Fronteiras', target: 'Aluguel' },
+
+                // Conexões cruzadas para instigar os alunos
+                { source: 'Informal', target: 'VA' }, // Informalidade gera VA
+                { source: 'Aluguel', target: 'Consumo' }, // Imputado entra no consumo das famílias
+                { source: 'Consumo', target: 'Domestico' } // Limite invisível
+            ]
+        };
+
+        // Renderização do Grafo
+        const Graph = ForceGraph3D()
+            (document.getElementById('3d-graph'))
+            .graphData(gData)
+            .nodeLabel('label')
+            .nodeAutoColorBy('group')
+            .nodeVal('val') // Tamanho do nó baseado na variável 'val'
+            .linkDirectionalParticles(2) // Partículas se movendo nas arestas
+            .linkDirectionalParticleWidth(1.5)
+            .linkDirectionalParticleSpeed(0.005)
+            // Função para afastar os nós e melhorar a visualização dos clusters
+            .d3Force('charge').strength(-150);
+
+        // Fazer a câmera orbitar lentamente (opcional, bom para quando a tela estiver parada)
+        let angle = 0;
+        setInterval(() => {
+            Graph.cameraPosition({
+                x: 200 * Math.sin(angle),
+                z: 200 * Math.cos(angle)
+            });
+            angle += Math.PI / 1000;
+        }, 10);
+    </script>
+</body>
+</html>
