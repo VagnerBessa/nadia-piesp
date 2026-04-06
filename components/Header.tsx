@@ -1,17 +1,15 @@
 import React from 'react';
-import { ChevronDownIcon, CloudArrowUpIcon } from './Icons';
+import { CloudArrowUpIcon } from './Icons';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 
 interface HeaderProps {
-  onNavigateToPib?: () => void;
-  onNavigateToEmpresas?: () => void;
+  onNavigateToDashboards?: () => void;
   onNavigateToMunicipal?: () => void;
-  onNavigateToProjecoes?: () => void;
   onNavigateToUpload?: () => void;
   onNavigateHome?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateToPib, onNavigateToEmpresas, onNavigateToMunicipal, onNavigateToProjecoes, onNavigateToUpload, onNavigateHome }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateToUpload, onNavigateHome }) => {
   return (
     <header className="flex-shrink-0 w-full max-w-7xl mx-auto px-6 py-4">
       <div className="grid grid-cols-3 items-center">
@@ -43,26 +41,10 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToPib, onNavigateToEmpresas, 
             </li>
             <li>
               <button 
-                onClick={onNavigateToPib}
+                onClick={onNavigateToDashboards}
                 className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
               >
-                PIB
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={onNavigateToProjecoes}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
-              >
-                Projeções
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={onNavigateToEmpresas}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
-              >
-                Empresas
+                Dashboards
               </button>
             </li>
             <li>
@@ -85,7 +67,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToPib, onNavigateToEmpresas, 
           </ul>
         </nav>
 
-        {/* Right container (placeholder for profile or mobile menu) */}
+        {/* Right container */}
         <div className="justify-self-end flex items-center gap-4">
            <button className="p-2 text-slate-400 hover:text-white transition-colors">
              <span className="sr-only">Menu</span>

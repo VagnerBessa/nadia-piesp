@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import VoiceView from './components/VoiceView';
 import ChatView from './components/ChatView';
-import PibMensalView from './components/PibMensalView';
-import SeadeEmpresasView from './components/SeadeEmpresasView';
+import PiespDashboardView from './components/PiespDashboardView';
 import PerfilMunicipalView from './components/PerfilMunicipalView';
-import ProjecaoView from './components/ProjecaoView';
 import UploadView from './components/UploadView';
 import Header from './components/Header';
 
-type View = 'home' | 'voice' | 'chat' | 'pib' | 'empresas' | 'municipal' | 'projecoes' | 'upload';
+type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('home');
@@ -17,10 +15,8 @@ const App: React.FC = () => {
   const handleNavigateToVoice = () => setView('voice');
   const handleNavigateToChat = () => setView('chat');
   const handleNavigateHome = () => setView('home');
-  const handleNavigateToPib = () => setView('pib');
-  const handleNavigateToEmpresas = () => setView('empresas');
+  const handleNavigateToDashboards = () => setView('dashboards');
   const handleNavigateToMunicipal = () => setView('municipal');
-  const handleNavigateToProjecoes = () => setView('projecoes');
   const handleNavigateToUpload = () => setView('upload');
 
   const renderView = () => {
@@ -29,14 +25,10 @@ const App: React.FC = () => {
         return <VoiceView onNavigateHome={handleNavigateHome} />;
       case 'chat':
         return <ChatView onNavigateHome={handleNavigateHome} />;
-      case 'pib':
-        return <PibMensalView onNavigateHome={handleNavigateHome} />;
-      case 'empresas':
-        return <SeadeEmpresasView onNavigateHome={handleNavigateHome} />;
+      case 'dashboards':
+        return <PiespDashboardView onNavigateHome={handleNavigateHome} />;
       case 'municipal':
         return <PerfilMunicipalView onNavigateHome={handleNavigateHome} />;
-      case 'projecoes':
-        return <ProjecaoView onNavigateHome={handleNavigateHome} />;
       case 'upload':
         return <UploadView onNavigateHome={handleNavigateHome} />;
       case 'home':
@@ -53,10 +45,8 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-transparent text-white font-sans flex flex-col overflow-hidden">
       <Header 
-        onNavigateToPib={handleNavigateToPib} 
-        onNavigateToEmpresas={handleNavigateToEmpresas}
+        onNavigateToDashboards={handleNavigateToDashboards}
         onNavigateToMunicipal={handleNavigateToMunicipal}
-        onNavigateToProjecoes={handleNavigateToProjecoes}
         onNavigateToUpload={handleNavigateToUpload}
         onNavigateHome={handleNavigateHome} 
       />
