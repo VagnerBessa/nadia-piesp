@@ -367,7 +367,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     type: Type.OBJECT,
                     properties: {
                       ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' }
+                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+                      termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
                     }
                   }
                 },
@@ -378,7 +379,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     type: Type.OBJECT,
                     properties: {
                       ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' }
+                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+                      termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
                     }
                   }
                 }

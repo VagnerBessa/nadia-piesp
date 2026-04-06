@@ -42,7 +42,8 @@ const piespTools = [
           type: Type.OBJECT,
           properties: {
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' }
+            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
           }
         }
       },
@@ -53,7 +54,8 @@ const piespTools = [
           type: Type.OBJECT,
           properties: {
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' }
+            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento.' }
           }
         }
       }
@@ -70,11 +72,11 @@ const searchTools = [
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
   if (nome === 'consultar_projetos_piesp') {
-    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio });
+    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio });
+    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   return { error: 'Ferramenta não reconhecida' };

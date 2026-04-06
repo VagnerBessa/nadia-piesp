@@ -1,9 +1,10 @@
-import PIESP_DATA from '../knowledge_base/piesp_mini.csv?raw';
+import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
 export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
+  termo_busca?: string;
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
@@ -11,13 +12,16 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   const resultados = [];
   
   // A primeira linha é o cabeçalho
-  // indices: 1=ano, 3=empresa, 5=reais, 7=municipio, 10=setor
+  // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 9=descr_investimento, 10=setor
   for (let i = 1; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
-    if (colunas.length < 10) continue;
+    if (colunas.length < 11) continue;
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
+    const empresaLinha = colunas[3] || 'Desconhecida';
+    const setorLinha = colunas[10] || 'Geral';
+    const descricaoLinha = colunas[9] || '';
 
     let match = true;
 
@@ -29,12 +33,22 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       match = false;
     }
 
+    if (filtro.termo_busca) {
+      const tb = filtro.termo_busca.toLowerCase();
+      // busca semântica livre em vários campos textuais
+      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      if (!textToSearch.includes(tb)) {
+        match = false;
+      }
+    }
+
     if (match) {
       resultados.push({
-        empresa: colunas[3] || 'Desconhecida',
+        empresa: empresaLinha,
         municipio: colunas[7] || 'Não informado',
         ano: anoLinha,
-        setor: colunas[10] || 'Geral',
+        setor: setorLinha,
+        descricao: descricaoLinha.substring(0, 150),
         valor_milhoes_reais: colunas[5] || '0,00'
       });
     }
@@ -57,13 +71,16 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   const resultados = [];
   
   // A primeira linha é o cabeçalho
-  // indices: 1=ano, 3=empresa_alvo, 5=municipio, 8=setor_desc, 7=descr_investimento
+  // indices (piesp_confirmados_sem_valor): 1=ano, 3=empresa_alvo, 5=municipio, 7=descr_investimento, 8=setor_desc
   for (let i = 1; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
     if (colunas.length < 8) continue;
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[5]?.trim()?.toLowerCase() || '';
+    const empresaLinha = colunas[3] || 'Desconhecida';
+    const setorLinha = colunas[8] || 'Geral';
+    const descricaoLinha = colunas[7] || '';
 
     let match = true;
 
@@ -75,13 +92,22 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
       match = false;
     }
 
+    if (filtro.termo_busca) {
+      const tb = filtro.termo_busca.toLowerCase();
+      // busca semântica livre
+      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      if (!textToSearch.includes(tb)) {
+        match = false;
+      }
+    }
+
     if (match) {
       resultados.push({
-        empresa: colunas[3] || 'Desconhecida',
+        empresa: empresaLinha,
         municipio: colunas[5] || 'Não informado',
         ano: anoLinha,
-        setor: colunas[8] || 'Geral',
-        descricao: (colunas[7] || '').substring(0, 80) + '...' // resumo curto para a API falar
+        setor: setorLinha,
+        descricao: descricaoLinha.substring(0, 150)
       });
     }
   }
