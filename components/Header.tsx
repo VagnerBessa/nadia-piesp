@@ -7,9 +7,11 @@ interface HeaderProps {
   onNavigateToMunicipal?: () => void;
   onNavigateToUpload?: () => void;
   onNavigateHome?: () => void;
+  onNavigateToExplorar?: () => void;
+  onNavigateToPerfilEmpresa?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateToUpload, onNavigateHome }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateToUpload, onNavigateHome, onNavigateToExplorar, onNavigateToPerfilEmpresa }) => {
   return (
     <header className="flex-shrink-0 w-full max-w-7xl mx-auto px-6 py-4">
       <div className="grid grid-cols-3 items-center">
@@ -48,11 +50,27 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMun
               </button>
             </li>
             <li>
-              <button 
+              <button
                 onClick={onNavigateToMunicipal}
                 className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
               >
                 Municípios
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={onNavigateToExplorar}
+                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
+              >
+                Explorar
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={onNavigateToPerfilEmpresa}
+                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
+              >
+                Empresas
               </button>
             </li>
             <li className="ml-2 border-l border-white/10 pl-2">

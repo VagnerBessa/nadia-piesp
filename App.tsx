@@ -5,9 +5,11 @@ import ChatView from './components/ChatView';
 import PiespDashboardView from './components/PiespDashboardView';
 import PerfilMunicipalView from './components/PerfilMunicipalView';
 import UploadView from './components/UploadView';
+import ExplorarDadosView from './components/ExplorarDadosView';
+import PerfilEmpresaView from './components/PerfilEmpresaView';
 import Header from './components/Header';
 
-type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload';
+type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload' | 'explorar' | 'perfil-empresa';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('home');
@@ -18,6 +20,8 @@ const App: React.FC = () => {
   const handleNavigateToDashboards = () => setView('dashboards');
   const handleNavigateToMunicipal = () => setView('municipal');
   const handleNavigateToUpload = () => setView('upload');
+  const handleNavigateToExplorar = () => setView('explorar');
+  const handleNavigateToPerfilEmpresa = () => setView('perfil-empresa');
 
   const renderView = () => {
     switch (view) {
@@ -31,6 +35,10 @@ const App: React.FC = () => {
         return <PerfilMunicipalView onNavigateHome={handleNavigateHome} />;
       case 'upload':
         return <UploadView onNavigateHome={handleNavigateHome} />;
+      case 'explorar':
+        return <ExplorarDadosView onNavigateHome={handleNavigateHome} />;
+      case 'perfil-empresa':
+        return <PerfilEmpresaView onNavigateHome={handleNavigateHome} />;
       case 'home':
       default:
         return (
@@ -44,11 +52,13 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen bg-transparent text-white font-sans flex flex-col overflow-hidden">
-      <Header 
+      <Header
         onNavigateToDashboards={handleNavigateToDashboards}
         onNavigateToMunicipal={handleNavigateToMunicipal}
         onNavigateToUpload={handleNavigateToUpload}
-        onNavigateHome={handleNavigateHome} 
+        onNavigateHome={handleNavigateHome}
+        onNavigateToExplorar={handleNavigateToExplorar}
+        onNavigateToPerfilEmpresa={handleNavigateToPerfilEmpresa}
       />
       <main className="flex-grow relative overflow-hidden flex flex-col">
         {renderView()}

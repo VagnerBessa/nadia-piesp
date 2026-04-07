@@ -66,6 +66,192 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   return { total, projetos: resultados.slice(0, 10) };
 }
 
+export interface FiltroRelatorio {
+  setor?: string;
+  regiao?: string;
+  ano?: string;
+  tipo?: string;
+}
+
+export interface ResumoRelatorio {
+  total: number;
+  totalMilhoes: number;
+  projetos: {
+    empresa: string;
+    municipio: string;
+    regiao: string;
+    ano: string;
+    setor: string;
+    tipo: string;
+    descricao: string;
+    valor_milhoes_reais: string;
+  }[];
+  porSetor: { nome: string; valor: number; count: number }[];
+  porMunicipio: { nome: string; valor: number; count: number }[];
+  porRegiao: { nome: string; valor: number; count: number }[];
+}
+
+export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const resultados: ResumoRelatorio['projetos'] = [];
+
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    if (cols.length < 11) continue;
+
+    const anoLinha = (cols[1] || '').trim();
+    const empresaLinha = (cols[3] || 'Desconhecida').trim();
+    const setorLinha = (cols[10] || 'Outros').trim();
+    const municipioLinha = (cols[7] || 'Não informado').trim();
+    const regiaoLinha = (cols[8] || 'Não informada').trim();
+    const tipoLinha = (cols[14] || '').trim();
+    const descricaoLinha = (cols[9] || '').trim();
+    const valorStr = (cols[5] || '0').trim();
+
+    if (filtro.ano && anoLinha !== filtro.ano) continue;
+    if (filtro.setor && setorLinha !== filtro.setor) continue;
+    if (filtro.regiao && regiaoLinha !== filtro.regiao) continue;
+    if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
+
+    resultados.push({
+      empresa: empresaLinha,
+      municipio: municipioLinha,
+      regiao: regiaoLinha,
+      ano: anoLinha,
+      setor: setorLinha,
+      tipo: tipoLinha,
+      descricao: descricaoLinha.substring(0, 200),
+      valor_milhoes_reais: valorStr,
+    });
+  }
+
+  // Ordena por valor decrescente
+  const limpaValor = (v: string) => parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0;
+  resultados.sort((a, b) => limpaValor(b.valor_milhoes_reais) - limpaValor(a.valor_milhoes_reais));
+
+  const totalMilhoes = resultados.reduce((acc, r) => acc + limpaValor(r.valor_milhoes_reais), 0);
+
+  // Agrupamentos simples
+  function agrupar(campo: keyof typeof resultados[0]) {
+    const map = new Map<string, { valor: number; count: number }>();
+    for (const r of resultados) {
+      const key = r[campo] as string;
+      const existing = map.get(key) || { valor: 0, count: 0 };
+      existing.valor += limpaValor(r.valor_milhoes_reais);
+      existing.count += 1;
+      map.set(key, existing);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[1].valor - a[1].valor)
+      .slice(0, 8)
+      .map(([nome, { valor, count }]) => ({ nome, valor: Math.round(valor * 10) / 10, count }));
+  }
+
+  return {
+    total: resultados.length,
+    totalMilhoes: Math.round(totalMilhoes * 10) / 10,
+    projetos: resultados.slice(0, 20),
+    porSetor: agrupar('setor'),
+    porMunicipio: agrupar('municipio'),
+    porRegiao: agrupar('regiao'),
+  };
+}
+
+export function getMetadados(): { setores: string[]; regioes: string[]; anos: string[]; tipos: string[] } {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const setores = new Set<string>();
+  const regioes = new Set<string>();
+  const anos = new Set<string>();
+  const tipos = new Set<string>();
+
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    if (cols.length < 11) continue;
+    const setor = (cols[10] || '').trim();
+    const regiao = (cols[8] || '').trim();
+    const ano = (cols[1] || '').trim();
+    const tipo = (cols[14] || '').trim();
+    if (setor) setores.add(setor);
+    if (regiao) regioes.add(regiao);
+    if (ano) anos.add(ano);
+    if (tipo) tipos.add(tipo);
+  }
+
+  return {
+    setores: Array.from(setores).sort(),
+    regioes: Array.from(regioes).sort(),
+    anos: Array.from(anos).sort().reverse(),
+    tipos: Array.from(tipos).sort(),
+  };
+}
+
+export function getUniqueEmpresas(): string[] {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const empresas = new Set<string>();
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    if (cols.length < 4) continue;
+    const empresa = (cols[3] || '').trim();
+    if (empresa && empresa !== 'Desconhecida') empresas.add(empresa);
+  }
+  return Array.from(empresas).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const resultados: ResumoRelatorio['projetos'] = [];
+  const termo = nomeEmpresa.toLowerCase();
+
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    if (cols.length < 11) continue;
+
+    const empresaLinha = (cols[3] || '').trim();
+    const investidoraLinha = (cols[4] || '').trim();
+    if (!empresaLinha.toLowerCase().includes(termo) && !investidoraLinha.toLowerCase().includes(termo)) continue;
+
+    const valorStr = (cols[5] || '0').trim();
+    resultados.push({
+      empresa: empresaLinha,
+      municipio: (cols[7] || 'Não informado').trim(),
+      regiao: (cols[8] || 'Não informada').trim(),
+      ano: (cols[1] || '').trim(),
+      setor: (cols[10] || 'Outros').trim(),
+      tipo: (cols[14] || '').trim(),
+      descricao: (cols[9] || '').trim().substring(0, 300),
+      valor_milhoes_reais: valorStr,
+    });
+  }
+
+  const limpaValor = (v: string) => parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0;
+  resultados.sort((a, b) => limpaValor(b.valor_milhoes_reais) - limpaValor(a.valor_milhoes_reais));
+  const totalMilhoes = resultados.reduce((acc, r) => acc + limpaValor(r.valor_milhoes_reais), 0);
+
+  function agrupar(campo: keyof typeof resultados[0]) {
+    const map = new Map<string, { valor: number; count: number }>();
+    for (const r of resultados) {
+      const key = r[campo] as string;
+      const existing = map.get(key) || { valor: 0, count: 0 };
+      existing.valor += limpaValor(r.valor_milhoes_reais);
+      existing.count += 1;
+      map.set(key, existing);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[1].valor - a[1].valor)
+      .slice(0, 8)
+      .map(([nome, { valor, count }]) => ({ nome, valor: Math.round(valor * 10) / 10, count }));
+  }
+
+  return {
+    total: resultados.length,
+    totalMilhoes: Math.round(totalMilhoes * 10) / 10,
+    projetos: resultados,
+    porSetor: agrupar('setor'),
+    porMunicipio: agrupar('municipio'),
+    porRegiao: agrupar('regiao'),
+  };
+}
+
 export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   const linhas = PIESP_SEM_VALOR_DATA.split('\n').filter(l => l.trim().length > 0);
   const resultados = [];
