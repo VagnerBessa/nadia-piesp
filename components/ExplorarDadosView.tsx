@@ -38,6 +38,10 @@ function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string 
     `- ${r.nome}: R$ ${r.valor} mi em ${r.count} projeto(s)`
   ).join('\n');
 
+  const porAnoTexto = resumo.porAno.map(a =>
+    `- ${a.nome}: R$ ${a.valor} mi em ${a.count} projeto(s)`
+  ).join('\n');
+
   return `Você é a Nadia, analista de investimentos da Fundação Seade especializada no PIESP (Pesquisa de Investimentos no Estado de São Paulo).
 
 O usuário solicitou um relatório analítico com o seguinte recorte:
@@ -59,6 +63,9 @@ ${porMunicipioTexto || '(sem dados)'}
 DISTRIBUIÇÃO POR REGIÃO:
 ${porRegiaoTexto || '(sem dados)'}
 
+EVOLUÇÃO DOS ANÚNCIOS POR ANO:
+${porAnoTexto || '(sem dados)'}
+
 ---
 Com base exclusivamente nesses dados do PIESP, gere um relatório executivo analítico e bem estruturado em português. Use markdown (## para seções, **negrito** para destaques, - para listas). O relatório deve conter:
 
@@ -79,15 +86,15 @@ Seja analítico, não apenas descritivo. Evite adjetivos vagos como "importante"
 Se julgar que um gráfico agregaria valor visual, você PODE e DEVE inseri-lo no meio do texto, utilizando o seguinte bloco markdown exato:
 \`\`\`json-chart
 {
-  "title": "Investimentos por Município (R$ mi)",
-  "type": "bar",
+  "title": "Evolução dos Investimentos Anunciados (R$ mi)",
+  "type": "line",
   "data": [
-    {"name": "São Paulo", "value": 2366},
-    {"name": "Cajamar", "value": 356}
+    {"name": "2020", "value": 2366},
+    {"name": "2021", "value": 3560}
   ]
 }
 \`\`\`
-Para \`type\`, use \`bar\` para distribuições/rankings ou \`pie\` para participações relativas. Insira gráficos apenas baseados nos dados fornecidos nesta prompt.`;
+Para \`type\`, use \`line\` para mostrar evolução no tempo (anos), \`bar\` para distribuições/rankings de setores/regiões, ou \`pie\` para participações relativas. Insira gráficos apenas baseados nos dados numéricos fornecidos nesta prompt.`;
 }
 
 const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome }) => {

@@ -71,6 +71,10 @@ function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string 
     `- ${m.nome}: R$ ${m.valor} mi`
   ).join('\n') || '—';
 
+  const porAnoTexto = piespData.porAno.map(a =>
+    `- ${a.nome}: R$ ${a.valor} mi (${a.count} projetos)`
+  ).join('\n') || '—';
+
   return `Você é a Nadia, analista sênior de investimentos da Fundação Seade.
 
 O usuário solicitou um dossiê completo e aprofundado sobre: **"${empresa}"**
@@ -86,6 +90,9 @@ ${setoresTexto}
 
 CONCENTRAÇÃO MUNICIPAL (PIESP):
 ${municipiosTexto}
+
+EVOLUÇÃO DOS ANÚNCIOS POR ANO (PIESP):
+${porAnoTexto}
 
 ---
 INSTRUÇÕES:
@@ -130,15 +137,15 @@ Seja analítico e baseado em dados. Evite adjetivos vagos. Quando citar um dado 
 Se julgar pertinente sumarizar os dados do PIESP ou do Balanço Financeiro da empresa com um gráfico (ex: faturamento ao longo dos anos, ou receita por segmento), insira no meio do texto ESTE bloco markdown:
 \`\`\`json-chart
 {
-  "title": "Evolução do Faturamento",
-  "type": "bar",
+  "title": "Evolução Temporal / Evolução do Faturamento",
+  "type": "line",
   "data": [
     {"name": "2022", "value": 1500},
     {"name": "2023", "value": 2100}
   ]
 }
 \`\`\`
-Para \`type\`, use \`bar\` para evolução temporal ou rank, e \`pie\` para subdivisões (market share).`;
+Para \`type\`, use \`line\` para mostrar evolução no tempo (anos), \`bar\` para distribuições/rankings, e \`pie\` para subdivisões (market share).`;
 }
 
 // ─── Renderizador de dossiê com suporte a citações inline, tabelas e headers ────

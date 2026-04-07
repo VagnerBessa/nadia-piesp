@@ -98,6 +98,7 @@ export interface ResumoRelatorio {
   porSetor: { nome: string; valor: number; count: number }[];
   porMunicipio: { nome: string; valor: number; count: number }[];
   porRegiao: { nome: string; valor: number; count: number }[];
+  porAno: { nome: string; valor: number; count: number }[];
 }
 
 export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
@@ -156,6 +157,21 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
       .map(([nome, { valor, count }]) => ({ nome, valor: Math.round(valor * 10) / 10, count }));
   }
 
+  function agruparAno() {
+    const map = new Map<string, { valor: number; count: number }>();
+    for (const r of resultados) {
+      const key = r.ano as string;
+      if (!key) continue;
+      const existing = map.get(key) || { valor: 0, count: 0 };
+      existing.valor += limpaValor(r.valor_milhoes_reais);
+      existing.count += 1;
+      map.set(key, existing);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0])) // Cronológico (Crescente)
+      .map(([nome, { valor, count }]) => ({ nome, valor: Math.round(valor * 10) / 10, count }));
+  }
+
   return {
     total: resultados.length,
     totalMilhoes: Math.round(totalMilhoes * 10) / 10,
@@ -163,6 +179,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
     porSetor: agrupar('setor'),
     porMunicipio: agrupar('municipio'),
     porRegiao: agrupar('regiao'),
+    porAno: agruparAno(),
   };
 }
 
@@ -263,6 +280,21 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
       .map(([nome, { valor, count }]) => ({ nome, valor: Math.round(valor * 10) / 10, count }));
   }
 
+  function agruparAno() {
+    const map = new Map<string, { valor: number; count: number }>();
+    for (const r of resultados) {
+      const key = r.ano as string;
+      if (!key) continue;
+      const existing = map.get(key) || { valor: 0, count: 0 };
+      existing.valor += limpaValor(r.valor_milhoes_reais);
+      existing.count += 1;
+      map.set(key, existing);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0])) // Cronológico (Crescente)
+      .map(([nome, { valor, count }]) => ({ nome, valor: Math.round(valor * 10) / 10, count }));
+  }
+
   return {
     total: resultados.length,
     totalMilhoes: Math.round(totalMilhoes * 10) / 10,
@@ -270,6 +302,7 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
     porSetor: agrupar('setor'),
     porMunicipio: agrupar('municipio'),
     porRegiao: agrupar('regiao'),
+    porAno: agruparAno(),
   };
 }
 
