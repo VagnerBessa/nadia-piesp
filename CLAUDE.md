@@ -1,6 +1,7 @@
 # CLAUDE.md — Histórico de Decisões e Contexto do Projeto
 
-Este arquivo registra decisões arquiteturais, features implementadas e contexto relevante para sessões futuras.
+Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão.
+Registra decisões arquiteturais, lições aprendidas e features implementadas.
 
 ---
 
@@ -14,6 +15,88 @@ Este arquivo registra decisões arquiteturais, features implementadas e contexto
 
 ---
 
+## Lições Aprendidas: Contexto Longo vs Dados Tabulares
+
+**Data:** Abril de 2026.
+**Objetivo do Teste:** Verificar se é viável carregar a base completa da PIESP diretamente na janela de contexto do Gemini Flash Native Audio sem RAG ou Function Calling.
+
+### Resultados
+
+1. **Viabilidade Técnica (WebSocket):** Injetar megabytes de dados via WebSocket em navegadores falha por limites de frames (Chrome bloqueia a conexão). Contornado criando `piesp_mini.csv` (~1 MB, sem a coluna `descr_investimento`).
+
+2. **"Colapso da Atenção" em Agregações:** Com contexto longo carregado, a Nadia alucinava ao responder perguntas analíticas como "cite os principais investimentos em 2026". LLMs não agem como bancos de dados SQL — com 5.000 linhas de texto tabular denso, a atenção se dilui, o modelo tenta adivinhar/interpolar e gera respostas incorretas.
+
+### A Solução: Function Calling
+
+Abandonamos o contexto longo para tabelas e implementamos **Function Calling (Tools)**:
+- `piespDataService.ts` — motor de filtro determinístico (CSV parser + array map)
+- A IA é instruída a nunca adivinhar: chama `consultar_projetos_piesp` com os argumentos, filtramos os resultados em JavaScript e devolvemos o JSON compacto
+- Resultado: precisão de 100% com latência baixa
+
+### Regra de Ouro
+
+| Tipo de conteúdo | Estratégia | Por quê |
+|---|---|---|
+| Texto narrativo (metodologia, regras, manuais) | Contexto longo (`systemInstruction`) | LLMs compreendem e evocam prosa com excelência |
+| Dados tabulares / CSV / planilhas | Function Calling (Tools) | LLMs falham em filtrar, agregar e rankear linhas numéricas densas |
+| Dados pequenos (< 50 linhas, dicionários) | Contexto longo | Volume insignificante, sem risco de diluição de atenção |
+
+### Cronologia de Problemas e Soluções
+
+**Problema 1 — WebSocket recusado ("Não foi possível se conectar com Nadia")**
+Causa: `piesp_confirmados_com_valor.csv` (2,1 MB) injetado inteiro na `systemInstruction`. Browser rejeitava o frame inicial.
+Solução: Criamos `piesp_mini.csv` (~1 MB) e `piesp_micro.csv` (300 linhas para debug).
+
+**Problema 2 — API Key bloqueada (`API_KEY_SERVICE_BLOCKED`)**
+Causa: Chave herdada do Nadia-2 sem permissão para a Generative Language API.
+Solução: Nova chave gerada no Google AI Studio com permissões corretas.
+
+**Problema 3 — Tela em branco após troca de chave**
+Causa: Chave colada sem aspas no `config.ts` — TypeScript interpretou como expressão aritmética.
+Solução: Envolver os valores das constantes com aspas duplas.
+
+**Problema 4 — Nadia conecta mas alucina os dados**
+Causa: Contexto longo com dados tabulares causa diluição de atenção (ver acima).
+Solução: Function Calling com `piespDataService.ts`.
+
+**Problema 5 — Expansão de escopo (nova base + metodologia)**
+Solução arquitetural:
+- Metodologia → Contexto longo (texto narrativo)
+- Nova tabela CSV → Nova tool (`consultar_anuncios_sem_valor`)
+- UX: instrução de apresentação da base secundária apenas na primeira fala, sem repetição
+
+---
+
+## Arquitetura
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 NAVEGADOR (Chrome)                   │
+│                                                     │
+│  ┌──────────┐   ┌──────────────┐   ┌─────────────┐ │
+│  │ Microfone│──▶│  VoiceView   │──▶│ useLive     │ │
+│  │  (Audio) │   │  .tsx        │   │ Connection  │ │
+│  └──────────┘   │  onToolCall  │   │ .ts         │ │
+│                 │  handler ────┼──▶│ WebSocket   │ │
+│                 └──────┬───────┘   │ (Gemini     │ │
+│                        │           │  Live API)  │ │
+│                        ▼           └──────┬──────┘ │
+│              ┌─────────────────┐          │        │
+│              │ piespDataService│◀─────────┘        │
+│              │ .ts             │  (tool response)  │
+│              └─────────────────┘                   │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐    │
+│  │ prompts.ts (SYSTEM_INSTRUCTION)             │    │
+│  │  ├── Persona Nadia                          │    │
+│  │  ├── Metodologia PIESP (contexto longo) ✓   │    │
+│  │  └── Dicionário de Variáveis (contexto) ✓   │    │
+│  └─────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Estrutura de Views
 
 | View | Rota (`App.tsx`) | Descrição |
@@ -24,8 +107,8 @@ Este arquivo registra decisões arquiteturais, features implementadas e contexto
 | `PiespDashboardView` | `dashboards` | Dashboard com gráficos Recharts |
 | `PerfilMunicipalView` | `municipal` | Mapa 3D + voz para municípios |
 | `UploadView` | `upload` | Publicação de arquivos |
-| `ExplorarDadosView` | `explorar` | Relatórios analíticos por filtro *(novo)* |
-| `PerfilEmpresaView` | `perfil-empresa` | Dossiê de empresa com web search *(novo)* |
+| `ExplorarDadosView` | `explorar` | Relatórios analíticos por filtro *(abril/2026)* |
+| `PerfilEmpresaView` | `perfil-empresa` | Dossiê de empresa com web search *(abril/2026)* |
 
 ---
 
@@ -43,49 +126,44 @@ Os arquivos CSV do PIESP são importados como string raw (`?raw`) e parseados no
 
 ---
 
-## Features Implementadas (Sessão abril/2026)
+## Features Implementadas
 
-### Branch: `claude/add-data-exploration-reports-5yplM`
+### Abril/2026 — Branch `claude/add-data-exploration-reports-5yplM`
 
-#### 1. Aba "Explorar Dados" (`ExplorarDadosView.tsx`)
+#### Aba "Explorar Dados" (`ExplorarDadosView.tsx`)
 
-Permite ao usuário filtrar dados do PIESP por **setor, região, ano e tipo de investimento** e gerar um relatório analítico com a Nadia.
+Filtros por setor, região, ano e tipo de investimento → relatório analítico gerado pela Nadia.
 
 **Como funciona:**
 1. Filtros populados via `getMetadados()` (listas únicas extraídas do CSV)
 2. Preview em tempo real do número de projetos encontrados
-3. Ao clicar "Gerar Relatório": chama `filtrarParaRelatorio()` localmente → serializa os dados filtrados → envia ao Gemini como contexto → exibe o relatório em `MarkdownRenderer`
-4. A chamada ao Gemini é direta (sem function calling), pois os dados já foram filtrados localmente
+3. Ao clicar "Gerar Relatório": `filtrarParaRelatorio()` localmente → dados serializados no prompt → Gemini gera o relatório → exibido via `MarkdownRenderer`
+4. Chamada direta ao Gemini (sem function calling), pois os dados já foram filtrados localmente
 
 **Funções novas em `piespDataService.ts`:**
-- `filtrarParaRelatorio(filtro)` — filtro estendido (setor, região, ano, tipo) com agregações por setor/município/região
-- `getMetadados()` — retorna listas únicas de setores, regiões, anos e tipos
+- `filtrarParaRelatorio(filtro)` — filtro estendido (setor, região, ano, tipo) com agregações
+- `getMetadados()` — listas únicas de setores, regiões, anos e tipos
 
-#### 2. Aba "Perfil de Empresa" (`PerfilEmpresaView.tsx`)
+#### Aba "Perfil de Empresa" (`PerfilEmpresaView.tsx`)
 
-Gera um dossiê completo sobre uma empresa combinando dados internos do PIESP com pesquisa na internet.
+Dossiê completo combinando dados internos do PIESP com pesquisa na internet, incluindo desempenho financeiro.
 
 **Como funciona:**
-1. Campo de busca com autocomplete (sugestões das empresas presentes no PIESP)
-2. Ao gerar: chama `buscarEmpresaNoPiesp()` localmente → monta prompt com os dados PIESP → chama Gemini com `googleSearch` habilitado
-3. O prompt instrui o modelo a buscar ativamente: perfil corporativo, **dados financeiros** (receita, EBITDA, lucro, dívida, market cap, rating), posição de mercado, fatos recentes
-4. Citações inline extraídas de `groundingSupports` e injetadas no texto via `injectInlineCitations()`
-5. Renderizado pelo `DossieRenderer` (componente local) com suporte a headers, tabelas, listas e badges de citação com tooltip
+1. Campo de busca com autocomplete (empresas presentes no PIESP)
+2. `buscarEmpresaNoPiesp()` localmente → prompt com dados PIESP → Gemini com `googleSearch`
+3. Prompt instrui busca ativa de: perfil corporativo, **dados financeiros** (receita, EBITDA, lucro, dívida, market cap, rating de crédito), posição de mercado, fatos recentes
+4. Citações inline extraídas de `groundingSupports` e injetadas via `injectInlineCitations()`
+5. Renderizado pelo `DossieRenderer` (componente local): headers `##`/`###`, tabelas markdown, listas, badges de citação clicáveis com tooltip
 
 **Funções novas em `piespDataService.ts`:**
 - `getUniqueEmpresas()` — lista ordenada de empresas únicas para autocomplete
-- `buscarEmpresaNoPiesp(nome)` — busca empresa por nome (e investidora) sem limite de 10 resultados
-
-**`DossieRenderer`** (componente interno de `PerfilEmpresaView.tsx`):
-- Suporta `##`, `###`, `**bold**`, `*italic*`, tabelas markdown e listas
-- Renderiza `[N]` como badges clicáveis linkados à fonte, com tooltip no hover
-- Fontes exibidas como lista numerada correspondente aos badges
+- `buscarEmpresaNoPiesp(nome)` — busca por nome (e investidora), sem limite de resultados
 
 ---
 
 ## Convenções
 
-- Novas views seguem o padrão: prop `onNavigateHome: () => void`, header interno próprio, botão "Voltar"
-- Navegação centralizada em `App.tsx` (state machine simples com `useState<View>`)
-- `Header.tsx` recebe callbacks opcionais para cada view — adicionar prop ao interface ao incluir nova view
-- Tailwind dark-first; paleta: `slate-*` para fundos/texto, `rose-*` para destaques/ações, `sky-*` para links/citações
+- Novas views: prop `onNavigateHome: () => void`, header interno próprio, botão "Voltar"
+- Navegação centralizada em `App.tsx` (state machine com `useState<View>`)
+- `Header.tsx` recebe callbacks opcionais — adicionar prop ao interface ao incluir nova view
+- Tailwind dark-first; paleta: `slate-*` fundos/texto, `rose-*` destaques/ações, `sky-*` links/citações
