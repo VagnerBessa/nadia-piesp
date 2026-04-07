@@ -4,6 +4,7 @@ import { GEMINI_API_KEY } from '../config';
 import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
+import { EmbeddedChart } from './EmbeddedChart';
 
 interface SourceItem {
   uri: string;
@@ -124,7 +125,20 @@ O dossiê deve ter exatamente esta estrutura:
 ## Perspectivas e Riscos
 (interpretação analítica: vetores de crescimento, riscos regulatórios, ESG, exposição cambial quando relevante)
 
-Seja analítico e baseado em dados. Evite adjetivos vagos. Quando citar um dado específico, o sistema de grounding marcará a fonte automaticamente.`;
+Seja analítico e baseado em dados. Evite adjetivos vagos. Quando citar um dado específico, o sistema de grounding marcará a fonte automaticamente.
+
+Se julgar pertinente sumarizar os dados do PIESP ou do Balanço Financeiro da empresa com um gráfico (ex: faturamento ao longo dos anos, ou receita por segmento), insira no meio do texto ESTE bloco markdown:
+\`\`\`json-chart
+{
+  "title": "Evolução do Faturamento",
+  "type": "bar",
+  "data": [
+    {"name": "2022", "value": 1500},
+    {"name": "2023", "value": 2100}
+  ]
+}
+\`\`\`
+Para \`type\`, use \`bar\` para evolução temporal ou rank, e \`pie\` para subdivisões (market share).`;
 }
 
 // ─── Renderizador de dossiê com suporte a citações inline, tabelas e headers ────
@@ -276,6 +290,32 @@ const DossieRenderer: React.FC<DossieRendererProps> = ({ content, sources }) => 
     // Linha vazia
     if (!trimmed) {
       i++;
+      continue;
+    }
+
+    // Chart
+    if (trimmed.startsWith('```json-chart')) {
+      const chartLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        chartLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip the closing ```
+      
+      try {
+        const chartData = JSON.parse(chartLines.join('\n'));
+        blocks.push(
+          <EmbeddedChart 
+            key={`chart-${i}`}
+            title={chartData.title}
+            type={chartData.type}
+            data={chartData.data}
+          />
+        );
+      } catch (e) {
+        console.error('Failed to parse json-chart block in dossie:', e);
+      }
       continue;
     }
 

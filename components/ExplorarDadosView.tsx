@@ -74,7 +74,20 @@ Com base exclusivamente nesses dados do PIESP, gere um relatório executivo anal
 ## Análise e Perspectivas
 (interpretação analítica: o que esses investimentos sinalizam, implicações para o estado)
 
-Seja analítico, não apenas descritivo. Evite adjetivos vagos como "importante", "significativo" ou "crucial". Deixe que os números falem.`;
+Seja analítico, não apenas descritivo. Evite adjetivos vagos como "importante", "significativo" ou "crucial". Deixe que os números falem.
+
+Se julgar que um gráfico agregaria valor visual, você PODE e DEVE inseri-lo no meio do texto, utilizando o seguinte bloco markdown exato:
+\`\`\`json-chart
+{
+  "title": "Investimentos por Município (R$ mi)",
+  "type": "bar",
+  "data": [
+    {"name": "São Paulo", "value": 2366},
+    {"name": "Cajamar", "value": 356}
+  ]
+}
+\`\`\`
+Para \`type\`, use \`bar\` para distribuições/rankings ou \`pie\` para participações relativas. Insira gráficos apenas baseados nos dados fornecidos nesta prompt.`;
 }
 
 const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome }) => {

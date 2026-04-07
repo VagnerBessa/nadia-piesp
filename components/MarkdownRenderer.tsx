@@ -1,4 +1,5 @@
 import React from 'react';
+import { EmbeddedChart } from './EmbeddedChart';
 
 // This function parses inline markdown like **bold** and *italic*.
 const parseInlineFormatting = (text: string) => {
@@ -26,12 +27,37 @@ interface MarkdownRendererProps {
  * It groups lines into paragraphs or lists and applies inline formatting.
  */
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
-    const blocks: { type: 'p' | 'ul' | 'h1' | 'h2' | 'h3'; lines: string[] }[] = [];
+    const blocks: { type: 'p' | 'ul' | 'h1' | 'h2' | 'h3' | 'chart'; lines: string[]; chartData?: any }[] = [];
     const lines = content.split('\n');
-    let currentBlock: { type: 'p' | 'ul' | 'h1' | 'h2' | 'h3'; lines: string[] } | null = null;
+    let currentBlock: { type: 'p' | 'ul' | 'h1' | 'h2' | 'h3' | 'chart'; lines: string[]; chartData?: any } | null = null;
+    let inChartBlock = false;
 
     for (const line of lines) {
         const trimmedLine = line.trim();
+
+        if (trimmedLine.startsWith('```json-chart')) {
+            inChartBlock = true;
+            currentBlock = { type: 'chart', lines: [] };
+            blocks.push(currentBlock);
+            continue;
+        }
+
+        if (inChartBlock) {
+            if (trimmedLine.startsWith('```')) {
+                inChartBlock = false;
+                try {
+                    const jsonStr = currentBlock!.lines.join('\n');
+                    currentBlock!.chartData = JSON.parse(jsonStr);
+                } catch (e) {
+                    console.error("Failed to parse json-chart block:", e);
+                }
+                currentBlock = null;
+            } else {
+                currentBlock!.lines.push(line);
+            }
+            continue;
+        }
+
         const isListItem = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ');
         const isH3 = trimmedLine.startsWith('### ');
         const isH2 = trimmedLine.startsWith('## ');
@@ -64,6 +90,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     return (
         <div className="leading-relaxed space-y-3">
             {blocks.map((block, index) => {
+                if (block.type === 'chart') {
+                    if (!block.chartData) return null;
+                    return (
+                        <EmbeddedChart
+                            key={index}
+                            title={block.chartData.title}
+                            type={block.chartData.type}
+                            data={block.chartData.data}
+                        />
+                    );
+                }
                 if (block.type === 'h3') {
                     return <h3 key={index} className="text-sm font-semibold text-slate-200 mt-4 mb-1">{parseInlineFormatting(block.lines[0])}</h3>;
                 }
