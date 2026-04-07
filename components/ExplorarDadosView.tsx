@@ -83,18 +83,32 @@ Com base exclusivamente nesses dados do PIESP, gere um relatório executivo anal
 
 Seja analítico, não apenas descritivo. Evite adjetivos vagos como "importante", "significativo" ou "crucial". Deixe que os números falem.
 
-Se julgar que um gráfico agregaria valor visual, você PODE e DEVE inseri-lo no meio do texto, utilizando o seguinte bloco markdown exato:
+Você PODE e DEVE inserir MÚLTIPLOS GRÁFICOS no meio do texto para apoiar visualmente sua análise. Para gerar um gráfico, utilize um bloco markdown exato de JSON com a sintaxe \`\`\`json-chart.
+
+Exemplo 1 (Gráfico de Linha para evolução nos Anos):
 \`\`\`json-chart
 {
   "title": "Evolução dos Investimentos Anunciados (R$ mi)",
   "type": "line",
-  "data": [
-    {"name": "2020", "value": 2366},
-    {"name": "2021", "value": 3560}
-  ]
+  "data": [ {"name": "2020", "value": 2366}, {"name": "2021", "value": 3560} ]
 }
 \`\`\`
-Para \`type\`, use \`line\` para mostrar evolução no tempo (anos), \`bar\` para distribuições/rankings de setores/regiões, ou \`pie\` para participações relativas. Insira gráficos apenas baseados nos dados numéricos fornecidos nesta prompt.`;
+
+Exemplo 2 (Gráfico para Cidades ou Setores):
+\`\`\`json-chart
+{
+  "title": "Investimentos por Município (R$ mi)",
+  "type": "bar",
+  "data": [ {"name": "São Paulo", "value": 2366}, {"name": "Cajamar", "value": 356} ]
+}
+\`\`\`
+
+Para a propriedade \`type\`, use OBRIGATORIAMENTE:
+- \`line\`: Para mostrar "Evolução no Tempo" (anual).
+- \`bar\`: Para comparar valores absolutos (Cidades, Regiões, Principais Setores).
+- \`pie\`: Para exibir divisões/share.
+
+Por favor, inclua pelo menos 2 a 3 gráficos de frentes *diferentes* (ex: 1 de evolução cronológica, 1 top ranking de cidades e 1 de distribuição de tipos/setores) distribuídos logicamente entre as seções. Insira gráficos apenas com os dados brutos numéricos listados nesta prompt.`;
 }
 
 const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome }) => {

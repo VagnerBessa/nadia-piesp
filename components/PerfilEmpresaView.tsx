@@ -132,20 +132,32 @@ O dossiê deve ter exatamente esta estrutura:
 ## Perspectivas e Riscos
 (interpretação analítica: vetores de crescimento, riscos regulatórios, ESG, exposição cambial quando relevante)
 
-Seja analítico e baseado em dados. Evite adjetivos vagos. Quando citar um dado específico, o sistema de grounding marcará a fonte automaticamente.
+Você PODE e DEVE inserir MÚLTIPLOS GRÁFICOS no meio do texto para apoiar visualmente sua análise. Para gerar um gráfico, utilize um bloco markdown exato de JSON com a sintaxe \`\`\`json-chart.
 
-Se julgar pertinente sumarizar os dados do PIESP ou do Balanço Financeiro da empresa com um gráfico (ex: faturamento ao longo dos anos, ou receita por segmento), insira no meio do texto ESTE bloco markdown:
+Exemplo 1 (Gráfico de Linha para evolução nos Anos):
 \`\`\`json-chart
 {
-  "title": "Evolução Temporal / Evolução do Faturamento",
+  "title": "Evolução dos Investimentos Anunciados (R$ mi)",
   "type": "line",
-  "data": [
-    {"name": "2022", "value": 1500},
-    {"name": "2023", "value": 2100}
-  ]
+  "data": [ {"name": "2020", "value": 2366}, {"name": "2021", "value": 3560} ]
 }
 \`\`\`
-Para \`type\`, use \`line\` para mostrar evolução no tempo (anos), \`bar\` para distribuições/rankings, e \`pie\` para subdivisões (market share).`;
+
+Exemplo 2 (Gráfico para Receita Diária, Cidades ou Setores):
+\`\`\`json-chart
+{
+  "title": "Evolução do Faturamento / Receita por Região",
+  "type": "bar",
+  "data": [ {"name": "2022", "value": 1500}, {"name": "2023", "value": 2100} ]
+}
+\`\`\`
+
+Para a propriedade \`type\`, use OBRIGATORIAMENTE:
+- \`line\`: Para mostrar "Evolução temporal" ou séries históricas longas (anos do PIESP, anos fiscais).
+- \`bar\`: Para comparar valores absolutos (Ex: Cidades de atuação, Setores).
+- \`pie\`: Para exibir market share, divisões de receita, etc.
+
+Por favor, inclua pelo menos 2 a 3 gráficos frentes diferentes distribuídos logicamente entre as seções (Ex: 1 line na seção Histórico SP PIESP, 1 bar/pie na seção Mercado ou Finanças).`;
 }
 
 // ─── Renderizador de dossiê com suporte a citações inline, tabelas e headers ────
