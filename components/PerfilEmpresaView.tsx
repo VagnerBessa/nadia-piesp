@@ -14,24 +14,41 @@ interface PerfilEmpresaViewProps {
   onNavigateHome: () => void;
 }
 
-// Injeta marcadores de citação [N] no texto usando os groundingSupports da API
 function injectInlineCitations(text: string, supports: any[]): string {
   if (!supports?.length) return text;
+
+  // A API do Gemini retorna endIndex como um offset em BYTES (UTF-8),
+  // e não em caracteres UTF-16. Precisamos trabalhar em nível de array de bytes
+  // para evitar que os marcadores despedacem palavras com acento.
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  let textBytes = encoder.encode(text);
 
   // Ordena por endIndex decrescente para inserir do fim ao início (preserva índices)
   const sorted = [...supports]
     .filter(s => s.segment?.endIndex != null && s.groundingChunkIndices?.length > 0)
     .sort((a, b) => (b.segment.endIndex ?? 0) - (a.segment.endIndex ?? 0));
 
-  let result = text;
   for (const support of sorted) {
     const end: number = support.segment.endIndex;
+    if (end > textBytes.length) continue; // safety check
+
     const chunkIndices: number[] = support.groundingChunkIndices ?? [];
     const unique = [...new Set(chunkIndices)].sort((a, b) => a - b);
-    const marker = unique.map(i => `[${i + 1}]`).join('');
-    result = result.slice(0, end) + marker + result.slice(end);
+    
+    // Adicionamos um espaço antes do marcador se ele for grudado no texto, opcional,
+    // mas o principal é juntar os marcadores num só.
+    const markerStr = unique.map(i => `[${i + 1}]`).join('');
+    const markerBytes = encoder.encode(markerStr);
+
+    const newBytes = new Uint8Array(textBytes.length + markerBytes.length);
+    newBytes.set(textBytes.slice(0, end), 0);
+    newBytes.set(markerBytes, end);
+    newBytes.set(textBytes.slice(end), end + markerBytes.length);
+    textBytes = newBytes;
   }
-  return result;
+  
+  return decoder.decode(textBytes);
 }
 
 function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string {
