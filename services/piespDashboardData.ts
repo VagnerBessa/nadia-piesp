@@ -46,6 +46,11 @@ const COLORS = [
   '#f97316', '#a78bfa', '#fb7185', '#2dd4bf', '#e879f7',
 ];
 
+// Valores canônicos de setor — linhas com setor fora destes foram corrompidas por csv multiline
+const SETORES_VALIDOS = new Set([
+  'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
+]);
+
 // --- Parser ---
 function parseCSV(): PiespRecord[] {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
@@ -57,7 +62,9 @@ function parseCSV(): PiespRecord[] {
   //          12=cnae_inv_5_cod_desc, 13=cnae_empresa_5_cod_desc, 14=tipo, 15=periodo
   for (let i = 1; i < linhas.length; i++) {
     const cols = linhas[i].split(';');
-    if (cols.length < 11) continue;
+    if (cols.length < 15) continue;
+    const setorRaw = (cols[10] || '').trim();
+    if (!SETORES_VALIDOS.has(setorRaw)) continue;
 
     const valorStr = (cols[5] || '0').trim().replace(/\./g, '').replace(',', '.');
     const valor = parseFloat(valorStr) || 0;

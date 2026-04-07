@@ -10,7 +10,7 @@ interface ExplorarDadosViewProps {
   onNavigateHome: () => void;
 }
 
-const TODOS = '(todos)';
+const TODOS = '';
 
 function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string {
   const filtroDesc = [

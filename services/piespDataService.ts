@@ -1,6 +1,15 @@
 import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
+// Valores canônicos — usados para filtrar linhas corrompidas do CSV
+const SETORES_VALIDOS = new Set([
+  'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
+]);
+
+const TIPOS_VALIDOS = new Set([
+  'Implantação', 'Ampliação', 'Modernização', 'Ampliação/Modernização',
+]);
+
 export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
@@ -15,7 +24,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 9=descr_investimento, 10=setor
   for (let i = 1; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
-    if (colunas.length < 11) continue;
+    if (!linhaValida(colunas)) continue;
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
@@ -97,7 +106,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 
   for (let i = 1; i < linhas.length; i++) {
     const cols = linhas[i].split(';');
-    if (cols.length < 11) continue;
+    if (!linhaValida(cols)) continue;
 
     const anoLinha = (cols[1] || '').trim();
     const empresaLinha = (cols[3] || 'Desconhecida').trim();
@@ -157,6 +166,16 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
   };
 }
 
+/**
+ * Verifica se uma linha do CSV parece íntegra (não foi corrompida por quebra de linha dentro de campo com aspas).
+ * Linhas válidas têm pelo menos 15 colunas e o setor deve ser um dos 5 conhecidos.
+ */
+function linhaValida(cols: string[]): boolean {
+  if (cols.length < 15) return false;
+  const setor = (cols[10] || '').trim();
+  return SETORES_VALIDOS.has(setor);
+}
+
 export function getMetadados(): { setores: string[]; regioes: string[]; anos: string[]; tipos: string[] } {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
   const setores = new Set<string>();
@@ -166,22 +185,24 @@ export function getMetadados(): { setores: string[]; regioes: string[]; anos: st
 
   for (let i = 1; i < linhas.length; i++) {
     const cols = linhas[i].split(';');
-    if (cols.length < 11) continue;
+    if (!linhaValida(cols)) continue;
+
     const setor = (cols[10] || '').trim();
     const regiao = (cols[8] || '').trim();
     const ano = (cols[1] || '').trim();
     const tipo = (cols[14] || '').trim();
-    if (setor) setores.add(setor);
+
+    if (setor && SETORES_VALIDOS.has(setor)) setores.add(setor);
     if (regiao) regioes.add(regiao);
-    if (ano) anos.add(ano);
-    if (tipo) tipos.add(tipo);
+    if (ano && /^\d{4}$/.test(ano)) anos.add(ano);
+    if (tipo && TIPOS_VALIDOS.has(tipo)) tipos.add(tipo);
   }
 
   return {
-    setores: Array.from(setores).sort(),
-    regioes: Array.from(regioes).sort(),
+    setores: Array.from(setores).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    regioes: Array.from(regioes).sort((a, b) => a.localeCompare(b, 'pt-BR')),
     anos: Array.from(anos).sort().reverse(),
-    tipos: Array.from(tipos).sort(),
+    tipos: Array.from(tipos).sort((a, b) => a.localeCompare(b, 'pt-BR')),
   };
 }
 
@@ -204,7 +225,7 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
 
   for (let i = 1; i < linhas.length; i++) {
     const cols = linhas[i].split(';');
-    if (cols.length < 11) continue;
+    if (!linhaValida(cols)) continue;
 
     const empresaLinha = (cols[3] || '').trim();
     const investidoraLinha = (cols[4] || '').trim();
