@@ -2,25 +2,48 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from '../config';
 import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
-import { MarkdownRenderer } from './MarkdownRenderer';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
-import { Source } from '../hooks/useChat';
+
+interface SourceItem {
+  uri: string;
+  title: string;
+}
 
 interface PerfilEmpresaViewProps {
   onNavigateHome: () => void;
 }
 
+// Injeta marcadores de citação [N] no texto usando os groundingSupports da API
+function injectInlineCitations(text: string, supports: any[]): string {
+  if (!supports?.length) return text;
+
+  // Ordena por endIndex decrescente para inserir do fim ao início (preserva índices)
+  const sorted = [...supports]
+    .filter(s => s.segment?.endIndex != null && s.groundingChunkIndices?.length > 0)
+    .sort((a, b) => (b.segment.endIndex ?? 0) - (a.segment.endIndex ?? 0));
+
+  let result = text;
+  for (const support of sorted) {
+    const end: number = support.segment.endIndex;
+    const chunkIndices: number[] = support.groundingChunkIndices ?? [];
+    const unique = [...new Set(chunkIndices)].sort((a, b) => a - b);
+    const marker = unique.map(i => `[${i + 1}]`).join('');
+    result = result.slice(0, end) + marker + result.slice(end);
+  }
+  return result;
+}
+
 function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string {
-  const totalBi = piespData.totalMilhoes >= 1000
+  const totalFormatado = piespData.totalMilhoes >= 1000
     ? `R$ ${(piespData.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bilhões`
     : `R$ ${piespData.totalMilhoes.toFixed(0)} milhões`;
 
   const projetosTexto = piespData.projetos.length > 0
     ? piespData.projetos.map((p, i) =>
-        `${i + 1}. Ano: ${p.ano} | Município: ${p.municipio} (${p.regiao}) | Setor: ${p.setor} | Tipo: ${p.tipo || 'N/I'} | Valor: R$ ${p.valor_milhoes_reais} mi\n   Descrição: "${p.descricao}"`
+        `${i + 1}. Ano ${p.ano} | ${p.municipio} (${p.regiao}) | Setor: ${p.setor} | Tipo: ${p.tipo || 'N/I'} | Valor: R$ ${p.valor_milhoes_reais} mi\n   Descrição: "${p.descricao}"`
       ).join('\n\n')
-    : 'Nenhum projeto com valor divulgado encontrado na base do PIESP para essa empresa.';
+    : 'Nenhum projeto com valor divulgado encontrado para essa empresa na base PIESP.';
 
   const setoresTexto = piespData.porSetor.map(s =>
     `- ${s.nome}: R$ ${s.valor} mi (${s.count} projeto${s.count > 1 ? 's' : ''})`
@@ -30,48 +53,238 @@ function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string 
     `- ${m.nome}: R$ ${m.valor} mi`
   ).join('\n') || '—';
 
-  return `Você é a Nadia, analista de investimentos da Fundação Seade especializada no PIESP.
+  return `Você é a Nadia, analista sênior de investimentos da Fundação Seade.
 
-O usuário solicitou um dossiê completo sobre a empresa: **"${empresa}"**
+O usuário solicitou um dossiê completo e aprofundado sobre: **"${empresa}"**
 
-DADOS INTERNOS DO PIESP (base de investimentos confirmados no Estado de SP):
-- Total de projetos registrados: ${piespData.total}
-- Valor total investido no Estado de SP: ${totalBi}
+DADOS INTERNOS DO PIESP — investimentos confirmados no Estado de SP:
+- Projetos registrados: ${piespData.total} | Valor total: ${totalFormatado}
 
 PROJETOS DETALHADOS:
 ${projetosTexto}
 
-CONCENTRAÇÃO SETORIAL:
+CONCENTRAÇÃO SETORIAL (PIESP):
 ${setoresTexto}
 
-CONCENTRAÇÃO MUNICIPAL:
+CONCENTRAÇÃO MUNICIPAL (PIESP):
 ${municipiosTexto}
 
 ---
-Sua tarefa:
-1. Use a ferramenta de busca para pesquisar na internet informações sobre a empresa "${empresa}", incluindo: perfil corporativo, grupo econômico ao qual pertence, origem do capital (nacional/estrangeiro), notícias recentes e contexto setorial.
-2. Combine essas informações com os dados internos do PIESP acima.
-3. Gere um dossiê completo em português, bem estruturado com markdown (## seções, **negrito**, - listas).
+INSTRUÇÕES:
 
-O dossiê deve conter:
+Use a ferramenta de busca para pesquisar ativamente as seguintes informações sobre "${empresa}":
+
+1. PERFIL CORPORATIVO — grupo econômico, origem de capital (nacional/estrangeiro), controladores, sede, atividade principal, CNPJs relevantes
+2. DESEMPENHO FINANCEIRO — receita líquida, EBITDA, lucro líquido, margem EBITDA, dívida líquida, alavancagem (últimos 2–3 anos disponíveis). Se listada em bolsa: market cap, performance da ação, rating de crédito (Moody's/Fitch/S&P). Se privada e sem dados públicos, declare isso explicitamente.
+3. POSIÇÃO DE MERCADO — market share estimado, principais concorrentes, posicionamento competitivo
+4. FATOS RECENTES — resultados trimestrais, expansões, fusões/aquisições, desinvestimentos, projetos anunciados (últimos 12–18 meses)
+5. ESTRATÉGIA EM SP — o que os dados do PIESP revelam sobre a estratégia da empresa no Estado
+
+Gere um dossiê estruturado em português, usando markdown rico:
+- ## para seções principais
+- ### para subseções
+- **negrito** para métricas e números
+- Tabelas markdown (| col | col |) para dados financeiros quando houver múltiplos anos
+- - listas para itens
+
+O dossiê deve ter exatamente esta estrutura:
 
 ## Perfil Corporativo
-(quem é a empresa, origem de capital, grupo econômico, sede, atividade principal)
+(identidade, grupo, capital, sede, atividade)
 
-## Histórico de Investimentos no Estado de São Paulo (PIESP)
-(analise os dados internos: valores, localização, setores, evolução temporal)
+## Desempenho Financeiro e Econômico
+(métricas financeiras com dados quantitativos; use tabela se houver série histórica; declare ausência de dados públicos se for empresa privada sem disclosure)
 
-## Presença e Estratégia no Estado
-(o que os investimentos revelam sobre a estratégia da empresa em SP)
+## Posição de Mercado
+(market share, competidores, posicionamento setorial)
 
-## Últimas Notícias e Contexto Atual
-(baseado na busca na internet: expansões, resultados recentes, projetos anunciados)
+## Histórico no Estado de São Paulo — PIESP
+(analise os dados internos: valores, municípios, setores, evolução temporal dos projetos)
 
-## Perspectivas
-(interpretação analítica: para onde a empresa parece estar indo, riscos e oportunidades)
+## Fatos Recentes e Estratégia
+(últimos 12–18 meses: resultados, expansões, M&A, projetos)
 
-Seja analítico e baseado em evidências. Não use adjetivos vazios. Cite fontes quando relevante.`;
+## Perspectivas e Riscos
+(interpretação analítica: vetores de crescimento, riscos regulatórios, ESG, exposição cambial quando relevante)
+
+Seja analítico e baseado em dados. Evite adjetivos vagos. Quando citar um dado específico, o sistema de grounding marcará a fonte automaticamente.`;
 }
+
+// ─── Renderizador de dossiê com suporte a citações inline, tabelas e headers ────
+
+interface DossieRendererProps {
+  content: string;
+  sources: SourceItem[];
+}
+
+const DossieRenderer: React.FC<DossieRendererProps> = ({ content, sources }) => {
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+
+  // Parseia inline: **bold**, *italic*, [N] citations
+  const parseInline = (text: string, keyPrefix: string): React.ReactNode[] => {
+    const parts = text.split(/(\*\*.+?\*\*|\*.+?\*|\[\d+\])/g);
+    return parts.filter(Boolean).map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={`${keyPrefix}-b${i}`}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={`${keyPrefix}-i${i}`}>{part.slice(1, -1)}</em>;
+      }
+      const citMatch = part.match(/^\[(\d+)\]$/);
+      if (citMatch) {
+        const idx = parseInt(citMatch[1], 10) - 1;
+        const source = sources[idx];
+        if (source) {
+          return (
+            <a
+              key={`${keyPrefix}-c${i}`}
+              href={source.uri}
+              target="_blank"
+              rel="noopener noreferrer"
+              onMouseEnter={e => {
+                const rect = (e.target as HTMLElement).getBoundingClientRect();
+                setTooltip({ text: source.title, x: rect.left, y: rect.bottom + 4 });
+              }}
+              onMouseLeave={() => setTooltip(null)}
+              className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 text-[9px] font-bold align-super mx-0.5 hover:bg-sky-500/40 transition-colors cursor-pointer no-underline leading-none"
+            >
+              {idx + 1}
+            </a>
+          );
+        }
+        return <span key={`${keyPrefix}-c${i}`} className="text-sky-400/50 text-[9px] align-super">{part}</span>;
+      }
+      return part;
+    });
+  };
+
+  // Parseia uma linha de tabela: "| col | col |" → array de células
+  const parseTableRow = (line: string): string[] =>
+    line.split('|').map(c => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1);
+
+  const isTableSeparator = (line: string) => /^\|[\s\-|:]+\|$/.test(line.trim());
+  const isTableRow = (line: string) => line.trim().startsWith('|') && line.trim().endsWith('|');
+
+  const lines = content.split('\n');
+  const blocks: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // H2
+    if (trimmed.startsWith('## ')) {
+      blocks.push(
+        <h2 key={i} className="text-base font-bold text-white mt-6 mb-3 pb-1.5 border-b border-slate-600/50 flex items-center gap-2">
+          <span className="w-1 h-4 bg-rose-500 rounded-full inline-block flex-shrink-0" />
+          {parseInline(trimmed.slice(3), `h2-${i}`)}
+        </h2>
+      );
+      i++;
+      continue;
+    }
+
+    // H3
+    if (trimmed.startsWith('### ')) {
+      blocks.push(
+        <h3 key={i} className="text-sm font-semibold text-slate-200 mt-4 mb-2">
+          {parseInline(trimmed.slice(4), `h3-${i}`)}
+        </h3>
+      );
+      i++;
+      continue;
+    }
+
+    // Tabela markdown
+    if (isTableRow(trimmed)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && isTableRow(lines[i].trim())) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      // Primeira linha = cabeçalho, segunda = separador (ignorar), resto = dados
+      const header = parseTableRow(tableLines[0]);
+      const dataRows = tableLines.slice(2).filter(l => !isTableSeparator(l)).map(parseTableRow);
+
+      blocks.push(
+        <div key={`table-${i}`} className="overflow-x-auto my-3">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-600">
+                {header.map((cell, ci) => (
+                  <th key={ci} className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap">
+                    {parseInline(cell, `th-${i}-${ci}`)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, ri) => (
+                <tr key={ri} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-3 py-2 text-slate-300 whitespace-nowrap">
+                      {parseInline(cell, `td-${i}-${ri}-${ci}`)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    // Lista
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const listItems: string[] = [];
+      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
+        listItems.push(lines[i].trim().slice(2));
+        i++;
+      }
+      blocks.push(
+        <ul key={`ul-${i}`} className="list-none space-y-1 my-2 pl-1">
+          {listItems.map((item, li) => (
+            <li key={li} className="flex items-start gap-2 text-slate-300">
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-rose-500/60 flex-shrink-0" />
+              <span>{parseInline(item, `li-${i}-${li}`)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Linha vazia
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // Parágrafo normal
+    blocks.push(
+      <p key={i} className="text-slate-300 leading-relaxed my-1.5">
+        {parseInline(trimmed, `p-${i}`)}
+      </p>
+    );
+    i++;
+  }
+
+  return (
+    <div className="relative">
+      {blocks}
+      {tooltip && (
+        <div
+          className="fixed z-50 max-w-xs bg-slate-700 border border-slate-500 text-slate-200 text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none"
+          style={{ left: Math.min(tooltip.x, window.innerWidth - 300), top: tooltip.y }}
+        >
+          {tooltip.text}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome }) => {
   const todasEmpresas = useMemo(() => getUniqueEmpresas(), []);
@@ -79,7 +292,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [busca, setBusca] = useState('');
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
   const [dossie, setDossie] = useState<string | null>(null);
-  const [sources, setSources] = useState<Source[]>([]);
+  const [sources, setSources] = useState<SourceItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [empresaPesquisada, setEmpresaPesquisada] = useState<string | null>(null);
@@ -138,18 +351,24 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         },
       });
 
-      // 4. Extrai fontes do grounding
-      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      let extractedSources: Source[] = [];
-      if (groundingChunks) {
-        extractedSources = groundingChunks
-          .map((chunk: any) => chunk.web)
-          .filter((w: any) => w?.uri && w?.title)
-          .map((w: any) => ({ uri: w.uri, title: w.title }))
-          .filter((v: any, i: number, a: any[]) => a.findIndex((t: any) => t.uri === v.uri) === i);
-      }
+      // 4. Extrai fontes e citações do grounding metadata
+      const groundingMeta = response.candidates?.[0]?.groundingMetadata;
+      const groundingChunks = groundingMeta?.groundingChunks ?? [];
+      const groundingSupports = groundingMeta?.groundingSupports ?? [];
 
-      setDossie(response.text || 'Não foi possível gerar o dossiê.');
+      // Monta lista de fontes indexada (posição = índice do chunk)
+      const extractedSources: SourceItem[] = groundingChunks
+        .map((chunk: any) => chunk.web)
+        .map((w: any) => w?.uri && w?.title ? { uri: w.uri, title: w.title } : null)
+        .map((s: SourceItem | null) => s ?? { uri: '#', title: 'Fonte não disponível' });
+
+      // Injeta marcadores [N] no texto nas posições exatas retornadas pela API
+      const textoBase = response.text || 'Não foi possível gerar o dossiê.';
+      const textoCitado = groundingSupports.length > 0
+        ? injectInlineCitations(textoBase, groundingSupports)
+        : textoBase;
+
+      setDossie(textoCitado);
       setSources(extractedSources);
     } catch (e: any) {
       setError(`Erro ao gerar dossiê: ${e?.message || 'Falha desconhecida.'}`);
@@ -306,30 +525,33 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
               )}
 
               {/* Dossiê */}
-              <div className="bg-slate-800/30 rounded-xl border border-slate-700/40 p-6 text-slate-200">
-                <MarkdownRenderer content={dossie} />
+              <div className="bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
+                <DossieRenderer content={dossie} sources={sources} />
               </div>
 
-              {/* Fontes */}
+              {/* Fontes numeradas */}
               {sources.length > 0 && (
                 <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 p-4">
                   <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                    Fontes consultadas na internet
+                    Fontes consultadas
                   </h4>
-                  <ul className="space-y-1.5">
+                  <ol className="space-y-1.5 list-none">
                     {sources.map((source, i) => (
-                      <li key={i}>
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 text-[9px] font-bold flex items-center justify-center mt-0.5">
+                          {i + 1}
+                        </span>
                         <a
                           href={source.uri}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sky-400 hover:text-sky-300 hover:underline text-xs truncate block"
+                          className="text-sky-400 hover:text-sky-300 hover:underline text-xs leading-relaxed"
                         >
                           {source.title}
                         </a>
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
               )}
 
