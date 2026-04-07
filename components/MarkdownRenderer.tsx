@@ -26,41 +26,56 @@ interface MarkdownRendererProps {
  * It groups lines into paragraphs or lists and applies inline formatting.
  */
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
-    const blocks: { type: 'p' | 'ul'; lines: string[] }[] = [];
+    const blocks: { type: 'p' | 'ul' | 'h1' | 'h2' | 'h3'; lines: string[] }[] = [];
     const lines = content.split('\n');
-    let currentBlock: { type: 'p' | 'ul'; lines: string[] } | null = null;
+    let currentBlock: { type: 'p' | 'ul' | 'h1' | 'h2' | 'h3'; lines: string[] } | null = null;
 
     for (const line of lines) {
         const trimmedLine = line.trim();
         const isListItem = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ');
+        const isH3 = trimmedLine.startsWith('### ');
+        const isH2 = trimmedLine.startsWith('## ');
+        const isH1 = trimmedLine.startsWith('# ');
 
-        if (isListItem) {
-            // If the current block is not a list, create a new one.
+        if (isH1 || isH2 || isH3) {
+            // Treat headers as standalone blocks
+            blocks.push({
+                type: isH3 ? 'h3' : isH2 ? 'h2' : 'h1',
+                lines: [trimmedLine.replace(/^#+\s/, '')]
+            });
+            currentBlock = null;
+        } else if (isListItem) {
             if (currentBlock?.type !== 'ul') {
                 currentBlock = { type: 'ul', lines: [] };
                 blocks.push(currentBlock);
             }
-            // Add the list item content (without the marker).
             currentBlock.lines.push(trimmedLine.substring(2));
         } else if (trimmedLine.length > 0) {
-            // If the current block is not a paragraph, create a new one.
             if (currentBlock?.type !== 'p') {
                 currentBlock = { type: 'p', lines: [] };
                 blocks.push(currentBlock);
             }
             currentBlock.lines.push(line);
         } else {
-            // An empty line signifies a break between blocks.
             currentBlock = null;
         }
     }
 
     return (
-        <div className="leading-relaxed space-y-2">
+        <div className="leading-relaxed space-y-3">
             {blocks.map((block, index) => {
+                if (block.type === 'h3') {
+                    return <h3 key={index} className="text-sm font-semibold text-slate-200 mt-4 mb-1">{parseInlineFormatting(block.lines[0])}</h3>;
+                }
+                if (block.type === 'h2') {
+                    return <h2 key={index} className="text-base font-bold text-white mt-5 mb-2 pb-1 border-b border-slate-600/50 flex flex-row items-center gap-2"><span className="w-1 h-3.5 bg-rose-500 rounded-full inline-block flex-shrink-0" />{parseInlineFormatting(block.lines[0])}</h2>;
+                }
+                if (block.type === 'h1') {
+                    return <h1 key={index} className="text-lg font-bold text-white mt-6 mb-3">{parseInlineFormatting(block.lines[0])}</h1>;
+                }
                 if (block.type === 'ul') {
                     return (
-                        <ul key={index} className="list-disc list-inside space-y-1 pl-2">
+                        <ul key={index} className="list-disc list-inside space-y-1.5 pl-2">
                             {block.lines.map((item, i) => (
                                 <li key={i}>{parseInlineFormatting(item)}</li>
                             ))}
@@ -68,9 +83,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
                     );
                 }
                 if (block.type === 'p') {
-                    // Join lines with <br /> to preserve line breaks within a paragraph.
                     return (
-                        <p key={index}>
+                        <p key={index} className="text-slate-300">
                             {block.lines.map((line, i) => (
                                 <React.Fragment key={i}>
                                     {parseInlineFormatting(line)}
