@@ -418,8 +418,24 @@ Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta dem
 - Ícone do microfone substituído pelo componente `SoundWaveIcon` (mesmo ícone animado do Chat), garantindo identidade visual unificada
 
 ### Empresas (`PerfilEmpresaView`)
-- Adicionadas regras anti-gráficos-mono-dados no prompt do dossiê: proibido gerar gráficos quando há apenas 1 município, 1 setor ou menos de 3 anos de dados
+- Adicionadas regras anti-gráficos-mono-dados no prompt do dossiê: proibido gerar gráficos quando há apenas 1 município, 1 setor ou menos de 3 anos de dados.
 
-### Padronização de Skills e Redação Institucional
-- **Redação Técnica Seade**: Criação de uma skill global (`skills/redacao-tecnica-seade`) implementada diretamente em `utils/prompts.ts` sob a seção "GUIA DE REDAÇÃO TÉCNICA E INSTITUCIONAL". Ela força a IA a abandonar números por extenso (ex: "quatro milhões de reais") e adotar a norma econométrica baseada em cifras e quantificadores curtos (ex: "R$ 4,0 milhões", "2024").
-- **Workflow Oficial (`skill-creator`)**: Adotado oficialmente o fluxo e formato estrito do `.agents/skills/skill-creator` para todas as skills customizadas, organizando a skill de redação em um diretório apropriado (`SKILL.md`), acompanhada de metadados YAML (`name`, `description`) e Workspace isolado contendo uma bateria de assertions (`evals.json`) a fim de viabilizar o teste automatizado (A/B testing) da aderência ao texto exigido.
+---
+
+## Refatoração: Sistema de Citações e Fontes — 08/abr/2026
+
+Implementamos uma reconstrução completa do processamento de Grounding (pesquisa web) na aba de Empresas para resolver inconsistências críticas de UX e integridade de dados.
+
+### Problemas Identificados
+1.  **Índices Órfãos e Saltos Numéricos**: Frequentemente, as citações no texto começavam no número `[2]` ou pulavam índices (ex: `[1], [3]`), pois a API do Gemini incluía "chunks" de busca que não possuíam links reais ou eram inválidos, mas ainda ocupavam uma posição na contagem original.
+2.  **Links de "Lixo" (Search Widgets)**: A API do GoogleSearch ocasionalmente retornava URIs que não eram artigos, mas sim widgets de busca (clima, horários do Google, sugestões de query), poluindo a seção de fontes com links inúteis.
+3.  **Poluição Visual**: A lista de fontes era exibida em um bloco estático no final da página, disputando atenção com o texto principal do dossiê.
+4.  **Falhas Silenciosas (White Screen)**: Em momentos de timeout do Gemini, o sistema injetava um texto de "fallback" genérico ("Não foi possível...") que mascarava a falha de rede e não renderizava a UI de fontes corretamente, deixando o usuário sem feedback visual de erro.
+
+### Soluções Implementadas
+-   **Filtro Genômico de Chunks**: O parser agora ignora qualquer link que aponte para `google.com/search`, links sem URI ou ocos. Isso garante que *apenas* fontes de informação reais cheguem ao usuário.
+-   **Mapa de Re-indexação Sequencial (`indexMap`)**: Criamos uma lógica que mapeia os índices originais da API para uma nova sequência estritamente consecutiva (1, 2, 3...). Assim, mesmo que os chunks nº 1 e 2 sejam descartados por serem lixo, o chunk original nº 3 passará a ser exibido como `[1]` no texto e na lista.
+-   **Módulo Accordion (Retrátil)**: Substituímos o rodapé fixo por um componente interativo estilo gaveta. Ele utiliza animação CSS Grid para expansão suave, ícones de identidade visual (Book/Chevron) e contadores de fontes verificadas.
+-   **Transparência de Erro**: Removemos as strings de fallback silenciosas. Caso o Gemini retorne um dossiê vazio (timeout), o sistema agora dispara um erro explícito que aciona o banner vermelho de instabilidade, informando corretamente o estado da conexão.
+-   **Tratamento UTF-8 Robusto**: O injetor de citações agora trabalha com arrays de bytes (`Uint8Array`) para garantir que os marcadores `[N]` sejam inseridos em posições exatas sem corromper caracteres acentuados típicos da língua portuguesa.
+
