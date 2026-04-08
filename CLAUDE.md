@@ -109,6 +109,7 @@ Solução arquitetural:
 | `UploadView` | `upload` | Publicação de arquivos |
 | `ExplorarDadosView` | `explorar` | Relatórios analíticos por filtro *(abril/2026)* |
 | `PerfilEmpresaView` | `perfil-empresa` | Dossiê de empresa com web search *(abril/2026)* |
+| `DataLabView` | `datalab` | Dashboards generativos sob demanda com voz *(abril/2026)* |
 
 ---
 
@@ -169,6 +170,98 @@ Ensinamos a Nadia a inserir gráficos (Linha, Barra e Pizza) de maneira dinâmic
 #### Sanitização de UTF-8 no Sistema de Citações do Dossiê
 - **O Bug:** Como a fonte bibliográfica (Google Grounding API) nos dossiês injetava a bolinha `[N]` no meio de palavras com acento (Ex: "Funda 8 ção").
 - **Solução:** O `endIndex` retornado pela API baseia-se em **Bytes UTF-8**, enquanto o Javascript (TypeScript) lê os tamanhos de string em **Caracteres UTF-16**. A diferença na contagem fazia a citação retroceder cortando palavras. Corrigido ao envolver o texto via `TextEncoder / Decoder` atuando num Slice de uma matriz `Uint8Array`.
+
+### Abril/2026 — Branch `claude/review-ag-ui-I7D3s`
+
+#### Aba "Data Lab" (`DataLabView.tsx`)
+
+Dashboard analítico gerado inteiramente pela Nadia a partir de linguagem natural — texto ou voz. Cada pergunta produz um layout único, adaptado ao tipo de análise pedida.
+
+**Motivação:** As outras abas têm UI pré-definida pelo desenvolvedor. O Data Lab inverte isso: a Nadia decide o layout depois de entender o que o usuário precisa. Inspirado no conceito de UI Generativa (padrão AG-UI / Shadify), mas implementado sem backend, sem CopilotKit e sem shadcn/ui — apenas Gemini + Recharts + Tailwind, consistente com a stack existente.
+
+**Como funciona (pipeline de 3 passos):**
+1. **Extração de filtros** — chamada rápida ao Gemini (thinkingBudget: 0) para transformar linguagem natural em `{ municipio, setor, ano, regiao, termo_busca }`
+2. **Consulta determinística** — `filtrarParaRelatorio(filtros)` no CSV local, retorna agregações completas
+3. **Geração do dashboard** — chamada ao Gemini (thinkingBudget: 1024) com os dados + skill de design; retorna um bloco ` ```json-dashboard ` que o frontend renderiza
+
+**Modo scratchpad:** cada nova análise substitui a anterior (não acumula). O JSON do dashboard é estado React (`useState`) — descartado a cada nova solicitação. O histórico das últimas 5 queries fica como chips para re-execução rápida.
+
+**Input:** campo de texto + botão de microfone (`useSpeechRecognition`). Ao parar de falar, o envio é automático (mesmo padrão do `ChatView`).
+
+**Arquivos criados:**
+- `components/DataLabView.tsx` — view principal
+- `components/DynamicDashboard.tsx` — renderizador do `json-dashboard`
+- `skills/datalab_design.md` — skill de design (ver seção abaixo)
+
+**Extensão em `piespDataService.ts`:**
+`FiltroRelatorio` ganhou os campos `municipio` e `termo_busca`, que antes só existiam em `consultarPiespData`. Isso permite buscas geográficas por linguagem natural no Data Lab.
+
+---
+
+#### `DynamicDashboard.tsx` — Renderizador de Layout Generativo
+
+Interpreta o JSON retornado pela Nadia e renderiza seções dinamicamente. Cada tipo de seção é um sub-componente independente:
+
+| Tipo | Componente | Descrição |
+|---|---|---|
+| `kpi-cards` | `KpiCards` | Grid de cards com label, valor, detalhe e seta de tendência (↑↓) |
+| `chart` | `EmbeddedChart` | Gráfico Recharts (ver tipos abaixo) |
+| `bar-list` | `BarList` | Ranking proporcional customizado sem Recharts (mais limpo para listas longas) |
+| `tabela` | `Tabela` | Tabela HTML com cabeçalho e linhas alternadas |
+| `texto` | `TextoAnalise` | Texto analítico com borda lateral de destaque |
+
+O campo `tendencia: "up" | "down" | "neutral"` nos KPI cards renderiza setas coloridas (emerald para alta, rose para queda).
+
+**Parser:** `parseDashboard(text)` extrai o primeiro bloco ` ```json-dashboard ` da resposta e faz `JSON.parse`. Retorna `null` se inválido — o componente trata o caso de erro graciosamente.
+
+---
+
+#### `EmbeddedChart.tsx` — Tipos de Gráfico Expandidos
+
+Além dos 3 tipos originais (`bar`, `line`, `pie`), foram adicionados:
+
+| Tipo novo | Quando usar |
+|---|---|
+| `area` | Evolução temporal com volume — 5+ anos de dados; usa gradiente de preenchimento |
+| `bar-horizontal` | Rankings com nomes longos (empresas, municípios >12 caracteres) |
+| `composed` | Valor absoluto (barra) + tendência (linha) no mesmo gráfico; requer campo `linha` nos dados |
+
+**Guardrail do pie chart (defesa dupla):**
+- **No prompt (skill de design):** instrução explícita para nunca gerar mais de 5 fatias
+- **No componente (`capPieData`):** função que ordena por valor e agrupa os itens excedentes em "Outros" — executa sempre, independente do que o modelo retornou
+
+A defesa dupla existe porque modelos de linguagem não seguem instruções 100% das vezes. O componente age como rede de segurança determinística silenciosa.
+
+---
+
+#### Skill de Design (`skills/datalab_design.md`)
+
+**Decisão arquitetural:** as regras de composição visual do Data Lab ficam em `skills/datalab_design.md`, importado como `?raw` e interpolado no `buildDashboardPrompt()` — mesmo padrão das outras skills do projeto.
+
+**Por que separar do código TypeScript:**
+- Regras de design são conteúdo editável, não lógica de programa
+- Permite ajustar critérios (ex: limite do pie, threshold do area) sem tocar em `.tsx`
+- Mantém consistência com a convenção `skills/*.md` já estabelecida
+
+**Diferença em relação às outras skills:**
+As skills em `skills/` são **lentes analíticas de domínio** (ativadas por palavras-chave via `skillDetector.ts`). A skill de design é **procedimental** — controla formato de saída, não conteúdo analítico. Por isso ela **não passa pelo `skillDetector.ts`** e é injetada diretamente no prompt do Data Lab.
+
+**Conteúdo da skill de design:**
+1. Catálogo completo de componentes com sintaxe JSON de exemplo
+2. Tabela de seleção de tipo de gráfico (quando usar cada um)
+3. Regras de ordenação de seções (kpi-cards → visual principal → contexto → tabela → texto)
+4. Regras de não-redundância (proibido mostrar o mesmo dado em dois gráficos)
+5. Regras para dados escassos (1 valor → kpi-card; 1-2 anos → sem chart temporal)
+
+**Prompt adaptativo por tipo de análise:**
+O `buildDashboardPrompt` detecta 5 tipos de análise e aplica layouts diferentes:
+- **Comparação** (2+ entidades) → seções paralelas + `composed` ou `bar-horizontal`
+- **Evolução temporal** → `area` obrigatório + kpi-cards com `tendencia`
+- **Ranking / Top N** → `bar-list` como peça central + `pie` proporcional
+- **Temático / Setorial** → `pie` geográfico + `bar` empresas + evolução temporal do setor
+- **Análise geral** → mix completo
+
+**Lição aprendida (confirmação do padrão anterior):** o prompt original usava "EXATAMENTE 4 KPIs + 3 gráficos" como instrução fixa. Substituído por regras adaptativas com mínimo absoluto de `1 kpi-cards + 2 visuais + 1 texto`. O modelo respeita mínimos mas também respeita os máximos implícitos quando as regras de não-redundância são explícitas.
 
 ---
 
