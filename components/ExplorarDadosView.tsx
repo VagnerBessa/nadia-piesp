@@ -165,7 +165,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { thinkingConfig: { thinkingBudget: 1024 } },
+        config: { thinkingConfig: { thinkingBudget: 0 } },
       });
 
       setRelatorio(response.text || 'Não foi possível gerar o relatório.');
