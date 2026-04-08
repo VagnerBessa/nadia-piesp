@@ -287,6 +287,29 @@ Instalada em `.agents/skills/skill-creator/` (symlink em `.claude/skills/skill-c
 npx skills add https://github.com/anthropics/skills --skill skill-creator
 ```
 
+### find-skills
+
+Instalada em `.agents/skills/find-skills/` (symlink em `.claude/skills/find-skills`).
+
+**O que faz:** descobre e instala skills do ecossistema open agent skills. Útil quando o usuário pergunta "existe uma skill para X?" ou "como faço Y?" — a skill pesquisa no repositório e sugere o que instalar.
+
+**Comandos principais do CLI:**
+```bash
+npx skills find [query]   # busca skills por palavra-chave
+npx skills add <pacote>   # instala uma skill do GitHub
+npx skills check          # verifica atualizações
+npx skills update         # atualiza todas as skills instaladas
+```
+
+**Catálogo público:** https://skills.sh/
+
+**Como usar:** invoque com `/find-skills` descrevendo o que precisa. Exemplo: `/find-skills preciso de uma skill para escrever testes`.
+
+**Instalação:**
+```bash
+npx skills add https://github.com/vercel-labs/skills --skill find-skills
+```
+
 ---
 
 ## Convenções
