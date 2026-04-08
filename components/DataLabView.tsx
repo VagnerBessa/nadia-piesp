@@ -284,7 +284,12 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         {/* Header interno */}
         <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
           <div className="flex items-center gap-3">
-            <ChatHeaderSphere />
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700/50 shadow-inner">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-rose-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+              </svg>
+            </div>
             <div>
               <h1 className="text-lg font-bold text-slate-100">Data Lab</h1>
               <p className="text-xs text-slate-400">Dashboards gerados pela Nadia sob demanda</p>
