@@ -98,6 +98,30 @@ const renderPieLabel = ({ name, percent }: any) => {
   return `${name} (${(percent * 100).toFixed(0)}%)`;
 };
 
+// --- Formatador de Valores ---
+const formatValueShort = (val: number) => {
+  if (val >= 1000) {
+    return `R$ ${(val / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} bi`;
+  }
+  return `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mi`;
+};
+
+// --- Tooltip Minimalista (sem redundância de nomes) ---
+const MinimalTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const val = payload[0].value;
+    const formatted = val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return (
+      <Paper elevation={0} sx={{ p: 1, bgcolor: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px' }}>
+        <Typography variant="body2" sx={{ color: '#22d3ee', fontWeight: 700, fontSize: '0.8rem' }}>
+          R$ {formatted} milhões
+        </Typography>
+      </Paper>
+    );
+  }
+  return null;
+};
+
 // --- Main Component ---
 interface PiespDashboardViewProps {
   onNavigateHome: () => void;
@@ -242,13 +266,22 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                       <BarChart data={data.porAno} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                        <RechartsTooltip
-                          cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                          contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
-                          formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')} mi`, 'Volume']}
+                        <YAxis 
+                          stroke="#64748b" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          tickFormatter={(value) => value === 0 ? '0' : formatValueShort(value)}
                         />
+                        <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
+                          <LabelList
+                            dataKey="value"
+                            position="top"
+                            offset={5}
+                            formatter={formatValueShort}
+                            style={{ fill: '#94a3b8', fontWeight: 600, fontSize: '9px' }}
+                          />
                           {data.porAno.map((entry, i) => (
                             <Cell key={i} fill={i === data.porAno.length - 1 ? '#f43f5e' : '#334155'} />
                           ))}
@@ -279,17 +312,13 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                           tickLine={false}
                           axisLine={false}
                         />
-                        <RechartsTooltip
-                          cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                          contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', fontSize: '11px', border: '1px solid rgba(255,255,255,0.1)' }}
-                          formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')} mi`, 'Volume']}
-                        />
+                        <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
                         <Bar dataKey="value" radius={4} barSize={16}>
                           <LabelList
                             dataKey="value"
                             position="right"
                             offset={8}
-                            formatter={(val: number) => `R$ ${(val / 1000).toFixed(1)} bi`}
+                            formatter={formatValueShort}
                             style={{ fill: '#fff', fontWeight: 600, fontSize: '10px' }}
                           />
                           {data.porSetor.map((entry, i) => (
@@ -326,12 +355,15 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                           tickLine={false}
                           axisLine={false}
                         />
-                        <RechartsTooltip
-                          cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                          contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', fontSize: '11px', border: '1px solid rgba(255,255,255,0.1)' }}
-                          formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')} mi`, 'Volume']}
-                        />
+                        <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
                         <Bar dataKey="value" radius={4} barSize={18}>
+                          <LabelList
+                            dataKey="value"
+                            position="right"
+                            offset={8}
+                            formatter={formatValueShort}
+                            style={{ fill: '#e2e8f0', fontWeight: 600, fontSize: '10px' }}
+                          />
                           {data.porMunicipio.map((entry, i) => (
                             <Cell key={i} fill={i === 0 ? '#f43f5e' : i < 3 ? '#22d3ee' : '#334155'} />
                           ))}
