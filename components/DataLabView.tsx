@@ -22,16 +22,18 @@ function buildExtractFiltersPrompt(query: string): string {
 O usuário fez a seguinte solicitação de análise:
 "${query}"
 
-Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto adicional:
+Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto adicional.
+Atenção: como o usuário pode pedir mais de um município/região (ex: compare "X e Y"), devolva listas (arrays) de strings.
+
 {
-  "municipio": "nome do município se mencionado, senão omita",
-  "setor": "um de: Agropecuária, Comércio, Indústria, Infraestrutura, Serviços — apenas se mencionado",
-  "regiao": "nome da região administrativa de SP se mencionada, senão omita",
-  "ano": "ano com 4 dígitos se mencionado, senão omita",
-  "termo_busca": "palavra-chave temática (ex: 'energia', 'automóvel', 'data center') se a análise for sobre tema específico, senão omita"
+  "municipio": ["nome 1", "nome 2"], // omita se não citado
+  "setor": ["Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços"], // apenas os listados
+  "regiao": ["RA Campinas"], // nome da região administrativa se mencionada, senão omita
+  "ano": ["2023", "2024"], // anos com 4 dígitos se mencionados
+  "termo_busca": "palavra temática (ex: 'energia') se for o caso"
 }
 
-Omita campos não mencionados. Retorne apenas o JSON.`;
+Omita campos não mencionados. Retorne apenas o JSON puro, com arrays de string para as categorias.`;
 }
 
 function buildDashboardPrompt(query: string, resumo: ResumoRelatorio): string {

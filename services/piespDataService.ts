@@ -76,11 +76,11 @@ export function consultarPiespData(filtro: FiltroPiesp) {
 }
 
 export interface FiltroRelatorio {
-  setor?: string;
-  regiao?: string;
-  ano?: string;
-  tipo?: string;
-  municipio?: string;
+  setor?: string | string[];
+  regiao?: string | string[];
+  ano?: string | string[];
+  tipo?: string | string[];
+  municipio?: string | string[];
   termo_busca?: string;
 }
 
@@ -120,11 +120,28 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
     const descricaoLinha = (cols[9] || '').trim();
     const valorStr = (cols[5] || '0').trim();
 
-    if (filtro.ano && anoLinha !== filtro.ano) continue;
-    if (filtro.setor && setorLinha !== filtro.setor) continue;
-    if (filtro.regiao && regiaoLinha !== filtro.regiao) continue;
-    if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
-    if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
+    const checkMatch = (valor: string, filtroVal?: string | string[], exact = true): boolean => {
+      if (!filtroVal) return true;
+      const arr = Array.isArray(filtroVal) ? filtroVal : [filtroVal];
+      if (arr.length === 0) return true;
+      const vLower = valor.toLowerCase();
+      
+      return arr.some(f => {
+         const fStr = typeof f === 'string' ? f.toLowerCase() : String(f).toLowerCase();
+         // Para matches flexíveis (como "RA de Campinas" vs "RA Campinas"), aceitamos se houver intersecção significativa
+         if (!exact) {
+            return vLower.includes(fStr) || fStr.includes(vLower);
+         }
+         return vLower === fStr;
+      });
+    };
+
+    if (!checkMatch(anoLinha, filtro.ano)) continue;
+    if (!checkMatch(setorLinha, filtro.setor)) continue;
+    if (!checkMatch(regiaoLinha, filtro.regiao, false)) continue; // flexível para "RA de alguma coisa"
+    if (!checkMatch(tipoLinha, filtro.tipo)) continue;
+    if (!checkMatch(municipioLinha, filtro.municipio, false)) continue;
+    
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
