@@ -152,12 +152,18 @@ Exemplo 2 (Gráfico para Receita Diária, Cidades ou Setores):
 }
 \`\`\`
 
-Para a propriedade \`type\`, use OBRIGATORIAMENTE:
-- \`line\`: Para mostrar "Evolução temporal" ou séries históricas longas (anos do PIESP, anos fiscais).
-- \`bar\`: Para comparar valores absolutos (Ex: Cidades de atuação, Setores).
-- \`pie\`: Para exibir market share, divisões de receita, etc.
+Para a propriedade \`type\`, use:
+- \`line\`: Para mostrar "Evolução temporal" ou séries históricas (mínimo de 3 pontos).
+- \`bar\`: Para comparar valores absolutos (Ex: Múltiplas Cidades, Múltiplos Setores).
+- \`pie\`: Para exibir divisões proporcionais (Ex: Market share).
 
-Por favor, inclua pelo menos 2 a 3 gráficos frentes diferentes distribuídos logicamente entre as seções (Ex: 1 line na seção Histórico SP PIESP, 1 bar/pie na seção Mercado ou Finanças).`;
+**REGRAS CRÍTICAS SOBRE "QUANDO NÃO USAR" GRÁFICOS (DADOS ESCASSOS):**
+- Se a empresa tiver atuação em apenas **1 município** na base, NÃO gere gráfico de Concentração Municipal. Apenas cite no texto.
+- Se a empresa pertencer a apenas **1 setor** na base, NÃO gere gráfico de Concentração Setorial.
+- Se os dados de Evolução temporal tiverem apenas **1 ou 2 anos**, NÃO gere gráfico de linha nem de barras para anos. Use apenas texto.
+- O propósito do gráfico é comparar. Se não houver nada para comparar (só existe 1 categoria com 100% do valor), **É PROIBIDO GERAR O BLOCO json-chart** para aquele dado.
+
+Se (e somente se) houver dados suficientes para comparação, inclua gráficos. Não gere gráficos apenas por gerar.`;
 }
 
 // ─── Renderizador de dossiê com suporte a citações inline, tabelas e headers ────
