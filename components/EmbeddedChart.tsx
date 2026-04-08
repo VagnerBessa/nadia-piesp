@@ -24,14 +24,48 @@ const TOOLTIP_STYLE = {
   color: '#f8fafc',
 };
 
-const ITEM_STYLE = { color: '#e2e8f0', fontWeight: 'bold' as const };
-
 const AXIS_PROPS = {
   stroke: '#64748b',
   tick: { fill: '#94a3b8', fontSize: 11 },
 };
 
 const PIE_MAX_SLICES = 5;
+
+// ── Formatadores pt-BR ──
+
+/** Formata valor numérico com R$, pontos e sufixo mi/bi para eixos e tooltips */
+function formatValueShort(value: number): string {
+  if (value === 0) return '0';
+  const abs = Math.abs(value);
+  if (abs >= 1000) {
+    const bi = value / 1000;
+    return `R$ ${bi.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} bi`;
+  }
+  return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} mi`;
+}
+
+/** Tooltip customizado que exibe valores formatados em pt-BR */
+const ChartTooltip: React.FC<any> = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div style={{
+      backgroundColor: '#0f172a',
+      border: '1px solid #334155',
+      borderRadius: '8px',
+      padding: '8px 12px',
+      fontSize: '12px',
+    }}>
+      <p style={{ color: '#94a3b8', margin: 0, marginBottom: '4px', fontWeight: 600 }}>{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} style={{ color: entry.color || '#22d3ee', margin: 0, fontWeight: 700 }}>
+          {entry.name === 'value' || entry.name === 'Valor (R$ mi)'
+            ? formatValueShort(entry.value)
+            : `${entry.name}: ${formatValueShort(entry.value)}`}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 /** Guardrail: agrupa fatias excedentes em "Outros" para manter a pizza legível. */
 function capPieData(data: { name: string; value: number }[]): { name: string; value: number }[] {
@@ -42,6 +76,49 @@ function capPieData(data: { name: string; value: number }[]): { name: string; va
   return [...top, { name: 'Outros', value: Math.round(outrosValue) }];
 }
 
+/** Label customizado para o pie chart que posiciona texto fora da fatia com linhas */
+const renderPieLabel = ({
+  cx, cy, midAngle, outerRadius, name, percent,
+}: any) => {
+  if (percent < 0.03) return null; // Esconde labels de fatias menores que 3%
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 25;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text
+      x={x} y={y}
+      fill="#cbd5e1"
+      textAnchor={x > cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {`${name} (${(percent * 100).toFixed(0)}%)`}
+    </text>
+  );
+};
+
+/** Tooltip customizado para pie chart mostrando R$ */
+const PieTooltip: React.FC<any> = ({ active, payload }) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const entry = payload[0];
+  return (
+    <div style={{
+      backgroundColor: '#0f172a',
+      border: '1px solid #334155',
+      borderRadius: '8px',
+      padding: '8px 12px',
+      fontSize: '12px',
+    }}>
+      <p style={{ color: '#94a3b8', margin: 0, marginBottom: '4px', fontWeight: 600 }}>{entry.name}</p>
+      <p style={{ color: entry.payload.fill || '#f43f5e', margin: 0, fontWeight: 700 }}>
+        {formatValueShort(entry.value)} ({(entry.payload.percent * 100).toFixed(1)}%)
+      </p>
+    </div>
+  );
+};
+
 export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', title = 'Gráfico', data = [] }) => {
   if (!data || data.length === 0) return null;
 
@@ -49,10 +126,10 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
     switch (type) {
       case 'bar':
         return (
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+          <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <XAxis dataKey="name" {...AXIS_PROPS} tickMargin={10} />
-            <YAxis {...AXIS_PROPS} width={80} />
-            <Tooltip cursor={{ fill: '#334155', opacity: 0.4 }} contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
+            <YAxis {...AXIS_PROPS} width={85} tickFormatter={formatValueShort} />
+            <Tooltip content={<ChartTooltip />} cursor={{ fill: '#334155', opacity: 0.4 }} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
             </Bar>
@@ -62,9 +139,9 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
       case 'bar-horizontal':
         return (
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-            <XAxis type="number" {...AXIS_PROPS} width={60} />
+            <XAxis type="number" {...AXIS_PROPS} width={60} tickFormatter={formatValueShort} />
             <YAxis type="category" dataKey="name" {...AXIS_PROPS} width={130} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
+            <Tooltip content={<ChartTooltip />} />
             <Bar dataKey="value" radius={[0, 4, 4, 0]}>
               {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
             </Bar>
@@ -73,10 +150,10 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
 
       case 'line':
         return (
-          <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+          <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <XAxis dataKey="name" {...AXIS_PROPS} tickMargin={10} />
-            <YAxis {...AXIS_PROPS} width={80} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
+            <YAxis {...AXIS_PROPS} width={85} tickFormatter={formatValueShort} />
+            <Tooltip content={<ChartTooltip />} />
             <Line
               type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={3}
               dot={{ fill: '#0f172a', stroke: '#22d3ee', strokeWidth: 2, r: 4 }}
@@ -87,7 +164,7 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
 
       case 'area':
         return (
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <defs>
               <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
@@ -95,9 +172,9 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
               </linearGradient>
             </defs>
             <XAxis dataKey="name" {...AXIS_PROPS} tickMargin={10} />
-            <YAxis {...AXIS_PROPS} width={80} />
+            <YAxis {...AXIS_PROPS} width={85} tickFormatter={formatValueShort} />
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
+            <Tooltip content={<ChartTooltip />} />
             <Area
               type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={2.5}
               fill="url(#areaGradient)"
@@ -108,11 +185,11 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
 
       case 'composed':
         return (
-          <ComposedChart data={data} margin={{ top: 10, right: 20, left: -20, bottom: 20 }}>
+          <ComposedChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
             <XAxis dataKey="name" {...AXIS_PROPS} tickMargin={10} />
-            <YAxis {...AXIS_PROPS} width={80} />
+            <YAxis {...AXIS_PROPS} width={85} tickFormatter={formatValueShort} />
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
+            <Tooltip content={<ChartTooltip />} />
             <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 12, paddingTop: 8 }} />
             <Bar dataKey="value" name="Valor (R$ mi)" fill="#f43f5e" radius={[4, 4, 0, 0]} opacity={0.85} />
             {data.some(d => d.linha !== undefined) && (
@@ -126,17 +203,20 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
 
       case 'pie': {
         const pieData = capPieData(data);
+        // Calcula percentuais para uso no label
+        const total = pieData.reduce((s, d) => s + d.value, 0);
+        const pieDataWithPercent = pieData.map(d => ({ ...d, percent: total > 0 ? d.value / total : 0 }));
         return (
           <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-            <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
+            <Tooltip content={<PieTooltip />} />
             <Pie
-              data={pieData} dataKey="value" nameKey="name"
-              cx="50%" cy="50%" outerRadius={90} innerRadius={50}
+              data={pieDataWithPercent} dataKey="value" nameKey="name"
+              cx="50%" cy="50%" outerRadius={80} innerRadius={45}
               stroke="#042a3a" strokeWidth={2}
-              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-              labelLine={false}
+              label={renderPieLabel}
+              labelLine={{ stroke: '#475569', strokeWidth: 1 }}
             >
-              {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              {pieDataWithPercent.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
             </Pie>
           </PieChart>
         );
@@ -160,3 +240,4 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
     </div>
   );
 };
+
