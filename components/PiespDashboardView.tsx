@@ -23,6 +23,8 @@ import {
   LabelList,
   PieChart,
   Pie,
+  AreaChart,
+  Area,
 } from 'recharts';
 import { SwitchModeIcon } from './Icons';
 import SoundWaveIcon from './SoundWaveIcon';
@@ -263,7 +265,13 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                   </Box>
                   <Box sx={{ flexGrow: 1, minHeight: 0 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data.porAno} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                      <AreaChart data={data.porAno} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                         <YAxis 
@@ -274,12 +282,8 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                           tickFormatter={(value) => value === 0 ? '0' : formatValueShort(value)}
                         />
                         <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
-                          {data.porAno.map((entry, i) => (
-                            <Cell key={i} fill={i === data.porAno.length - 1 ? '#f43f5e' : '#334155'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
+                        <Area type="monotone" dataKey="value" stroke="#f43f5e" fillOpacity={1} fill="url(#colorVolume)" />
+                      </AreaChart>
                     </ResponsiveContainer>
                   </Box>
                 </Paper>
