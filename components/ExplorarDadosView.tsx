@@ -170,7 +170,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
       setRelatorio(response.text || 'Não foi possível gerar o relatório.');
     } catch (e: any) {
-      setError(`Erro ao gerar relatório: ${e?.message || 'Falha desconhecida.'}`);
+      setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.');
     } finally {
       setIsLoading(false);
     }

@@ -453,7 +453,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
       setDossie(textoCitado);
       setSources(extractedSources);
     } catch (e: any) {
-      setError(`Erro ao gerar dossiê: ${e?.message || 'Falha desconhecida.'}`);
+      setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.');
     } finally {
       setIsLoading(false);
     }

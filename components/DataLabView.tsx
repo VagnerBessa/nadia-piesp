@@ -245,11 +245,11 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       setDashboard(parsed);
       setQueryHistory(prev => [query, ...prev.slice(0, 4)]);
     } catch (e: any) {
-      const errorMsg = e?.message || 'Falha desconhecida.';
-      if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('UNAVAILABLE')) {
-        setError('O cérebro da Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente analisar novamente.');
+      const errorMsg = e?.message || JSON.stringify(e) || 'Falha desconhecida.';
+      if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('UNAVAILABLE') || errorMsg.includes('overloaded')) {
+        setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente analisar novamente.');
       } else {
-        setError(`Erro: ${errorMsg}`);
+        setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente analisar novamente.');
       }
     } finally {
       setIsLoading(false);

@@ -213,7 +213,11 @@ export const useChat = () => {
     } catch (e: any) {
       console.error("Chat error:", e);
       console.error("Chat error details:", e?.message, e?.status, JSON.stringify(e?.response?.data || e?.details || ''));
-      const errorMessage = `Erro: ${e?.message || 'Falha desconhecida ao conectar com a API.'}`;
+      const rawMsg = e?.message || JSON.stringify(e) || '';
+      const isSeverError = rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('UNAVAILABLE') || rawMsg.includes('overloaded') || rawMsg.includes('500');
+      const errorMessage = isSeverError
+        ? 'Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.'
+        : 'Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.';
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
       setError(errorMessage);
     } finally {
