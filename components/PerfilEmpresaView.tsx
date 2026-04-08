@@ -463,15 +463,19 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         }
       });
 
+      const textoGerado = response.text;
+      if (!textoGerado || textoGerado.trim() === '') {
+        throw new Error('O Gemini retornou uma resposta em branco (sobrecarga da API REST).');
+      }
+
       // Injeta marcadores [N] no texto nas posições exatas retornadas pela API, com remapeamento
-      const textoBase = response.text || 'Não foi possível gerar o dossiê.';
       const textoCitado = groundingSupports.length > 0
-        ? injectInlineCitations(textoBase, groundingSupports, indexMap)
-        : textoBase;
+        ? injectInlineCitations(textoGerado, groundingSupports, indexMap)
+        : textoGerado;
 
       setDossie(textoCitado);
       setSources(extractedSources);
-      setIsSourcesOpen(true); // Deixaremos aberto na primeira versão pra você poder ver as fontes facilmente
+      setIsSourcesOpen(true); // Abre o accordion pra inspecionar
     } catch (e: any) {
       setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.');
     } finally {
