@@ -359,3 +359,64 @@ npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-gu
 - Navegação centralizada em `App.tsx` (state machine com `useState<View>`)
 - `Header.tsx` recebe callbacks opcionais — adicionar prop ao interface ao incluir nova view
 - Tailwind dark-first; paleta: `slate-*` fundos/texto, `rose-*` destaques/ações, `sky-*` links/citações
+- **Skills de design:** ao receber pedidos de UI/design, **SEMPRE** consultar `skills/datalab_design.md` antes de codificar. A pasta `skills/` fica na raiz do projeto.
+
+---
+
+## Resiliência de Infraestrutura — Lições de 08/abr/2026
+
+### Problema: Erro 503 generalizado na API REST do Gemini
+
+**Sintoma:** Todas as abas que usam `ai.models.generateContent()` (Chat, Data Lab, Explorar, Empresas) retornaram erro 503 ("high demand / UNAVAILABLE") simultaneamente, enquanto a aba de Voz (WebSocket) continuou funcionando normalmente.
+
+**Causa raiz:** A API REST do modelo `gemini-2.5-flash` entrou em alta demanda/sobrecarga nos servidores do Google. A Live API (WebSocket) do modelo `gemini-2.5-flash-native-audio-preview` roda em infraestrutura separada e não foi afetada.
+
+| Canal | Modelo | Protocolo | Infraestrutura |
+|---|---|---|---|
+| Voz (VoiceView) | `gemini-2.5-flash-native-audio-preview` | WebSocket (Live API) | Servidores dedicados a áudio |
+| Chat / Data Lab / Explorar / Empresas | `gemini-2.5-flash` | REST (generateContent) | Pool compartilhado REST |
+
+**Tentativa fracassada — Downgrade para `gemini-2.0-flash`:**
+Ao tentar contornar o 503 trocando para `gemini-2.0-flash`, o Google retornou erro 404: *"This model is no longer available to new users."* O modelo 2.0 foi descontinuado sem aviso prévio neste período. **Lição:** nunca trocar para um modelo antigo sem antes verificar sua disponibilidade na documentação oficial do Google AI.
+
+**Solução aplicada:**
+1. Revertemos para `gemini-2.5-flash` (o único modelo funcional disponível)
+2. Padronizamos mensagens de erro amigáveis em **todas as 4 abas** para nunca expor JSON cru ao usuário
+3. Aguardamos a normalização dos servidores do Google (a instabilidade é temporária)
+
+### Padrão de Tratamento de Erros (obrigatório em todas as views)
+
+Toda chamada à API do Gemini via `generateContent()` deve ter um `catch` que **nunca** exponha a mensagem técnica ao usuário. A mensagem padrão é:
+
+```
+Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.
+```
+
+**Arquivos onde o padrão foi aplicado:**
+- `hooks/useChat.ts` — aba Chat
+- `components/DataLabView.tsx` — aba Data Lab
+- `components/ExplorarDadosView.tsx` — aba Explorar
+- `components/PerfilEmpresaView.tsx` — aba Empresas
+
+**Regra:** ao criar novas views com chamadas à API, copiar este padrão de tratamento de errro. Nunca usar `e.message` diretamente na UI.
+
+### Modelo ativo e thinkingBudget
+
+- **Modelo REST:** `gemini-2.5-flash` (todas as views de texto)
+- **Modelo WebSocket:** `gemini-2.5-flash-native-audio-preview-12-2025` (VoiceView)
+- **thinkingBudget:** Definido como `0` em todas as views para reduzir consumo de recursos e mitigar erros 503. O Chat no modo "Completo" ainda usa `2048`.
+
+---
+
+## Alterações de UI — 08/abr/2026
+
+### Dashboard (`PiespDashboardView`)
+- Eixo Y do gráfico "Volume por Ano": adicionado `width={75}` ao `<YAxis>` para evitar word-wrap nos valores monetários formatados em pt-BR (ex: "R$ 135,0 bi" quebrava em 2 linhas)
+- Gráfico de "Volume por Ano" convertido de `BarChart` para `AreaChart` (conforme regra da skill de design: evolução temporal com 5+ anos → area)
+
+### Data Lab (`DataLabView`)
+- Ícone do microfone substituído pelo componente `SoundWaveIcon` (mesmo ícone animado do Chat), garantindo identidade visual unificada
+
+### Empresas (`PerfilEmpresaView`)
+- Adicionadas regras anti-gráficos-mono-dados no prompt do dossiê: proibido gerar gráficos quando há apenas 1 município, 1 setor ou menos de 3 anos de dados
+
