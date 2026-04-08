@@ -7,9 +7,10 @@ import PerfilMunicipalView from './components/PerfilMunicipalView';
 import UploadView from './components/UploadView';
 import ExplorarDadosView from './components/ExplorarDadosView';
 import PerfilEmpresaView from './components/PerfilEmpresaView';
+import DataLabView from './components/DataLabView';
 import Header from './components/Header';
 
-type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload' | 'explorar' | 'perfil-empresa';
+type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload' | 'explorar' | 'perfil-empresa' | 'datalab';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('home');
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const handleNavigateToUpload = () => setView('upload');
   const handleNavigateToExplorar = () => setView('explorar');
   const handleNavigateToPerfilEmpresa = () => setView('perfil-empresa');
+  const handleNavigateToDataLab = () => setView('datalab');
 
   const renderView = () => {
     switch (view) {
@@ -39,6 +41,8 @@ const App: React.FC = () => {
         return <ExplorarDadosView onNavigateHome={handleNavigateHome} />;
       case 'perfil-empresa':
         return <PerfilEmpresaView onNavigateHome={handleNavigateHome} />;
+      case 'datalab':
+        return <DataLabView onNavigateHome={handleNavigateHome} />;
       case 'home':
       default:
         return (
@@ -59,6 +63,7 @@ const App: React.FC = () => {
         onNavigateHome={handleNavigateHome}
         onNavigateToExplorar={handleNavigateToExplorar}
         onNavigateToPerfilEmpresa={handleNavigateToPerfilEmpresa}
+        onNavigateToDataLab={handleNavigateToDataLab}
       />
       <main className="flex-grow relative overflow-hidden flex flex-col">
         {renderView()}

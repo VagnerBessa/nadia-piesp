@@ -80,6 +80,8 @@ export interface FiltroRelatorio {
   regiao?: string;
   ano?: string;
   tipo?: string;
+  municipio?: string;
+  termo_busca?: string;
 }
 
 export interface ResumoRelatorio {
@@ -122,6 +124,12 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
     if (filtro.setor && setorLinha !== filtro.setor) continue;
     if (filtro.regiao && regiaoLinha !== filtro.regiao) continue;
     if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
+    if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
+    if (filtro.termo_busca) {
+      const tb = filtro.termo_busca.toLowerCase();
+      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      if (!textToSearch.includes(tb)) continue;
+    }
 
     resultados.push({
       empresa: empresaLinha,
