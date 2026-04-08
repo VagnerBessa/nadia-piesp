@@ -104,11 +104,17 @@ Exemplo 2 (Gráfico para Cidades ou Setores):
 \`\`\`
 
 Para a propriedade \`type\`, use OBRIGATORIAMENTE:
-- \`line\`: Para mostrar "Evolução no Tempo" (anual).
+- \`line\`: Para mostrar "Evolução temporal" ou séries históricas (mínimo de 3 pontos).
 - \`bar\`: Para comparar valores absolutos (Cidades, Regiões, Principais Setores).
 - \`pie\`: Para exibir divisões/share.
 
-Por favor, inclua pelo menos 2 a 3 gráficos de frentes *diferentes* (ex: 1 de evolução cronológica, 1 top ranking de cidades e 1 de distribuição de tipos/setores) distribuídos logicamente entre as seções. Insira gráficos apenas com os dados brutos numéricos listados nesta prompt.`;
+**REGRAS CRÍTICAS SOBRE "QUANDO NÃO USAR" GRÁFICOS (DADOS ESCASSOS):**
+- Se houver projetos em apenas **1 município**, NÃO gere gráfico de Distribuição por Município. Apenas cite no texto.
+- Se houver projetos em apenas **1 setor** ou **1 região**, NÃO gere gráfico de Distribuição.
+- Se os dados de Evolução temporal tiverem apenas **1 ou 2 anos**, NÃO gere gráfico de linha nem de barras para anos. Use apenas texto.
+- O propósito do gráfico é comparar. Se não houver nada para comparar (só existe 1 categoria com 100% do valor em qualquer dimensão), **É PROIBIDO GERAR O BLOCO json-chart** para aquele dado.
+
+Se (e somente se) houver dados suficientes para comparação, procure incluir 2 a 3 gráficos de frentes diferentes (ex: cronológica, ranking de cidades, setores) distribuídos logicamente entre as seções. Não gere gráficos apenas por gerar. Insira gráficos apenas com os dados brutos numéricos listados nesta prompt.`;
 }
 
 const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome }) => {
