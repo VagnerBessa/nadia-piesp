@@ -275,13 +275,6 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                         />
                         <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
-                          <LabelList
-                            dataKey="value"
-                            position="top"
-                            offset={5}
-                            formatter={formatValueShort}
-                            style={{ fill: '#94a3b8', fontWeight: 600, fontSize: '9px' }}
-                          />
                           {data.porAno.map((entry, i) => (
                             <Cell key={i} fill={i === data.porAno.length - 1 ? '#f43f5e' : '#334155'} />
                           ))}
@@ -314,13 +307,6 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                         />
                         <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
                         <Bar dataKey="value" radius={4} barSize={16}>
-                          <LabelList
-                            dataKey="value"
-                            position="right"
-                            offset={8}
-                            formatter={formatValueShort}
-                            style={{ fill: '#fff', fontWeight: 600, fontSize: '10px' }}
-                          />
                           {data.porSetor.map((entry, i) => (
                             <Cell key={i} fill={entry.color || '#334155'} />
                           ))}
@@ -357,13 +343,6 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                         />
                         <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
                         <Bar dataKey="value" radius={4} barSize={18}>
-                          <LabelList
-                            dataKey="value"
-                            position="right"
-                            offset={8}
-                            formatter={formatValueShort}
-                            style={{ fill: '#e2e8f0', fontWeight: 600, fontSize: '10px' }}
-                          />
                           {data.porMunicipio.map((entry, i) => (
                             <Cell key={i} fill={i === 0 ? '#f43f5e' : i < 3 ? '#22d3ee' : '#334155'} />
                           ))}
