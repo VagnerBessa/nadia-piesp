@@ -15,7 +15,7 @@ interface PerfilEmpresaViewProps {
   onNavigateHome: () => void;
 }
 
-function injectInlineCitations(text: string, supports: any[]): string {
+function injectInlineCitations(text: string, supports: any[], indexMap: Record<number, number>): string {
   if (!supports?.length) return text;
 
   // A API do Gemini retorna endIndex como um offset em BYTES (UTF-8),
@@ -37,9 +37,14 @@ function injectInlineCitations(text: string, supports: any[]): string {
     const chunkIndices: number[] = support.groundingChunkIndices ?? [];
     const unique = [...new Set(chunkIndices)].sort((a, b) => a - b);
     
-    // Adicionamos um espaço antes do marcador se ele for grudado no texto, opcional,
-    // mas o principal é juntar os marcadores num só.
-    const markerStr = unique.map(i => `[${i + 1}]`).join('');
+    // Filtra pelas fontes válidas usando o mapa genômico de índices
+    const mappedValidIndices = unique
+      .map(i => indexMap[i])
+      .filter(mapped => mapped !== undefined);
+
+    if (mappedValidIndices.length === 0) continue; // descarta se todos apontam para lixo
+
+    const markerStr = mappedValidIndices.map(i => `[${i + 1}]`).join('');
     const markerBytes = encoder.encode(markerStr);
 
     const newBytes = new Uint8Array(textBytes.length + markerBytes.length);
@@ -379,6 +384,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [error, setError] = useState<string | null>(null);
   const [empresaPesquisada, setEmpresaPesquisada] = useState<string | null>(null);
   const [piespStats, setPiespStats] = useState<{ total: number; totalMilhoes: number } | null>(null);
+  const [isSourcesOpen, setIsSourcesOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sugestoesRef = useRef<HTMLDivElement>(null);
 
@@ -438,20 +444,27 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
       const groundingChunks = groundingMeta?.groundingChunks ?? [];
       const groundingSupports = groundingMeta?.groundingSupports ?? [];
 
-      // Monta lista de fontes indexada (posição = índice do chunk)
-      const extractedSources: SourceItem[] = groundingChunks
-        .map((chunk: any) => chunk.web)
-        .map((w: any) => w?.uri && w?.title ? { uri: w.uri, title: w.title } : null)
-        .map((s: SourceItem | null) => s ?? { uri: '#', title: 'Fonte não disponível' });
+      const extractedSources: SourceItem[] = [];
+      const indexMap: Record<number, number> = {};
 
-      // Injeta marcadores [N] no texto nas posições exatas retornadas pela API
+      groundingChunks.forEach((chunk: any, oldIndex: number) => {
+        const web = chunk.web;
+        // Filtra fontes que tem URI util, Titulo util e nao sao apenas widgets temporais do google
+        if (web && web.uri && web.title && !web.uri.includes('google.com/search')) {
+          indexMap[oldIndex] = extractedSources.length;
+          extractedSources.push({ uri: web.uri, title: web.title });
+        }
+      });
+
+      // Injeta marcadores [N] no texto nas posições exatas retornadas pela API, com remapeamento
       const textoBase = response.text || 'Não foi possível gerar o dossiê.';
       const textoCitado = groundingSupports.length > 0
-        ? injectInlineCitations(textoBase, groundingSupports)
+        ? injectInlineCitations(textoBase, groundingSupports, indexMap)
         : textoBase;
 
       setDossie(textoCitado);
       setSources(extractedSources);
+      setIsSourcesOpen(false); // reseta o accordion fechado a cada nova busca
     } catch (e: any) {
       setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.');
     } finally {
@@ -617,29 +630,54 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                 <DossieRenderer content={dossie} sources={sources} />
               </div>
 
-              {/* Fontes numeradas */}
+              {/* Fontes numeradas (Accordion Frontend Design) */}
               {sources.length > 0 && (
-                <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 p-4">
-                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                    Fontes consultadas
-                  </h4>
-                  <ol className="space-y-1.5 list-none">
-                    {sources.map((source, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 text-[9px] font-bold flex items-center justify-center mt-0.5">
-                          {i + 1}
-                        </span>
-                        <a
-                          href={source.uri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sky-400 hover:text-sky-300 hover:underline text-xs leading-relaxed"
-                        >
-                          {source.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ol>
+                <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 overflow-hidden transition-all duration-300">
+                  <button
+                    onClick={() => setIsSourcesOpen(!isSourcesOpen)}
+                    className="w-full flex items-center justify-between p-4 bg-slate-800/40 hover:bg-slate-800/60 transition-colors focus:outline-none"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-sky-400">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                      </svg>
+                      <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                        Referências e Fontes
+                      </h4>
+                      <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700/50 text-[10px] font-bold text-slate-400">
+                        {sources.length} verificadas
+                      </span>
+                    </div>
+                    <div className={`transform transition-transform duration-300 ${isSourcesOpen ? 'rotate-180' : ''}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-500">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
+                  </button>
+                  
+                  <div className={`grid transition-all duration-300 ease-in-out ${isSourcesOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                    <div className="overflow-hidden">
+                      <div className="p-4 border-t border-slate-700/30 bg-slate-900/10">
+                        <ol className="space-y-2.5 list-none m-0 p-0">
+                          {sources.map((source, i) => (
+                            <li key={i} className="flex items-start gap-2.5">
+                              <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 text-[9px] font-bold flex items-center justify-center mt-0.5 shadow-inner">
+                                {i + 1}
+                              </span>
+                              <a
+                                href={source.uri}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sky-400 hover:text-sky-300 hover:underline text-xs leading-relaxed break-all"
+                              >
+                                {source.title}
+                              </a>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
