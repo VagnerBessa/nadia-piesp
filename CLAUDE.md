@@ -160,6 +160,8 @@ Dossiê completo combinando dados internos do PIESP com pesquisa na internet, in
 - `getUniqueEmpresas()` — lista ordenada de empresas únicas para autocomplete
 - `buscarEmpresaNoPiesp(nome)` — busca por nome (e investidora), sem limite de resultados
 
+**Lição Aprendida (Síndrome do Aluno Desesperado vs Escassez de Dados):** Modelos de linguagem sofrem do viés de subserviência extrema ("helpful bias"). Se instruídos a gerar um dossiê corporativo com gráficos, o LLM gerará gráficos a qualquer custo, mesmo que a base contenha apenas 1 projeto em 1 único ano e em 1 município — resultando num layout estatisticamente ilógico. A solução definitiva não foi presumir "que o modelo sabe", mas forçar barreiras restritivas duras no prompt: proibir gráficos de linha se houver menos de 3 anos, ou gráficos de áreas únicas. As IAs devem ser engessadas em suas obrigações matemáticas estruturais para operarem previsivelmente como API.
+
 #### Geração de Gráficos Nativos na Resposta da IA (Recharts)
 
 Ensinamos a Nadia a inserir gráficos (Linha, Barra e Pizza) de maneira dinâmica no meio de seu texto final nas abas Explorar e Dossiê.
