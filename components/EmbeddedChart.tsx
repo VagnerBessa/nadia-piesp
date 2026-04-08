@@ -31,6 +31,17 @@ const AXIS_PROPS = {
   tick: { fill: '#94a3b8', fontSize: 11 },
 };
 
+const PIE_MAX_SLICES = 5;
+
+/** Guardrail: agrupa fatias excedentes em "Outros" para manter a pizza legível. */
+function capPieData(data: { name: string; value: number }[]): { name: string; value: number }[] {
+  if (data.length <= PIE_MAX_SLICES) return data;
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const top = sorted.slice(0, PIE_MAX_SLICES - 1);
+  const outrosValue = sorted.slice(PIE_MAX_SLICES - 1).reduce((acc, d) => acc + d.value, 0);
+  return [...top, { name: 'Outros', value: Math.round(outrosValue) }];
+}
+
 export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', title = 'Gráfico', data = [] }) => {
   if (!data || data.length === 0) return null;
 
@@ -113,21 +124,23 @@ export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', titl
           </ComposedChart>
         );
 
-      case 'pie':
+      case 'pie': {
+        const pieData = capPieData(data);
         return (
           <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
             <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={ITEM_STYLE} />
             <Pie
-              data={data} dataKey="value" nameKey="name"
+              data={pieData} dataKey="value" nameKey="name"
               cx="50%" cy="50%" outerRadius={90} innerRadius={50}
               stroke="#042a3a" strokeWidth={2}
               label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
               labelLine={false}
             >
-              {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
             </Pie>
           </PieChart>
         );
+      }
 
       default:
         return null;

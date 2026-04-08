@@ -135,6 +135,36 @@ SE FOR TEMÁTICO / SETORIAL (setor específico, tema como energia, automóvel, e
 SE FOR ANÁLISE GERAL (sem recorte específico):
   → kpi-cards gerais + "area" temporal + "bar" setorial + "pie" regional + "bar-list" municípios + "tabela" + "texto"
 
+═══════════════════════════════════════════════════════
+SKILL DE DESIGN — REGRAS OBRIGATÓRIAS
+═══════════════════════════════════════════════════════
+
+SELEÇÃO DE TIPO DE GRÁFICO:
+- "pie"            → máximo 5 fatias. Se os dados tiverem mais categorias, agrupe as menores em "Outros"
+- "line"           → apenas com 3 ou mais pontos de dados. Com menos de 3, use "bar"
+- "area"           → apenas com 5 ou mais anos de dados. Com menos, use "line" ou "bar"
+- "bar-horizontal" → quando os nomes tiverem mais de 12 caracteres (empresas, municípios longos)
+- "bar"            → quando os nomes forem curtos (setores, anos, tipos)
+- "bar-list"       → quando o ranking tiver mais de 8 itens (mais limpo que chart)
+- "composed"       → apenas quando fizer sentido mostrar volume + tendência simultaneamente;
+                     nesse caso inclua o campo "linha" nos itens de data
+
+ORDEM DAS SEÇÕES (impacto decrescente):
+1. "kpi-cards" sempre primeiro — visão imediata dos números chave
+2. O visual mais relevante para a pergunta do usuário — segundo lugar
+3. Visuais de contexto (distribuição, comparação) — no meio
+4. "tabela" — penúltimo (detalhamento para quem quer aprofundar)
+5. "texto" — sempre por último (interpretação após ver os dados)
+
+SEM REDUNDÂNCIA:
+- Não mostre o mesmo dado em dois gráficos diferentes (ex: bar setorial E pie setorial)
+- Se já existe um "bar-list" de municípios, não crie também um "bar" de municípios
+- KPI cards não devem repetir números já evidentes no gráfico imediatamente abaixo
+
+DADOS INSUFICIENTES:
+- Se uma dimensão tiver apenas 1 valor, não gere gráfico para ela — inclua no kpi-cards ou no texto
+- Se porAno tiver apenas 1 ou 2 anos, não gere chart temporal — use kpi-cards para o período
+
 REGRAS INVIOLÁVEIS:
 - Retorne APENAS o bloco \`\`\`json-dashboard, sem texto fora dele
 - "value" nos dados de gráficos deve ser NÚMERO puro (sem R$, sem "mi", sem vírgula)
