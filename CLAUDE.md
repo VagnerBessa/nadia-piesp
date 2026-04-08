@@ -310,6 +310,45 @@ npx skills update         # atualiza todas as skills instaladas
 npx skills add https://github.com/vercel-labs/skills --skill find-skills
 ```
 
+### frontend-design
+
+Instalada em `.agents/skills/frontend-design/` (anthropics/skills).
+
+**O que faz:** guia a criação de interfaces com design intencional e diferenciado — evita padrões genéricos. Define direção estética antes de codificar (minimalismo, bold, retro-futurista, etc.) e executa com tipografia, paleta e composição espacial coerentes.
+
+**Quando ativa:** ao construir novos componentes, views ou refinar UI existente.
+
+**Instalação:**
+```bash
+npx skills add https://github.com/anthropics/skills --skill frontend-design
+```
+
+### vercel-react-best-practices
+
+Instalada em `.agents/skills/vercel-react-best-practices/` (vercel-labs/agent-skills).
+
+**O que faz:** 69 regras de performance para React organizadas em 8 categorias — eliminar waterfalls, otimizar bundle, evitar re-renders, data fetching correto, padrões avançados. Cada regra inclui exemplos incorreto/correto.
+
+**Quando ativa:** ao escrever ou revisar componentes React e hooks.
+
+**Instalação:**
+```bash
+npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices
+```
+
+### web-design-guidelines
+
+Instalada em `.agents/skills/web-design-guidelines/` (vercel-labs/agent-skills).
+
+**O que faz:** audita código de UI contra acessibilidade, padrões de design e UX — funciona como linter visual. Retorna achados no formato `arquivo:linha`.
+
+**Quando ativa:** ao pedir "revise minha UI", "audite o design" ou "verifique acessibilidade".
+
+**Instalação:**
+```bash
+npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-guidelines
+```
+
 ---
 
 ## Convenções
