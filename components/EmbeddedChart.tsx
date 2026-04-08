@@ -120,7 +120,9 @@ const PieTooltip: React.FC<any> = ({ active, payload }) => {
 };
 
 export const EmbeddedChart: React.FC<EmbeddedChartProps> = ({ type = 'bar', title = 'Gráfico', data = [] }) => {
-  if (!data || data.length === 0) return null;
+  // HARD GUARDRAIL: Gráficos estruturalmente precisam de mais de 1 ponto para comparação ou tendência.
+  // Gráfico de linha com 1 ponto não forma linha. Pizza com 1 fatia não recorta. Barra com 1 item é inútil.
+  if (!data || data.length <= 1) return null;
 
   const renderChart = () => {
     switch (type) {
