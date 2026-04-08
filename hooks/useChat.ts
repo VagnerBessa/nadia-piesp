@@ -111,7 +111,7 @@ export const useChat = () => {
       ];
       
       // Configuração do modelo
-      const modelName = 'gemini-2.0-flash';
+      const modelName = 'gemini-2.5-flash';
       
       // Configuração de Thinking (Pensamento)
       const thinkingConfig = mode === 'complete' 

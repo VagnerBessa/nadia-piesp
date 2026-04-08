@@ -203,7 +203,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       // ── Passo 1: extrai filtros da linguagem natural ──
       setLoadingStep('Interpretando sua solicitação...');
       const filterResponse = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: buildExtractFiltersPrompt(query) }] }],
         config: { thinkingConfig: { thinkingBudget: 0 } },
       });
@@ -230,7 +230,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       // ── Passo 3: gera o json-dashboard ──
       setLoadingStep(`Analisando ${resumo.total} projetos (R$ ${(resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi)...`);
       const dashResponse = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: buildDashboardPrompt(query, resumo) }] }],
         config: { thinkingConfig: { thinkingBudget: 0 } },
       });
