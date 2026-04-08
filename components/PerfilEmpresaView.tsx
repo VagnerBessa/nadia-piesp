@@ -448,11 +448,18 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
       const indexMap: Record<number, number> = {};
 
       groundingChunks.forEach((chunk: any, oldIndex: number) => {
-        const web = chunk.web;
-        // Filtra fontes que tem URI util, Titulo util e nao sao apenas widgets temporais do google
-        if (web && web.uri && web.title && !web.uri.includes('google.com/search')) {
+        // As vezes a API joga direto no chunk ou no chunk.web
+        const uri = chunk?.web?.uri || chunk?.uri;
+        const title = chunk?.web?.title || chunk?.title;
+        
+        // Mantemos na lista se for um link válido, mesmo sem título formatado,
+        // mas filtramos widgets irreais do google search tool
+        if (uri && !uri.includes('google.com/search?q=')) {
           indexMap[oldIndex] = extractedSources.length;
-          extractedSources.push({ uri: web.uri, title: web.title });
+          extractedSources.push({ 
+            uri: uri, 
+            title: title || uri.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]
+          });
         }
       });
 
@@ -464,7 +471,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
 
       setDossie(textoCitado);
       setSources(extractedSources);
-      setIsSourcesOpen(false); // reseta o accordion fechado a cada nova busca
+      setIsSourcesOpen(true); // Deixaremos aberto na primeira versão pra você poder ver as fontes facilmente
     } catch (e: any) {
       setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.');
     } finally {
