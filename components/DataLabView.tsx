@@ -40,10 +40,10 @@ function buildDashboardPrompt(query: string, resumo: ResumoRelatorio): string {
     `${i + 1}. ${p.empresa} | ${p.municipio} | ${p.setor} | ${p.ano} | R$ ${p.valor_milhoes_reais} mi`
   ).join('\n');
 
-  const porSetorTexto = resumo.porSetor.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} projetos)`).join(' | ');
-  const porMunicipioTexto = resumo.porMunicipio.slice(0, 6).map(m => `${m.nome}: R$ ${m.valor} mi`).join(' | ');
-  const porAnoTexto = resumo.porAno.map(a => `${a.nome}: R$ ${a.valor} mi`).join(' | ');
-  const porRegiaoTexto = resumo.porRegiao.slice(0, 5).map(r => `${r.nome}: R$ ${r.valor} mi`).join(' | ');
+  const porSetorTexto  = resumo.porSetor.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} proj)`).join(' | ');
+  const porMunicipioTexto = resumo.porMunicipio.slice(0, 8).map(m => `${m.nome}: R$ ${m.valor} mi (${m.count} proj)`).join(' | ');
+  const porAnoTexto    = resumo.porAno.map(a => `${a.nome}: R$ ${a.valor} mi`).join(' | ');
+  const porRegiaoTexto = resumo.porRegiao.slice(0, 5).map(r => `${r.nome}: R$ ${r.valor} mi (${r.count} proj)`).join(' | ');
 
   return `Você é a Nadia, analista de dados da Fundação Seade. O usuário pediu no Data Lab:
 "${query}"
@@ -52,73 +52,104 @@ DADOS DO PIESP FILTRADOS:
 - Total de projetos: ${resumo.total}
 - Valor total: R$ ${resumo.totalMilhoes} mi (R$ ${totalBi} bi)
 - Por setor: ${porSetorTexto || '(sem dados)'}
-- Por município (top 6): ${porMunicipioTexto || '(sem dados)'}
+- Por município (top 8): ${porMunicipioTexto || '(sem dados)'}
 - Por região: ${porRegiaoTexto || '(sem dados)'}
 - Por ano: ${porAnoTexto || '(sem dados)'}
 
 TOP PROJETOS:
 ${projetosTexto || '(sem projetos)'}
 
-TAREFA: Gere um dashboard analítico completo. Retorne APENAS um bloco \`\`\`json-dashboard com esta estrutura exata:
+═══════════════════════════════════════════════════════
+CATÁLOGO DE COMPONENTES DISPONÍVEIS
+═══════════════════════════════════════════════════════
+
+Você pode usar qualquer combinação dos seguintes tipos de seção:
+
+1. "kpi-cards" — cards de métricas principais
+   { "tipo": "kpi-cards", "cards": [
+       { "label": "texto", "valor": "texto", "detalhe": "opcional", "tendencia": "up|down|neutral" }
+   ]}
+   → Use tendencia "up" para crescimento, "down" para queda, omita se não aplicável
+
+2. "chart" — gráficos visuais (escolha o tipo mais adequado):
+   { "tipo": "chart", "chart": { "type": "TIPO", "title": "texto", "data": [{"name":"","value":0}] }}
+
+   Tipos disponíveis:
+   • "bar"            → barras verticais — ranking de setores, regiões, tipos
+   • "bar-horizontal" → barras horizontais — top empresas ou municípios (nomes longos)
+   • "line"           → linha temporal — evolução ano a ano (dados escassos)
+   • "area"           → área preenchida — evolução temporal com volume (dados ricos, 5+ anos)
+   • "pie"            → pizza — distribuição proporcional entre categorias (≤ 6 fatias)
+   • "composed"       → barra + linha sobrepostas — valor absoluto + tendência simultâneos
+                        (adicione campo "linha": número nos itens de data para a linha)
+
+3. "bar-list" — ranking textual com barra de proporção (sem eixos, mais limpo que chart)
+   { "tipo": "bar-list", "titulo": "opcional", "items": [
+       { "name": "texto", "value": 1500, "label": "R$ 1,5 bi" }
+   ]}
+   → Ideal para top 5-10 empresas ou municípios
+
+4. "tabela" — tabela detalhada de projetos
+   { "tipo": "tabela", "titulo": "opcional",
+     "colunas": ["Col1","Col2"], "linhas": [["val","val"]] }
+
+5. "texto" — análise narrativa interpretativa
+   { "tipo": "texto", "conteudo": "parágrafos separados por \\n\\n" }
+
+═══════════════════════════════════════════════════════
+REGRAS DE LAYOUT ADAPTATIVO
+═══════════════════════════════════════════════════════
+
+Detecte o tipo de análise e monte o layout adequado:
+
+SE FOR COMPARAÇÃO (dois ou mais municípios, empresas, setores comparados entre si):
+  → kpi-cards com os totais de cada entidade (use detalhe para identificar qual é qual)
+  → "bar-horizontal" ou "composed" mostrando os dois lados lado a lado
+  → "bar-list" por empresa para cada entidade se houver dados suficientes
+  → "tabela" com as colunas das entidades comparadas
+  → "texto" com a interpretação da comparação
+
+SE FOR EVOLUÇÃO TEMPORAL (histórico, tendência, série de anos):
+  → kpi-cards com tendencia (up/down) comparando período inicial vs final
+  → "area" obrigatório para evolução (use "line" se houver menos de 4 anos de dados)
+  → "composed" se quiser mostrar valor absoluto + linha de crescimento ao mesmo tempo
+  → "bar" setorial ou regional do período
+  → "texto" sobre a trajetória
+
+SE FOR RANKING / TOP N (maiores, principais, mais relevantes):
+  → kpi-cards com totais gerais
+  → "bar-list" como peça central do ranking
+  → "bar-horizontal" para comparação visual
+  → "pie" de distribuição proporcional
+  → "tabela" detalhada
+  → "texto" sobre os destaques
+
+SE FOR TEMÁTICO / SETORIAL (setor específico, tema como energia, automóvel, etc.):
+  → kpi-cards do tema
+  → "pie" de distribuição geográfica ou por tipo
+  → "bar" ou "bar-list" de empresas do setor
+  → "area" ou "line" de evolução temporal do setor
+  → "tabela" dos principais projetos
+  → "texto" sobre o setor
+
+SE FOR ANÁLISE GERAL (sem recorte específico):
+  → kpi-cards gerais + "area" temporal + "bar" setorial + "pie" regional + "bar-list" municípios + "tabela" + "texto"
+
+REGRAS INVIOLÁVEIS:
+- Retorne APENAS o bloco \`\`\`json-dashboard, sem texto fora dele
+- "value" nos dados de gráficos deve ser NÚMERO puro (sem R$, sem "mi", sem vírgula)
+- Use SOMENTE dados numéricos reais da seção de dados acima — nunca invente ou estime
+- O campo "label" no bar-list é o texto formatado exibido (ex: "R$ 2,1 bi")
+- "texto" deve ser interpretativo e analítico, não uma lista dos números já visíveis nos gráficos
+- Mínimo absoluto: 1 kpi-cards + 2 seções visuais (chart ou bar-list) + 1 texto
 
 \`\`\`json-dashboard
 {
-  "titulo": "título descritivo da análise",
-  "subtitulo": "período e escopo",
-  "secoes": [
-    {
-      "tipo": "kpi-cards",
-      "cards": [
-        { "label": "Total Investido", "valor": "R$ X bi", "detalhe": "em Y projetos" },
-        { "label": "Principal Setor", "valor": "Nome", "detalhe": "R$ X mi" },
-        { "label": "Principal Município", "valor": "Nome", "detalhe": "R$ X mi" },
-        { "label": "Ano de Pico", "valor": "XXXX", "detalhe": "R$ X mi" }
-      ]
-    },
-    {
-      "tipo": "chart",
-      "chart": {
-        "type": "line",
-        "title": "Evolução Anual dos Investimentos (R$ mi)",
-        "data": [{ "name": "2020", "value": 0 }]
-      }
-    },
-    {
-      "tipo": "chart",
-      "chart": {
-        "type": "bar",
-        "title": "Investimentos por Setor (R$ mi)",
-        "data": [{ "name": "Setor", "value": 0 }]
-      }
-    },
-    {
-      "tipo": "chart",
-      "chart": {
-        "type": "pie",
-        "title": "Distribuição por Região",
-        "data": [{ "name": "Região", "value": 0 }]
-      }
-    },
-    {
-      "tipo": "tabela",
-      "titulo": "Maiores Projetos",
-      "colunas": ["Empresa", "Município", "Setor", "Ano", "Valor (R$ mi)"],
-      "linhas": [["Empresa", "Município", "Setor", "Ano", "Valor"]]
-    },
-    {
-      "tipo": "texto",
-      "conteudo": "Análise interpretativa em 3-4 parágrafos: padrões encontrados, concentrações geográficas/setoriais, destaques e o que os dados sinalizam."
-    }
-  ]
+  "titulo": "...",
+  "subtitulo": "...",
+  "secoes": [ ... ]
 }
-\`\`\`
-
-REGRAS OBRIGATÓRIAS:
-- Inclua EXATAMENTE os 4 KPIs, 3 gráficos (line cronológico, bar por setor, pie por região), 1 tabela e 1 texto analítico
-- Use apenas dados numéricos reais fornecidos acima — nunca invente valores
-- O campo "value" nos gráficos deve ser número (sem R$, sem unidade)
-- A tabela deve listar os top 8 projetos reais com valores corretos
-- O texto analítico deve ser interpretativo, não apenas descritivo`;
+\`\`\``;
 }
 
 // ───────────────────────────────────────────────
