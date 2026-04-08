@@ -279,6 +279,7 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                           fontSize={10} 
                           tickLine={false} 
                           axisLine={false} 
+                          width={75}
                           tickFormatter={(value) => value === 0 ? '0' : formatValueShort(value)}
                         />
                         <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<MinimalTooltip />} />
