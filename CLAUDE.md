@@ -420,3 +420,6 @@ Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta dem
 ### Empresas (`PerfilEmpresaView`)
 - Adicionadas regras anti-gráficos-mono-dados no prompt do dossiê: proibido gerar gráficos quando há apenas 1 município, 1 setor ou menos de 3 anos de dados
 
+### Padronização de Skills e Redação Institucional
+- **Redação Técnica Seade**: Criação de uma skill global (`skills/redacao-tecnica-seade`) implementada diretamente em `utils/prompts.ts` sob a seção "GUIA DE REDAÇÃO TÉCNICA E INSTITUCIONAL". Ela força a IA a abandonar números por extenso (ex: "quatro milhões de reais") e adotar a norma econométrica baseada em cifras e quantificadores curtos (ex: "R$ 4,0 milhões", "2024").
+- **Workflow Oficial (`skill-creator`)**: Adotado oficialmente o fluxo e formato estrito do `.agents/skills/skill-creator` para todas as skills customizadas, organizando a skill de redação em um diretório apropriado (`SKILL.md`), acompanhada de metadados YAML (`name`, `description`) e Workspace isolado contendo uma bateria de assertions (`evals.json`) a fim de viabilizar o teste automatizado (A/B testing) da aderência ao texto exigido.
