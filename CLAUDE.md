@@ -263,6 +263,30 @@ O `buildDashboardPrompt` detecta 5 tipos de análise e aplica layouts diferentes
 
 **Lição aprendida (confirmação do padrão anterior):** o prompt original usava "EXATAMENTE 4 KPIs + 3 gráficos" como instrução fixa. Substituído por regras adaptativas com mínimo absoluto de `1 kpi-cards + 2 visuais + 1 texto`. O modelo respeita mínimos mas também respeita os máximos implícitos quando as regras de não-redundância são explícitas.
 
+**Nota sobre a criação da skill:** o `datalab_design.md` foi escrito manualmente nesta sessão. O projeto conta com a skill `skill-creator` (instalada via `npx skills add https://github.com/anthropics/skills --skill skill-creator`) que guia a criação iterativa de skills com loop de escrita → teste → avaliação → melhoria. Para revisões futuras da skill de design, recomenda-se usar o `/skill-creator` para estruturar o processo de iteração e avaliação.
+
+---
+
+## Ferramentas de Desenvolvimento
+
+### skill-creator
+
+Instalada em `.agents/skills/skill-creator/` (symlink em `.claude/skills/skill-creator`).
+
+**O que faz:** guia a criação e melhoria iterativa de skills com loop estruturado:
+1. Esboço do que a skill deve fazer
+2. Criação de prompts de teste
+3. Execução e avaliação (quantitativa + qualitativa)
+4. Reescrita baseada nos resultados
+5. Expansão dos testes em escala
+
+**Como usar:** invoque com `/skill-creator` no Claude Code. Serve tanto para criar skills do zero quanto para melhorar skills existentes.
+
+**Instalação:**
+```bash
+npx skills add https://github.com/anthropics/skills --skill skill-creator
+```
+
 ---
 
 ## Convenções
