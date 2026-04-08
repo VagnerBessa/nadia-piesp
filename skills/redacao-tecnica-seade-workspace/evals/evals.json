@@ -1,0 +1,23 @@
+{
+  "skill_name": "redacao-tecnica-seade",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Fale sobre os investimentos em tecnologia em São Paulo no ano de dois mil e vinte e quatro, que somaram quatro bilhões e quinhentos milhões de reais.",
+      "expected_output": "Deve reescrever o texto substituindo 'dois mil e vinte e quatro' por '2024' e 'quatro bilhões e quinhentos milhões de reais' por 'R$ 4,5 bilhões'.",
+      "assertions": [
+        {"name": "UsoAnoNumerico", "description": "Contém o ano 2024 em vez de extenso"},
+        {"name": "FormatoMonetario", "description": "Contém 'R$ 4,5 bilhões' ou 'R$ 4,5 bi' e não contém valores por extenso"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Gere um dossiê executivo listando os onze projetos aprovados na região de Campinas que totalizam seis mil e setecentos milhões de reais.",
+      "expected_output": "O texto gerado usa numerais arábicos para '11 projetos' e formatação correta de valor mobiliário, como 'R$ 6,7 bilhões'.",
+      "assertions": [
+        {"name": "QuantidadeNumerica", "description": "Usa '11 projetos'"},
+        {"name": "CorrecaoBi", "description": "Converte a magnitude incorreta 'seis mil e setecentos milhões' para 'R$ 6,7 bilhões'"}
+      ]
+    }
+  ]
+}
