@@ -435,7 +435,58 @@ Implementamos uma reconstrução completa do processamento de Grounding (pesquis
 ### Soluções Implementadas
 -   **Filtro Genômico de Chunks**: O parser agora ignora qualquer link que aponte para `google.com/search`, links sem URI ou ocos. Isso garante que *apenas* fontes de informação reais cheguem ao usuário.
 -   **Mapa de Re-indexação Sequencial (`indexMap`)**: Criamos uma lógica que mapeia os índices originais da API para uma nova sequência estritamente consecutiva (1, 2, 3...). Assim, mesmo que os chunks nº 1 e 2 sejam descartados por serem lixo, o chunk original nº 3 passará a ser exibido como `[1]` no texto e na lista.
--   **Módulo Accordion (Retrátil)**: Substituímos o rodapé fixo por um componente interativo estilo gaveta. Ele utiliza animação CSS Grid para expansão suave, ícones de identidade visual (Book/Chevron) e contadores de fontes verificadas.
+-   **Módulo Accordion (Retrátil)**: Substituímos o rodapé fixo por um componente interativo estilo gaveta com ícones de identidade visual (Book/Chevron) e contadores de fontes verificadas.
 -   **Transparência de Erro**: Removemos as strings de fallback silenciosas. Caso o Gemini retorne um dossiê vazio (timeout), o sistema agora dispara um erro explícito que aciona o banner vermelho de instabilidade, informando corretamente o estado da conexão.
 -   **Tratamento UTF-8 Robusto**: O injetor de citações agora trabalha com arrays de bytes (`Uint8Array`) para garantir que os marcadores `[N]` sejam inseridos em posições exatas sem corromper caracteres acentuados típicos da língua portuguesa.
+
+### Bug Fix: Animação do Accordion — 08/abr/2026
+
+**Problema:** A animação do accordion de fontes usava a técnica CSS Grid (`grid-rows-[0fr]` → `grid-rows-[1fr]` via classes arbitrárias do Tailwind). Com o Tailwind carregado via CDN Play (`cdn.tailwindcss.com`), a transição de `grid-template-rows` não é processada de forma confiável — o browser colapsava ou expandia o painel sem animação, ou não respondia ao estado.
+
+**Solução:** Substituído pelas classes Tailwind por `style` inline com `maxHeight` + `overflow: hidden`:
+```tsx
+style={{
+  maxHeight: isSourcesOpen ? '2000px' : '0',
+  overflow: 'hidden',
+  transition: 'max-height 0.35s ease-in-out, opacity 0.3s ease-in-out',
+  opacity: isSourcesOpen ? 1 : 0,
+}}
+```
+
+**Regra:** Ao usar animações de colapso/expansão **neste projeto (Tailwind via CDN)**, sempre preferir `max-height` via inline style. Nunca usar `grid-rows-[0fr]`/`grid-rows-[1fr]` — essas classes arbitrárias dependem do JIT do Tailwind compilado, não do CDN Play.
+
+---
+
+## Melhorias de UX — Aba Empresas — 08/abr/2026
+
+### Layout duas colunas com painel de fontes lateral
+
+O layout da aba Empresas foi reestruturado: o dossiê ocupa a coluna principal (esquerda, `flex-1`) e o painel de "Referências e Fontes" fica em uma coluna lateral direita (`w-48`, `sticky top-4`). O painel usa `order` CSS para controle de posicionamento sem reorganizar o DOM.
+
+O painel sticky tem scroll interno próprio (`max-h: 70vh, overflow-y: auto`) para não ultrapassar a viewport.
+
+### Remoção do preâmbulo gerado pela IA
+
+O Gemini frequentemente gera texto introdutório antes do primeiro `## ` do dossiê ("Estou elaborando...", "Aguarda um momento...", etc.). Esse texto é descartado via:
+```ts
+const primeiroH2 = textoCitado.indexOf('\n## ');
+const textoLimpo = primeiroH2 > 0 ? textoCitado.slice(primeiroH2 + 1) : textoCitado;
+```
+
+### Citações dentro de itálico/negrito
+
+O `parseInline` era não-recursivo: blocos `*itálico*` ou `**negrito**` que contivessem `[N]` engoliam a citação sem processá-la. Corrigido tornando os handlers recursivos:
+```tsx
+if (part.startsWith('*') && part.endsWith('*')) {
+  return <em>{parseInline(part.slice(1, -1), keyPrefix)}</em>;
+}
+```
+
+### Limite de citações por ponto de injeção
+
+O grounding da API pode injetar 4+ citações no mesmo ponto (`[11][12][13][14]`). Limitado a 2 por ponto com `.slice(0, 2)` no `injectInlineCitations`.
+
+### Remoção da aba "Publicar"
+
+O botão "Publicar" foi removido do `Header.tsx` junto com o import de `CloudArrowUpIcon` e a prop `onNavigateToUpload`.
 

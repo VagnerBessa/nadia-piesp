@@ -44,7 +44,8 @@ function injectInlineCitations(text: string, supports: any[], indexMap: Record<n
 
     if (mappedValidIndices.length === 0) continue; // descarta se todos apontam para lixo
 
-    const markerStr = mappedValidIndices.map(i => `[${i + 1}]`).join('');
+    // Limita a 2 citações por ponto para evitar acúmulo visual
+    const markerStr = mappedValidIndices.slice(0, 2).map(i => `[${i + 1}]`).join('');
     const markerBytes = encoder.encode(markerStr);
 
     const newBytes = new Uint8Array(textBytes.length + markerBytes.length);
@@ -181,15 +182,15 @@ interface DossieRendererProps {
 const DossieRenderer: React.FC<DossieRendererProps> = ({ content, sources }) => {
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
 
-  // Parseia inline: **bold**, *italic*, [N] citations
+  // Parseia inline: **bold**, *italic*, [N] citations (com suporte recursivo para citações dentro de negrito/itálico)
   const parseInline = (text: string, keyPrefix: string): React.ReactNode[] => {
     const parts = text.split(/(\*\*.+?\*\*|\*.+?\*|\[\d+\])/g);
     return parts.filter(Boolean).map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={`${keyPrefix}-b${i}`}>{part.slice(2, -2)}</strong>;
+        return <strong key={`${keyPrefix}-b${i}`}>{parseInline(part.slice(2, -2), `${keyPrefix}-b${i}`)}</strong>;
       }
       if (part.startsWith('*') && part.endsWith('*')) {
-        return <em key={`${keyPrefix}-i${i}`}>{part.slice(1, -1)}</em>;
+        return <em key={`${keyPrefix}-i${i}`}>{parseInline(part.slice(1, -1), `${keyPrefix}-i${i}`)}</em>;
       }
       const citMatch = part.match(/^\[(\d+)\]$/);
       if (citMatch) {
@@ -387,6 +388,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sugestoesRef = useRef<HTMLDivElement>(null);
+  const sourcesRef = useRef<HTMLDivElement>(null);
 
   // Filtra sugestões pelo que o usuário digitou
   const sugestoesFiltradas = useMemo(() => {
@@ -473,7 +475,13 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         ? injectInlineCitations(textoGerado, groundingSupports, indexMap)
         : textoGerado;
 
-      setDossie(textoCitado);
+      // Remove preâmbulo gerado pela IA antes do primeiro título ## do dossiê
+      const primeiroH2 = textoCitado.indexOf('\n## ');
+      const textoLimpo = primeiroH2 > 0
+        ? textoCitado.slice(primeiroH2 + 1)
+        : textoCitado.startsWith('## ') ? textoCitado : textoCitado;
+
+      setDossie(textoLimpo);
       setSources(extractedSources);
       setIsSourcesOpen(true); // Abre o accordion pra inspecionar
     } catch (e: any) {
@@ -611,75 +619,49 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
           )}
 
           {dossie && !isLoading && (
-            <div className="max-w-3xl mx-auto space-y-4">
-              {/* Stats rápidos */}
-              {piespStats && (
-                <div className="flex gap-4 mb-6 flex-wrap">
-                  <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                    <p className="text-xs text-slate-400">Projetos no PIESP</p>
-                    <p className="text-xl font-bold text-white">{piespStats.total}</p>
-                  </div>
-                  {piespStats.totalMilhoes > 0 && (
-                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                      <p className="text-xs text-slate-400">Valor total investido em SP</p>
-                      <p className="text-xl font-bold text-rose-400">
-                        {piespStats.totalMilhoes >= 1000
-                          ? `R$ ${(piespStats.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi`
-                          : `R$ ${piespStats.totalMilhoes.toFixed(0)} mi`}
-                      </p>
-                    </div>
-                  )}
-                  <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                    <p className="text-xs text-slate-400">Empresa pesquisada</p>
-                    <p className="text-base font-bold text-white truncate max-w-48">{empresaPesquisada}</p>
-                  </div>
-                </div>
-              )}
+            <div className="max-w-6xl mx-auto flex gap-5 items-start">
 
-              {/* Dossiê */}
-              <div className="bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
-                <DossieRenderer content={dossie} sources={sources} />
-              </div>
-
-              {/* Fontes numeradas (Accordion Frontend Design) */}
+              {/* Coluna direita: painel de fontes (sticky, menor) — renderizado depois no DOM mas posicionado à direita via order */}
               {sources.length > 0 && (
-                <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 overflow-hidden transition-all duration-300">
-                  <button
-                    onClick={() => setIsSourcesOpen(!isSourcesOpen)}
-                    className="w-full flex items-center justify-between p-4 bg-slate-800/40 hover:bg-slate-800/60 transition-colors focus:outline-none"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-sky-400">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                      </svg>
-                      <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                        Referências e Fontes
-                      </h4>
-                      <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700/50 text-[10px] font-bold text-slate-400">
-                        {sources.length} verificadas
-                      </span>
-                    </div>
-                    <div className={`transform transition-transform duration-300 ${isSourcesOpen ? 'rotate-180' : ''}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-500">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </div>
-                  </button>
-                  
-                  <div className={`grid transition-all duration-300 ease-in-out ${isSourcesOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                    <div className="overflow-hidden">
-                      <div className="p-4 border-t border-slate-700/30 bg-slate-900/10">
-                        <ol className="space-y-2.5 list-none m-0 p-0">
+                <div ref={sourcesRef} className="w-48 flex-shrink-0 sticky top-4" style={{ order: 2 }}>
+                  <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 overflow-hidden">
+                    <button
+                      onClick={() => setIsSourcesOpen(!isSourcesOpen)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-800/40 hover:bg-slate-800/60 transition-colors focus:outline-none"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 text-sky-400 flex-shrink-0">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">Fontes</span>
+                        <span className="px-1.5 py-0.5 rounded-full bg-sky-500/20 text-[9px] font-bold text-sky-400">{sources.length}</span>
+                      </div>
+                      <div className={`transform transition-transform duration-300 ${isSourcesOpen ? 'rotate-180' : ''}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3 text-slate-500">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </div>
+                    </button>
+                    <div
+                      style={{
+                        maxHeight: isSourcesOpen ? '70vh' : '0',
+                        overflow: 'hidden',
+                        transition: 'max-height 0.35s ease-in-out, opacity 0.3s ease-in-out',
+                        opacity: isSourcesOpen ? 1 : 0,
+                      }}
+                    >
+                      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '70vh' }}>
+                        <ol className="list-none m-0 p-2.5 space-y-2">
                           {sources.map((source, i) => (
-                            <li key={i} className="flex items-start gap-2.5">
-                              <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-500/20 text-sky-400 text-[9px] font-bold flex items-center justify-center mt-0.5 shadow-inner">
+                            <li key={i} className="flex items-start gap-1.5">
+                              <span className="flex-shrink-0 w-3.5 h-3.5 rounded-full bg-sky-500/20 text-sky-400 text-[8px] font-bold flex items-center justify-center mt-0.5">
                                 {i + 1}
                               </span>
                               <a
                                 href={source.uri}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sky-400 hover:text-sky-300 hover:underline text-xs leading-relaxed break-all"
+                                className="text-sky-400 hover:text-sky-300 hover:underline text-[10px] leading-snug break-words"
                               >
                                 {source.title}
                               </a>
@@ -692,9 +674,42 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                 </div>
               )}
 
-              <p className="text-xs text-slate-500 text-center pt-2">
-                Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
-              </p>
+              {/* Coluna esquerda: stats + dossiê + disclaimer */}
+              <div className="flex-1 min-w-0 space-y-4" style={{ order: 1 }}>
+                {/* Stats rápidos */}
+                {piespStats && (
+                  <div className="flex gap-4 flex-wrap">
+                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                      <p className="text-xs text-slate-400">Projetos no PIESP</p>
+                      <p className="text-xl font-bold text-white">{piespStats.total}</p>
+                    </div>
+                    {piespStats.totalMilhoes > 0 && (
+                      <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                        <p className="text-xs text-slate-400">Valor total investido em SP</p>
+                        <p className="text-xl font-bold text-rose-400">
+                          {piespStats.totalMilhoes >= 1000
+                            ? `R$ ${(piespStats.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi`
+                            : `R$ ${piespStats.totalMilhoes.toFixed(0)} mi`}
+                        </p>
+                      </div>
+                    )}
+                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                      <p className="text-xs text-slate-400">Empresa pesquisada</p>
+                      <p className="text-base font-bold text-white truncate max-w-48">{empresaPesquisada}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dossiê */}
+                <div className="bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
+                  <DossieRenderer content={dossie} sources={sources} />
+                </div>
+
+                <p className="text-xs text-slate-500 text-center pt-2">
+                  Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
+                </p>
+              </div>
+
             </div>
           )}
         </main>

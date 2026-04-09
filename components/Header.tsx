@@ -1,18 +1,16 @@
 import React from 'react';
-import { CloudArrowUpIcon } from './Icons';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 
 interface HeaderProps {
   onNavigateToDashboards?: () => void;
   onNavigateToMunicipal?: () => void;
-  onNavigateToUpload?: () => void;
   onNavigateHome?: () => void;
   onNavigateToExplorar?: () => void;
   onNavigateToPerfilEmpresa?: () => void;
   onNavigateToDataLab?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateToUpload, onNavigateHome, onNavigateToExplorar, onNavigateToPerfilEmpresa, onNavigateToDataLab }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateHome, onNavigateToExplorar, onNavigateToPerfilEmpresa, onNavigateToDataLab }) => {
   return (
     <header className="flex-shrink-0 w-full max-w-7xl mx-auto px-6 py-4">
       <div className="grid grid-cols-3 items-center">
@@ -80,15 +78,6 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMun
                 className="px-4 py-1.5 text-sm font-medium text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 rounded-full transition-all whitespace-nowrap"
               >
                 Data Lab
-              </button>
-            </li>
-            <li className="ml-2 border-l border-white/10 pl-2">
-               <button 
-                onClick={onNavigateToUpload}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-full transition-all whitespace-nowrap"
-              >
-                <CloudArrowUpIcon className="w-4 h-4" />
-                Publicar
               </button>
             </li>
           </ul>
