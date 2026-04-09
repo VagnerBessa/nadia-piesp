@@ -404,7 +404,39 @@ Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta dem
 
 - **Modelo REST:** `gemini-2.5-flash` (todas as views de texto)
 - **Modelo WebSocket:** `gemini-2.5-flash-native-audio-preview-12-2025` (VoiceView)
-- **thinkingBudget:** Definido como `0` em todas as views para reduzir consumo de recursos e mitigar erros 503. O Chat no modo "Completo" ainda usa `2048`.
+- **thinkingBudget:** Definido como `0` em todas as views para reduzir consumo de recursos e mitigar erros 503. O Chat no modo "Completo" usa `512` (reduzido de 2048 em 09/abr/2026 para mitigar quota e 503).
+
+---
+
+## Filtro de Ano no Dashboard — 09/abr/2026
+
+### Funcionalidade
+
+Chips de filtro por ano adicionados ao topo do painel de KPIs em `PiespDashboardView.tsx`. Ao selecionar um ano:
+- KPIs (volume, projetos, empresas, municípios), setores, municípios, empresas, tipo e concentração filtram para aquele ano
+- O gráfico "Volume por Ano" é substituído por "Volume por Mês — AAAA", mostrando a distribuição mensal do ano selecionado
+- "Todos" restaura a visão histórica completa
+
+O gráfico histórico de anos sempre usa `allData.porAno` (dados completos), nunca é afetado pelo filtro.
+
+### Arquitetura
+
+**`services/piespDashboardData.ts`:**
+- `PiespRecord` ganhou o campo `mes` (col[2] do CSV)
+- `DashboardData` ganhou `porMes?: AggItem[]`
+- `MES_NAMES` mapeia número de mês para nome abreviado em pt-BR ("1" → "Jan" etc.)
+- `_records` — cache de records brutos separado do cache agregado
+- `getRecords()` — singleton dos records brutos (evita reparsing)
+- `getAvailableYears()` — lista ordenada de anos únicos da base
+- `agregarRecords(records)` — função interna que agrega qualquer subconjunto de records (refatoração do `getDashboardData`)
+- `getDashboardDataByYear(ano)` — filtra records pelo ano e agrega, com cache por chave (`_cacheByYear`)
+- `getDashboardData()` simplificado para delegar a `agregarRecords(getRecords())`
+
+**`components/PiespDashboardView.tsx`:**
+- `useState<string | null>` para o ano selecionado (null = "Todos")
+- `data` = `getDashboardDataByYear(selectedYear)` ou `getDashboardData()` conforme seleção
+- `allData` = dados completos, sempre passado para o gráfico de evolução histórica
+- Chips de filtro com estilo ativo (`rose-500` para "Todos", `cyan-400` para anos)
 
 ---
 
@@ -489,4 +521,157 @@ O grounding da API pode injetar 4+ citações no mesmo ponto (`[11][12][13][14]`
 ### Remoção da aba "Publicar"
 
 O botão "Publicar" foi removido do `Header.tsx` junto com o import de `CloudArrowUpIcon` e a prop `onNavigateToUpload`.
+
+---
+
+## Sistema de Agentes no Chat — 09/abr/2026
+
+### Contexto
+
+O usuário queria que a Nadia respondesse sob a ótica de "lentes analíticas" especializadas (skills) de forma explícita e controlada, sem depender da detecção automática por palavras-chave.
+
+### Arquitetura Implementada
+
+**Seleção manual de skill ("Agente")** antes ou durante a conversa no `ChatView`.
+
+**Fluxo:**
+1. Usuário abre o Chat → input centralizado (estado inicial, sem mensagens)
+2. Usuário clica em "Agentes" → dropdown abre com 8 opções + "Geral"
+3. Ao selecionar um agente, um badge aparece dentro da caixa de input
+4. Cada mensagem enviada com agente ativo injeta a skill no `systemInstruction`
+5. O agente pode ser trocado ou removido a qualquer momento — sem reiniciar o histórico
+
+**Arquivos alterados:**
+- `services/skillDetector.ts` — adicionadas `getSkillByName()` e `buildSystemInstructionWithSkillByName()` para injeção direta por nome (sem detecção por keywords)
+- `hooks/useChat.ts` — aceita `{ selectedSkillName }` na inicialização; se fornecido, bypassa a auto-detecção
+- `components/ChatView.tsx` — reescrito com novo layout e UI de seleção de agentes
+
+### Agentes disponíveis (8)
+
+| Nome interno | Label |
+|---|---|
+| `emprego_empregabilidade` | Emprego e Empregabilidade |
+| `qualificacao_profissional` | Qualificação Profissional |
+| `logistica_infraestrutura` | Logística e Infraestrutura |
+| `inovacao_tecnologia` | Inovação e Tecnologia |
+| `desenvolvimento_regional` | Desenvolvimento Regional |
+| `cadeias_produtivas` | Cadeias Produtivas |
+| `transicao_energetica` | Transição Energética |
+| `comercio_exterior` | Comércio Exterior |
+
+A `inteligencia_empresarial` foi excluída da lista de agentes manuais — ela usa Google Search (incompatível com piespTools) e é mais adequada para a aba Empresas.
+
+### Layout do ChatView — dois estados (padrão Gemini)
+
+| Estado | Condição | Layout |
+|---|---|---|
+| Inicial | `chatStarted === false` | Input centralizado em `pt-[12%]` da área de conteúdo |
+| Chat | `chatStarted === true` | Mensagens (flex-grow) + input no rodapé (`pb-8`) |
+
+`chatStarted` vira `true` no primeiro `sendMessage`.
+
+### UI do seletor de Agentes
+
+- Botão "Agentes" com chevron na barra inferior do input (mesmo padrão do "Ferramentas" no Gemini)
+- Dropdown com `position: absolute`, abre **para baixo** no estado inicial, **para cima** (`bottom-full`) no estado de chat (sem espaço abaixo)
+- "Geral" fixo no topo do dropdown; 8 agentes na lista abaixo com `max-h: 260px` e `overflow-y-auto`
+- Ícones SVG inline por agente (sem emojis — produto analítico)
+- Badge no input quando agente ativo: `rose-500/10` com botão `×` para remover
+
+### Confirmação de skill no console
+
+Ao enviar cada mensagem, o console exibe:
+- `🎯 [Agente manual] Skill "nome" injetada. System instruction: N chars.`
+- `🎯 [Agente auto] Skill "Label" detectada por keywords.`
+- `ℹ️ [Sem agente] Nenhuma skill ativa.`
+
+---
+
+## Correção: Filtro por Região Administrativa no Chat — 09/abr/2026
+
+### Problema
+
+A tool `consultar_projetos_piesp` (function calling do Chat) só aceitava `municipio`, `ano` e `termo_busca`. Quando o usuário perguntava sobre "RA Santos" ou "Região Administrativa de Santos", o modelo não conseguia filtrar por região em uma única chamada. Como workaround, ele fazia múltiplas chamadas sequenciais (uma por município), resultando em:
+
+1. Respostas "graduais" — modelo narrava cada passo ("Já consultei Guarujá, agora vou verificar Santos...")
+2. Limite de `maxIterations = 3` cortava a resposta incompleta
+3. "RA Santos" e "Região Administrativa de Santos" não eram reconhecidos como equivalentes
+
+### Solução
+
+**`services/piespDataService.ts`:**
+- Adicionado campo `regiao?: string` à interface `FiltroPiesp`
+- Adicionada função `normalizarRegiao()` que converte qualquer variante para forma canônica:
+  - "Região Administrativa de Santos" → "ra santos"
+  - "RA de Santos" → "ra santos"
+  - "RA Santos" → "ra santos"
+- Matching bidirecional: `regiaoNorm.includes(filtroNorm) || filtroNorm.includes(regiaoNorm)`
+- Campo `regiao` retornado nos resultados (coluna 8 do CSV)
+
+**`hooks/useChat.ts`:**
+- Adicionado parâmetro `regiao` na declaração da tool `consultar_projetos_piesp`
+- Descrição instrui explicitamente: *"NÃO tente município por município"* quando o usuário mencionar região
+- `executarFerramenta` repassa `args.regiao` para `consultarPiespData`
+
+**Resultado:** Uma única tool call com `regiao: "RA Santos"` retorna todos os projetos da região, eliminando as chamadas sequenciais e a resposta fragmentada.
+
+---
+
+## Resiliência de API — Chat — 09/abr/2026
+
+### Problema
+
+O error handler do `useChat.ts` tinha dois problemas críticos:
+
+1. **Ternário inútil:** ambos os branches do `isSeverError ? ... : ...` retornavam a mesma string — qualquer erro (503, bug de código, 429, chave inválida) exibia a mesma mensagem genérica de "instabilidade"
+2. **Sem retry:** um 503 momentâneo exigia que o usuário reenviasse a mensagem manualmente
+
+### Soluções
+
+**Error handler diferenciado** — cada categoria de erro tem mensagem própria:
+
+| Erro | Mensagem |
+|---|---|
+| 429 / quota / rate limit | "Limite de requisições atingido (quota da API)" |
+| 503 / unavailable / overloaded | "Servidores sobrecarregados — aguarde e tente novamente" |
+| 500 | "Erro interno nos servidores do Google Gemini" |
+| 401 / 403 / api_key | "Problema com a chave de API" |
+| Outros | Exibe `e.message` real na UI + log detalhado no console |
+
+**Retry automático com backoff** — função `withRetry()`:
+- Tenta até 2x adicionais em caso de 503/UNAVAILABLE
+- Delays: 2s na primeira re-tentativa, 4s na segunda
+- Aplicada nas duas chamadas `generateContent` do loop de function calling
+- Log no console: `⏳ Gemini 503 — tentativa 1/2. Aguardando 2000ms...`
+
+**`thinkingBudget` reduzido:** modo "Completo" passou de `2048` → `512` tokens para reduzir pressão na quota e mitigar 503.
+
+### Fallback de provedor: OpenRouter — 09/abr/2026
+
+**Problema:** Quando o Gemini retorna 503 persistente (mesmo após os 2 retries do `withRetry`), o usuário via uma mensagem de erro e precisava tentar manualmente.
+
+**Solução implementada:** Fallback automático e silencioso para o OpenRouter quando o Gemini falha com 503.
+
+**Fluxo de resiliência em 3 camadas:**
+1. Gemini direto (tentativa normal)
+2. `withRetry` — 2 re-tentativas automáticas com backoff (2s / 4s)
+3. OpenRouter — mesma query, mesma ferramenta, infraestrutura diferente
+
+**Modelo de fallback:** `google/gemini-2.5-flash-preview` via OpenRouter — mesmo modelo do Gemini direto, roteado pela infraestrutura do OpenRouter (que tem SLA próprio e costuma estar disponível quando a API direta do Google está sobrecarregada).
+
+**Arquivos criados/alterados:**
+- `services/openrouterService.ts` — serviço completo com:
+  - `geminiContentsToOAI()` — converte histórico Gemini → mensagens OpenAI
+  - `geminiToolsToOAI()` — converte `functionDeclarations` → `tools[].function`
+  - `convertGeminiParams()` — converte tipos (`Type.OBJECT` → `"object"`)
+  - `callOpenRouter()` — POST para `https://openrouter.ai/api/v1/chat/completions` com loop de function calling no formato OpenAI
+- `config.ts` — adicionado `OPENROUTER_API_KEY` (preencher com chave de openrouter.ai/keys)
+- `hooks/useChat.ts` — variáveis `contents`, `systemInstructionWithSkill` e `ferramentasAtivas` hoistadas para fora do `try` (necessário para acessá-las no `catch`); fallback ativado no `catch` quando `is503 && OPENROUTER_API_KEY`
+
+**Comportamento para o usuário:**
+- Se OpenRouter responder com sucesso: resposta aparece normalmente, sem nenhum erro visível
+- Se OpenRouter também falhar: exibe mensagem de erro padrão de 503
+- Logs no console: `🔀 Gemini 503 persistente — ativando fallback OpenRouter...`
+
+**Ativação:** preencher `OPENROUTER_API_KEY` em `config.ts`. Se vazio, o fallback é ignorado e o comportamento anterior (mensagem de erro) é mantido.
 

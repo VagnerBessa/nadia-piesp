@@ -4,7 +4,9 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
-import { buildSystemInstructionWithSkill, detectSkill } from '../services/skillDetector';
+import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
+import { callOpenRouter } from '../services/openrouterService';
+import { OPENROUTER_API_KEY } from '../config';
 
 export interface Source {
   uri: string;
@@ -43,6 +45,7 @@ const piespTools = [
           properties: {
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+            regiao: { type: Type.STRING, description: 'A Região Administrativa (RA) do Estado de SP, ex: "RA Santos", "RA Campinas". Use este campo quando o usuário mencionar região, RA ou Região Administrativa — NÃO tente municipio por municipio.' },
             termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
           }
         }
@@ -72,7 +75,7 @@ const searchTools = [
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
   if (nome === 'consultar_projetos_piesp') {
-    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, termo_busca: args.termo_busca });
+    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
@@ -82,7 +85,30 @@ function executarFerramenta(nome: string, args: any): any {
   return { error: 'Ferramenta não reconhecida' };
 }
 
-export const useChat = () => {
+interface UseChatOptions {
+  selectedSkillName?: string | null;
+}
+
+// Retry com backoff para erros 503 — tenta até maxRetries vezes com pausa crescente
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 2000): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastError = e;
+      const msg = (e?.message || '').toLowerCase();
+      const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand');
+      if (!isRetryable || attempt === maxRetries) throw e;
+      const delay = baseDelayMs * (attempt + 1); // 2s, 4s
+      console.warn(`⏳ Gemini 503 — tentativa ${attempt + 1}/${maxRetries}. Aguardando ${delay}ms...`);
+      await new Promise(res => setTimeout(res, delay));
+    }
+  }
+  throw lastError;
+}
+
+export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,40 +127,49 @@ export const useChat = () => {
     const userMessage: Message = { role: 'user', text };
     setMessages(prev => [...prev, userMessage]);
 
+    // Variáveis declaradas fora do try para serem acessíveis no catch (fallback OpenRouter)
+    const contents: HistoryItem[] = [
+      ...historyRef.current,
+      { role: 'user', parts: [{ text: text }] }
+    ];
+
+    const systemInstructionWithSkill = selectedSkillName
+      ? buildSystemInstructionWithSkillByName(SYSTEM_INSTRUCTION, selectedSkillName)
+      : buildSystemInstructionWithSkill(SYSTEM_INSTRUCTION, text);
+
+    const detectedSkill = selectedSkillName ? null : detectSkill(text);
+    const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
+    const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
+
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-      // Prepara o conteúdo com o histórico para manter o contexto da conversa
-      const contents: HistoryItem[] = [
-        ...historyRef.current,
-        { role: 'user', parts: [{ text: text }] }
-      ];
-      
       // Configuração do modelo
       const modelName = 'gemini-2.5-flash';
-      
+
       // Configuração de Thinking (Pensamento)
-      const thinkingConfig = mode === 'complete' 
-        ? { thinkingConfig: { thinkingBudget: 2048 } } 
+      const thinkingConfig = mode === 'complete'
+        ? { thinkingConfig: { thinkingBudget: 512 } }   // reduzido de 2048 → 512 para evitar erros 429/503
         : { thinkingConfig: { thinkingBudget: 0 } };
 
-      // Detecta e injeta a skill especializada (se houver) para esta pergunta específica
-      const systemInstructionWithSkill = buildSystemInstructionWithSkill(SYSTEM_INSTRUCTION, text);
-
-      // Detecta a skill e decide qual conjunto de ferramentas usar:
-      // - inteligencia_empresarial e buscas de contexto usam Google Search
-      // - tudo mais usa function calling PIESP
-      // (as duas não podem ser combinadas na mesma chamada da generateContent API)
-      const detectedSkill = detectSkill(text);
-      const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
-      const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
+      // Log de confirmação: mostra qual skill está ativa e o tamanho do system instruction
+      if (selectedSkillName) {
+        console.log(`🎯 [Agente manual] Skill "${selectedSkillName}" injetada. System instruction: ${systemInstructionWithSkill.length} chars.`);
+      } else {
+        const autoSkill = detectSkill(text);
+        if (autoSkill) {
+          console.log(`🎯 [Agente auto] Skill "${autoSkill.label}" detectada por keywords. System instruction: ${systemInstructionWithSkill.length} chars.`);
+        } else {
+          console.log(`ℹ️ [Sem agente] Nenhuma skill ativa. System instruction: ${systemInstructionWithSkill.length} chars.`);
+        }
+      }
 
       if (usarPesquisa) {
         console.log('🔍 Modo: Google Search (skill empresa detectada)');
       }
 
-      // Primeira chamada: envia a mensagem com as ferramentas selecionadas
-      let response = await ai.models.generateContent({
+      // Primeira chamada: envia a mensagem com as ferramentas selecionadas (com retry automático para 503)
+      let response = await withRetry(() => ai.models.generateContent({
         model: modelName,
         contents: contents,
         config: {
@@ -142,7 +177,7 @@ export const useChat = () => {
           tools: ferramentasAtivas,
           ...thinkingConfig
         }
-      });
+      }));
 
       // Loop de Function Calling: executa ferramentas até o modelo retornar texto final
       let maxIterations = 3; // Segurança contra loop infinito
@@ -168,8 +203,8 @@ export const useChat = () => {
           { role: 'user' as const, parts: [{ functionResponse: { name: fcall.name!, response: resultado } }] }
         ];
 
-        // Segunda chamada: usa as mesmas ferramentas ativas (mantém a skill)
-        response = await ai.models.generateContent({
+        // Segunda chamada: usa as mesmas ferramentas ativas (com retry automático para 503)
+        response = await withRetry(() => ai.models.generateContent({
           model: modelName,
           contents: updatedContents,
           config: {
@@ -177,7 +212,7 @@ export const useChat = () => {
             tools: ferramentasAtivas,
             ...thinkingConfig
           }
-        });
+        }));
 
         maxIterations--;
       }
@@ -211,13 +246,47 @@ export const useChat = () => {
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (e: any) {
-      console.error("Chat error:", e);
-      console.error("Chat error details:", e?.message, e?.status, JSON.stringify(e?.response?.data || e?.details || ''));
-      const rawMsg = e?.message || JSON.stringify(e) || '';
-      const isSeverError = rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('UNAVAILABLE') || rawMsg.includes('overloaded') || rawMsg.includes('500');
-      const errorMessage = isSeverError
-        ? 'Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.'
-        : 'Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.';
+      const rawMsg = (e?.message || JSON.stringify(e) || '').toLowerCase();
+      console.error('❌ Chat error — raw:', e?.message || e);
+
+      const is503 = rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('unavailable') || rawMsg.includes('overloaded');
+
+      // Fallback OpenRouter: tenta quando Gemini retorna 503 e a chave está configurada
+      if (is503 && OPENROUTER_API_KEY) {
+        console.warn('🔀 Gemini 503 persistente — ativando fallback OpenRouter...');
+        try {
+          const result = await callOpenRouter(
+            contents,
+            systemInstructionWithSkill,
+            ferramentasAtivas as any,
+            executarFerramenta
+          );
+          const modelMessage: Message = { role: 'model', text: result.text };
+          historyRef.current = [...contents, { role: 'model', parts: [{ text: result.text }] }];
+          setMessages(prev => [...prev, modelMessage]);
+          return; // sucesso via fallback — não exibe erro
+        } catch (orError: any) {
+          console.error('❌ OpenRouter fallback também falhou:', orError?.message || orError);
+          // Continua para exibir mensagem de erro abaixo
+        }
+      }
+
+      let errorMessage: string;
+
+      if (rawMsg.includes('429') || rawMsg.includes('quota') || rawMsg.includes('rate limit') || rawMsg.includes('resource_exhausted')) {
+        errorMessage = '⚠️ Limite de requisições atingido (quota da API Gemini). Aguarde alguns segundos e tente novamente.';
+      } else if (is503) {
+        errorMessage = '⚠️ Os servidores do Google Gemini estão sobrecarregados no momento. Aguarde alguns segundos e tente novamente.';
+      } else if (rawMsg.includes('500')) {
+        errorMessage = '⚠️ Erro interno nos servidores do Google Gemini. Tente novamente.';
+      } else if (rawMsg.includes('api_key') || rawMsg.includes('api key') || rawMsg.includes('invalid') || rawMsg.includes('401') || rawMsg.includes('403')) {
+        errorMessage = '⚠️ Problema com a chave de API. Verifique as configurações.';
+      } else {
+        // Erro inesperado — mostra a mensagem real no console e um genérico na UI
+        console.error('❌ Erro não categorizado:', rawMsg);
+        errorMessage = `⚠️ Erro inesperado: ${e?.message?.substring(0, 120) || 'desconhecido'}. Verifique o console para detalhes.`;
+      }
+
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
       setError(errorMessage);
     } finally {

@@ -13,21 +13,32 @@ const TIPOS_VALIDOS = new Set([
 export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
+  regiao?: string;
   termo_busca?: string;
+}
+
+// Normaliza termos de região: "Região Administrativa de Santos", "RA de Santos", "RA Santos" → "ra santos"
+function normalizarRegiao(texto: string): string {
+  return texto
+    .toLowerCase()
+    .replace(/regi[aã]o administrativa d[eoa]?\s*/i, 'ra ')
+    .replace(/\bra de\b/gi, 'ra')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
   const resultados = [];
-  
-  // A primeira linha é o cabeçalho
-  // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 9=descr_investimento, 10=setor
+
+  // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 8=regiao, 9=descr_investimento, 10=setor
   for (let i = 1; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
     if (!linhaValida(colunas)) continue;
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
+    const regiaoLinha = colunas[8]?.trim() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
     const setorLinha = colunas[10] || 'Geral';
     const descricaoLinha = colunas[9] || '';
@@ -38,13 +49,20 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       match = false;
     }
 
+    if (filtro.regiao) {
+      const regiaoFiltro = normalizarRegiao(filtro.regiao);
+      const regiaoNorm = normalizarRegiao(regiaoLinha);
+      if (!regiaoNorm.includes(regiaoFiltro) && !regiaoFiltro.includes(regiaoNorm)) {
+        match = false;
+      }
+    }
+
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
       match = false;
     }
 
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      // busca semântica livre em vários campos textuais
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
         match = false;
@@ -55,6 +73,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       resultados.push({
         empresa: empresaLinha,
         municipio: colunas[7] || 'Não informado',
+        regiao: regiaoLinha || 'Não informada',
         ano: anoLinha,
         setor: setorLinha,
         descricao: descricaoLinha.substring(0, 150),

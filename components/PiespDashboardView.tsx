@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -32,7 +32,7 @@ import { NadiaSphere } from './NadiaSphere';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
-import { getDashboardData, getDashboardContext } from '../services/piespDashboardData';
+import { getDashboardData, getDashboardDataByYear, getDashboardContext, getAvailableYears } from '../services/piespDashboardData';
 
 // --- Theme ---
 const dashTheme = createTheme({
@@ -130,7 +130,12 @@ interface PiespDashboardViewProps {
 }
 
 const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome }) => {
-  const data = getDashboardData();
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+
+  const allData = getDashboardData();
+  const years = getAvailableYears();
+  // "Volume por Ano" sempre usa dados completos; demais gráficos filtram pelo ano selecionado
+  const data = selectedYear ? getDashboardDataByYear(selectedYear) : allData;
   const context = getDashboardContext();
 
   const dashboardSystemInstruction = `
@@ -237,6 +242,38 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
               </div>
             </div>
 
+            {/* Filtro de Ano */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 3 }}>
+              <Typography variant="overline" sx={{ color: '#64748b', mr: 1 }}>ANO</Typography>
+              <Chip
+                label="Todos"
+                size="small"
+                onClick={() => setSelectedYear(null)}
+                sx={{
+                  borderColor: selectedYear === null ? '#f43f5e' : 'rgba(255,255,255,0.12)',
+                  color: selectedYear === null ? '#f43f5e' : '#94a3b8',
+                  bgcolor: selectedYear === null ? 'rgba(244,63,94,0.08)' : 'transparent',
+                  fontWeight: selectedYear === null ? 700 : 400,
+                }}
+                variant="outlined"
+              />
+              {years.map(year => (
+                <Chip
+                  key={year}
+                  label={year}
+                  size="small"
+                  onClick={() => setSelectedYear(year)}
+                  sx={{
+                    borderColor: selectedYear === year ? '#22d3ee' : 'rgba(255,255,255,0.12)',
+                    color: selectedYear === year ? '#22d3ee' : '#94a3b8',
+                    bgcolor: selectedYear === year ? 'rgba(34,211,238,0.08)' : 'transparent',
+                    fontWeight: selectedYear === year ? 700 : 400,
+                  }}
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+
             {/* KPI Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
@@ -256,16 +293,19 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
             {/* Row 1: Volume por Ano + Mapa Setorial */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
-              {/* Volume por Ano */}
+              {/* Volume por Ano / Volume por Mês */}
               <div>
                 <Paper sx={{ p: 2, height: '280px', display: 'flex', flexDirection: 'column' }}>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                    <Typography variant="h5">Volume por Ano</Typography>
+                    <Typography variant="h5">{selectedYear ? `Volume por Mês — ${selectedYear}` : 'Volume por Ano'}</Typography>
                     <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.6rem' }}>R$ MILHÕES</Typography>
                   </Box>
                   <Box sx={{ flexGrow: 1, minHeight: 0 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={data.porAno} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                      <AreaChart
+                        data={selectedYear ? data.porMes : allData.porAno}
+                        margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                      >
                         <defs>
                           <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.8}/>
@@ -274,11 +314,11 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis 
-                          stroke="#64748b" 
-                          fontSize={10} 
-                          tickLine={false} 
-                          axisLine={false} 
+                        <YAxis
+                          stroke="#64748b"
+                          fontSize={10}
+                          tickLine={false}
+                          axisLine={false}
                           width={75}
                           tickFormatter={(value) => value === 0 ? '0' : formatValueShort(value)}
                         />

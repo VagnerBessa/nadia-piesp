@@ -8,6 +8,7 @@ import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 // --- Tipos ---
 export interface PiespRecord {
   ano: string;
+  mes: string;
   empresa: string;
   investidora: string;
   reais_milhoes: number;
@@ -32,6 +33,7 @@ export interface DashboardData {
   totalEmpresas: number;
   totalMunicipios: number;
   porAno: AggItem[];
+  porMes?: AggItem[];
   porSetor: AggItem[];
   porMunicipio: AggItem[];
   porRegiao: AggItem[];
@@ -39,6 +41,12 @@ export interface DashboardData {
   porTipo: AggItem[];
   rmspVsInterior: { rmsp: number; interior: number };
 }
+
+const MES_NAMES: Record<string, string> = {
+  '1': 'Jan', '2': 'Fev', '3': 'Mar', '4': 'Abr',
+  '5': 'Mai', '6': 'Jun', '7': 'Jul', '8': 'Ago',
+  '9': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
+};
 
 // --- Paleta de cores ---
 const COLORS = [
@@ -71,6 +79,7 @@ function parseCSV(): PiespRecord[] {
 
     records.push({
       ano: (cols[1] || '').trim(),
+      mes: (cols[2] || '').trim(),
       empresa: (cols[3] || 'Não informada').trim(),
       investidora: (cols[4] || '').trim(),
       reais_milhoes: valor,
@@ -117,20 +126,26 @@ function formatBilhoes(milhoes: number): string {
   return bi.toFixed(1).replace('.', ',');
 }
 
-// --- Agregação principal ---
-let _cache: DashboardData | null = null;
+// --- Cache de records brutos ---
+let _records: PiespRecord[] | null = null;
+function getRecords(): PiespRecord[] {
+  if (!_records) _records = parseCSV();
+  return _records;
+}
 
-export function getDashboardData(): DashboardData {
-  if (_cache) return _cache;
+// --- Anos disponíveis na base ---
+export function getAvailableYears(): string[] {
+  return Array.from(new Set(getRecords().map(r => r.ano)))
+    .filter(Boolean)
+    .sort();
+}
 
-  const records = parseCSV();
-
-  // Totais gerais
+// --- Agregação de um conjunto de records ---
+function agregarRecords(records: PiespRecord[]): DashboardData {
   const totalMilhoes = records.reduce((acc, r) => acc + r.reais_milhoes, 0);
   const empresasUnicas = new Set(records.map(r => r.empresa));
   const municipiosUnicos = new Set(records.map(r => r.municipio));
 
-  // Agrupamentos
   const byAno = agruparPor(records, 'ano');
   const bySetor = agruparPor(records, 'setor');
   const byMunicipio = agruparPor(records, 'municipio');
@@ -138,28 +153,42 @@ export function getDashboardData(): DashboardData {
   const byEmpresa = agruparPor(records, 'empresa');
   const byTipo = agruparPor(records, 'tipo');
 
-  // RMSP vs Interior
   const rmspTotal = records
     .filter(r => r.regiao.toLowerCase().includes('rm são paulo') || r.regiao.toLowerCase().includes('rm s'))
     .reduce((acc, r) => acc + r.reais_milhoes, 0);
-  const interiorTotal = totalMilhoes - rmspTotal;
 
-  // Por ano: ordenado cronologicamente
   const porAno = Array.from(byAno.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([name, { soma, count }], i) => ({
-      name,
-      value: Math.round(soma * 10) / 10,
-      count,
-      color: COLORS[i % COLORS.length],
+      name, value: Math.round(soma * 10) / 10, count, color: COLORS[i % COLORS.length],
     }));
 
-  _cache = {
+  // Por mês: agrupado por número de mês, exibido com nome abreviado
+  const byMes = new Map<string, { soma: number; count: number }>();
+  for (const r of records) {
+    const mesNum = r.mes.replace(/^0/, ''); // remove zero à esquerda
+    if (!mesNum) continue;
+    const existing = byMes.get(mesNum) || { soma: 0, count: 0 };
+    existing.soma += r.reais_milhoes;
+    existing.count += 1;
+    byMes.set(mesNum, existing);
+  }
+  const porMes = Array.from(byMes.entries())
+    .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+    .map(([mesNum, { soma, count }]) => ({
+      name: MES_NAMES[mesNum] || mesNum,
+      value: Math.round(soma * 10) / 10,
+      count,
+      color: '#f43f5e',
+    }));
+
+  return {
     totalBilhoes: formatBilhoes(totalMilhoes),
     totalProjetos: records.length,
     totalEmpresas: empresasUnicas.size,
     totalMunicipios: municipiosUnicos.size,
     porAno,
+    porMes,
     porSetor: topN(bySetor, 8),
     porMunicipio: topN(byMunicipio, 10),
     porRegiao: topN(byRegiao, 10),
@@ -167,11 +196,27 @@ export function getDashboardData(): DashboardData {
     porTipo: topN(byTipo, 5),
     rmspVsInterior: {
       rmsp: Math.round(rmspTotal * 10) / 10,
-      interior: Math.round(interiorTotal * 10) / 10,
+      interior: Math.round((totalMilhoes - rmspTotal) * 10) / 10,
     },
   };
+}
 
+// --- Agregação principal ---
+let _cache: DashboardData | null = null;
+const _cacheByYear = new Map<string, DashboardData>();
+
+export function getDashboardData(): DashboardData {
+  if (_cache) return _cache;
+  _cache = agregarRecords(getRecords());
   return _cache;
+}
+
+export function getDashboardDataByYear(ano: string): DashboardData {
+  if (_cacheByYear.has(ano)) return _cacheByYear.get(ano)!;
+  const filtered = getRecords().filter(r => r.ano === ano);
+  const result = agregarRecords(filtered);
+  _cacheByYear.set(ano, result);
+  return result;
 }
 
 /**

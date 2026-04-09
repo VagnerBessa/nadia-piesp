@@ -190,6 +190,36 @@ export function detectSkill(userMessage: string): { name: string; label: string;
 }
 
 /**
+ * Retorna a skill pelo nome exato (para seleção manual pelo usuário).
+ */
+export function getSkillByName(name: string): { name: string; label: string; content: string } | null {
+  const skill = SKILLS.find(s => s.name === name);
+  if (!skill) return null;
+  return { name: skill.name, label: skill.label, content: skill.content };
+}
+
+/**
+ * Injeta uma skill escolhida manualmente no system instruction base.
+ * Não faz detecção por palavras-chave — usa o nome diretamente.
+ */
+export function buildSystemInstructionWithSkillByName(
+  baseInstruction: string,
+  skillName: string
+): string {
+  const skill = getSkillByName(skillName);
+  if (!skill) return baseInstruction;
+
+  return `${baseInstruction}
+
+---
+## LENTE ANALÍTICA ATIVADA: ${skill.label.toUpperCase()}
+
+Para esta resposta, analise os dados da PIESP aplicando a perspectiva especializada descrita abaixo. Integre naturalmente essa visão especializada à sua resposta — sem mencionar explicitamente que está usando uma "skill" ou "lente". Apenas demonstre o conhecimento especializado na forma como você interpreta e apresenta os dados.
+
+${skill.content}`;
+}
+
+/**
  * Injeta o conteúdo da skill detectada no system instruction base.
  * Retorna o system instruction enriquecido com a lente especializada.
  */
