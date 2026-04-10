@@ -818,3 +818,146 @@ O error handler do `useChat.ts` tinha dois problemas críticos:
 
 **Ativação:** preencher `OPENROUTER_API_KEY` em `config.ts`. Se vazio, o fallback é ignorado e o comportamento anterior (mensagem de erro) é mantido.
 
+---
+
+## Hermes + Telegram + MCP compatível — 10/abr/2026
+
+### Problema 1: Hermes não conseguia usar o MCP HTTP+SSE legado
+
+O servidor MCP já existente para PIESP rodava em:
+
+- `GET /sse`
+- `POST /messages?sessionId=...`
+- `GET /health`
+
+Esse desenho funciona para clientes legados baseados em `SSEServerTransport`, mas o Hermes v0.8.0, na configuração `mcp_servers.<name>.url`, usa **MCP Streamable HTTP**. Na prática:
+
+- o Hermes conectava
+- negociava protocolo
+- e encerrava a sessão com `Session terminated`
+
+Diagnóstico:
+
+- `hermes mcp test piesp` falhava contra `http://localhost:3456/sse`
+- o processo ativo na porta `3456` era outro projeto em `/Users/vagnerbessa/Documents/projetos/nadia-piesp/mcp-server/dist/index.js`
+- esse processo expunha apenas `SSEServerTransport`, sem endpoint `/mcp`
+
+### Solução 1: criar servidor MCP Streamable HTTP compatível
+
+Foi criado um servidor novo e separado dentro deste repositório:
+
+- `scripts/piesp-mcp-server.mjs`
+
+Ele:
+
+- usa `@modelcontextprotocol/sdk`
+- registra 5 tools:
+  - `consultar_projetos_piesp`
+  - `consultar_anuncios_sem_valor`
+  - `filtrar_para_relatorio`
+  - `get_metadados`
+  - `buscar_empresa`
+- lê diretamente os CSVs da pasta `knowledge_base/`
+- expõe:
+  - `GET /health`
+  - `POST/GET /mcp` via `StreamableHTTPServerTransport`
+
+Escolha importante de implementação:
+
+- modo **stateless** (`sessionIdGenerator: undefined`)
+- `enableJsonResponse: true`
+
+Isso simplifica o uso pelo Hermes e evita depender do fluxo legado `/sse` + `/messages`.
+
+### Problema 2: conflito de porta com o MCP antigo
+
+A porta `3456` já estava ocupada por um servidor antigo em outro diretório do usuário.
+
+Se o novo servidor tentasse subir na mesma porta:
+
+- havia conflito operacional
+- e ficava ambíguo qual servidor o Hermes estava usando
+
+### Solução 2: isolar o servidor compatível na porta 3457
+
+O servidor novo foi publicado como serviço `launchd` do usuário em:
+
+- `/Users/vagnerbessa/Library/LaunchAgents/ai.piesp.mcp.plist`
+
+Configuração final:
+
+- host: `127.0.0.1`
+- porta: `3457`
+- health: `http://127.0.0.1:3457/health`
+- mcp: `http://127.0.0.1:3457/mcp`
+
+Logs:
+
+- `~/.hermes/logs/piesp-mcp.log`
+- `~/.hermes/logs/piesp-mcp.error.log`
+
+Script adicionado em `package.json`:
+
+```json
+"mcp": "node scripts/piesp-mcp-server.mjs"
+```
+
+### Problema 3: Hermes no Telegram falhava por crédito insuficiente no OpenRouter
+
+No bot do Telegram, o erro observado foi:
+
+- `HTTP 402`
+- pedido grande demais para o saldo disponível do OpenRouter
+
+Ou seja: o problema não era Telegram nem MCP; era o provedor principal do Hermes.
+
+### Solução 3: migrar o Hermes para OpenAI Codex
+
+O ambiente Hermes já estava autenticado em `OpenAI Codex`, então o provedor principal foi alterado para:
+
+- provider: `openai-codex`
+- model: `gpt-5.4-mini`
+- api_mode: `codex_responses`
+- base_url: `https://chatgpt.com/backend-api/codex`
+
+Com isso:
+
+- o bot deixou de depender do saldo do OpenRouter
+- o MCP PIESP continuou ativo normalmente
+- o gateway do Telegram voltou a responder sem o erro de crédito
+
+### Configuração final usada pelo Hermes
+
+Em `~/.hermes/config.yaml`:
+
+```yaml
+model:
+  base_url: https://chatgpt.com/backend-api/codex
+  api_mode: codex_responses
+  provider: openai-codex
+  default: gpt-5.4-mini
+
+mcp_servers:
+  piesp:
+    url: http://127.0.0.1:3457/mcp
+    enabled: true
+    connect_timeout: 60
+    timeout: 120
+```
+
+Validação final:
+
+- `hermes mcp test piesp` → conectado com 5 tools descobertas
+- `hermes gateway restart` → gateway voltou online
+- bot do Telegram funcionando via `@Nadia_Seade_bot`
+
+### Observação operacional
+
+O comando `/start` não é um slash command nativo do Hermes. No Telegram, o Hermes responde com:
+
+- `Unknown command /start`
+
+Então o uso normal do bot deve ser:
+
+- mandar uma mensagem comum, por exemplo `Olá Nadia`
+- usar `/sethome` apenas se quiser marcar o chat como home channel
