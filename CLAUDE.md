@@ -467,6 +467,45 @@ npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-gu
 
 ---
 
+## Fallback OpenRouter em todas as views — 10/abr/2026
+
+### Problema
+
+O fallback para OpenRouter implementado em 09/abr estava conectado apenas no `useChat.ts`. As demais views (`ExplorarDadosView`, `PerfilEmpresaView`, `DataLabView`) chamavam `ai.models.generateContent()` diretamente e exibiam mensagem de erro ao receber 503 — sem tentar o fallback.
+
+### Solução: `services/geminiService.ts`
+
+Novo serviço centralizado com a função `generateWithFallback()`:
+
+```ts
+generateWithFallback({ prompt, systemInstruction?, thinkingBudget?, tools? })
+  → { text, groundingChunks?, groundingSupports? }
+```
+
+**Fluxo interno:**
+1. Tenta Gemini direto (`gemini-2.5-flash`)
+2. Se 503 e `OPENROUTER_API_KEY` configurada → tenta OpenRouter (`google/gemini-2.5-flash-preview`)
+3. Se ambos falharem → relança o erro (tratado por cada view)
+
+**Views migradas:**
+- `ExplorarDadosView` — substituiu `ai.models.generateContent()` por `generateWithFallback()`
+- `DataLabView` — as duas chamadas (extração de filtros + geração de dashboard) foram substituídas
+- `PerfilEmpresaView` — substituída; `tools: [{ googleSearch: {} }]` é passado normalmente; no fallback OpenRouter o dossiê é gerado sem citações inline (grounding não disponível fora do Gemini)
+
+**Nota sobre `PerfilEmpresaView` no fallback:** `groundingChunks` e `groundingSupports` são retornados pelo `generateWithFallback` quando disponíveis (Gemini). No fallback OpenRouter, ambos são `undefined` — o dossiê aparece sem badges de citação, mas o texto analítico é preservado.
+
+### Lazy loading de views — 10/abr/2026
+
+`App.tsx` foi refatorado para usar `React.lazy()` + `Suspense` em todas as views. Cada view agora é um chunk JS separado carregado sob demanda.
+
+**Impacto no bundle:**
+- Antes: 5,48 MB em um único arquivo JS
+- Depois: ~350 KB gzip no carregamento inicial; `piespDataService` (CSVs, 4 MB) só é baixado quando o usuário acessa uma view analítica
+
+**Fallback visual:** spinner `rose-500` animado enquanto o chunk carrega (`ViewLoader` em `App.tsx`).
+
+---
+
 ## Resiliência de Infraestrutura — Lições de 08/abr/2026
 
 ### Problema: Erro 503 generalizado na API REST do Gemini
