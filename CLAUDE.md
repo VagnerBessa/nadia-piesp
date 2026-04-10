@@ -484,8 +484,10 @@ generateWithFallback({ prompt, systemInstruction?, thinkingBudget?, tools? })
 
 **Fluxo interno:**
 1. Tenta Gemini direto (`gemini-2.5-flash`)
-2. Se 503 e `OPENROUTER_API_KEY` configurada → tenta OpenRouter (`google/gemini-2.5-flash-preview`)
+2. Se Gemini falhar (qualquer erro) e `OPENROUTER_API_KEY` configurada → tenta OpenRouter (`google/gemini-2.0-flash-001`)
 3. Se ambos falharem → relança o erro (tratado por cada view)
+
+**Modelo de fallback confirmado:** `google/gemini-2.0-flash-001` (validado em 10/abr/2026). IDs anteriores tentados e rejeitados pelo OpenRouter: `google/gemini-2.5-flash-preview`, `google/gemini-2.5-flash-preview-05-20`. O fallback dispara em **qualquer** falha do Gemini (não apenas 503), garantindo maior cobertura.
 
 **Views migradas:**
 - `ExplorarDadosView` — substituiu `ai.models.generateContent()` por `generateWithFallback()`

@@ -15,7 +15,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY, OPENROUTER_API_KEY } from '../config';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const FALLBACK_MODEL = 'google/gemini-2.5-flash-preview';
+const FALLBACK_MODEL = 'google/gemini-2.0-flash-001';
 
 export interface GenerateOptions {
   prompt: string;
@@ -30,9 +30,29 @@ export interface GenerateResult {
   groundingSupports?: any[];
 }
 
-function is503(e: any): boolean {
-  const msg = (e?.message || JSON.stringify(e) || '').toLowerCase();
-  return msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand');
+function isRetryable(e: any): boolean {
+  // Inspeciona todas as propriedades possíveis onde o SDK pode guardar o erro
+  const status = e?.status ?? e?.statusCode ?? e?.code ?? 0;
+  if (status === 429 || status === 500 || status === 503) return true;
+
+  // Serializa tudo que sobrou para busca textual
+  let msg = '';
+  try { msg = (e?.message || '') + ' ' + JSON.stringify(e); } catch { msg = String(e); }
+  msg = msg.toLowerCase();
+
+  return (
+    msg.includes('503') ||
+    msg.includes('unavailable') ||
+    msg.includes('overloaded') ||
+    msg.includes('high demand') ||
+    msg.includes('429') ||
+    msg.includes('quota') ||
+    msg.includes('rate limit') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('500') ||
+    msg.includes('internal') ||
+    msg.includes('too many requests')
+  );
 }
 
 async function tryOpenRouter(options: GenerateOptions): Promise<GenerateResult> {
@@ -87,8 +107,7 @@ export async function generateWithFallback(options: GenerateOptions): Promise<Ge
     };
 
   } catch (e: any) {
-    if (is503(e) && OPENROUTER_API_KEY) {
-      console.warn('🔀 Gemini 503 — ativando fallback OpenRouter (texto)...');
+    if (OPENROUTER_API_KEY) {
       try {
         return await tryOpenRouter(options);
       } catch (orError: any) {
