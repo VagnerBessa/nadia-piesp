@@ -351,6 +351,78 @@ npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-gu
 
 ---
 
+## MCP Server (`mcp-server/`)
+
+### Abril/2026 — Branch `claude/review-ag-ui-I7D3s`
+
+Servidor MCP (Model Context Protocol) independente que expõe os dados da PIESP para qualquer cliente compatível — Claude Desktop, Hermes Agent, Cursor, Windsurf, etc.
+
+**Motivação:** A arquitetura web (browser + Gemini) não tem backend, o que impede outros agentes de consultar os dados da PIESP. O MCP server resolve isso sem alterar nada da web app existente.
+
+**Localização:** `mcp-server/` — pacote Node.js independente dentro do mesmo repositório.
+
+```
+mcp-server/
+├── package.json         ← @modelcontextprotocol/sdk + express
+├── tsconfig.json        ← NodeNext ESM
+└── src/
+    ├── piespService.ts  ← porta do piespDataService.ts (fs.readFileSync em vez de ?raw)
+    └── index.ts         ← servidor MCP com 5 tools
+```
+
+**Tools expostas:**
+
+| Tool | Equivalente no Gemini | Descrição |
+|---|---|---|
+| `consultar_projetos_piesp` | tool 1 `piespTools` | Top 10 projetos por valor com filtros livres |
+| `consultar_anuncios_sem_valor` | tool 2 `piespTools` | Anúncios sem valor declarado |
+| `filtrar_para_relatorio` | `filtrarParaRelatorio()` | Agregações completas por setor/região/ano |
+| `get_metadados` | `getMetadados()` | Valores únicos disponíveis na base |
+| `buscar_empresa` | `buscarEmpresaNoPiesp()` | Todos os projetos de uma empresa |
+
+**Transporte dual:**
+
+| Modo | Como ativar | Para quem |
+|---|---|---|
+| stdio (padrão) | `node dist/index.js` | Claude Desktop, Cursor, IDEs |
+| HTTP + SSE | `PORT=3456 node dist/index.js` | Hermes Agent, clientes de rede |
+
+Em modo HTTP: `GET /sse` abre stream; `POST /messages?sessionId=X` envia mensagens; `GET /health` status.
+
+**Instalação e uso:**
+```bash
+cd mcp-server
+npm install
+npm run build
+npm start           # stdio
+# ou
+npm run start:http  # HTTP na porta 3456
+```
+
+**Para Claude Desktop** — adicionar em `~/.claude/claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "piesp": {
+      "command": "node",
+      "args": ["/caminho/para/nadia-piesp/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+**Para Hermes Agent** — adicionar URL do SSE nas configurações de MCP do Hermes:
+```
+http://localhost:3456/sse
+```
+
+**Decisão arquitetural — por que não alterar a web app:**
+A web app usa Vite `?raw` para importar os CSVs diretamente no bundle do browser. O MCP server usa `fs.readFileSync` para ler os mesmos arquivos do filesystem. A lógica de filtro foi portada sem mudanças de comportamento. Os dois sistemas são independentes e leem da mesma fonte (`knowledge_base/`).
+
+**Nota:** Os CSVs estão em `.gitignore` (arquivos grandes). Para usar o MCP server, copiar `piesp_confirmados_com_valor.csv` e `piesp_confirmados_sem_valor.csv` para `knowledge_base/`. O server avisa no stderr se os arquivos não forem encontrados e continua rodando (retorna resultados vazios).
+
+---
+
 ## Convenções
 
 - Novas views: prop `onNavigateHome: () => void`, header interno próprio, botão "Voltar"
