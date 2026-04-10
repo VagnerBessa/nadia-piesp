@@ -269,6 +269,110 @@ O `buildDashboardPrompt` detecta 5 tipos de análise e aplica layouts diferentes
 
 ---
 
+## MCP Server PIESP — 10/abr/2026
+
+Servidor MCP que expõe os dados da PIESP diretamente no Claude Desktop (e qualquer cliente MCP compatível), sem precisar abrir a Nadia.
+
+### Localização
+
+```
+~/Documents/projetos/nadia-piesp/mcp-server/
+  src/index.ts        — servidor MCP
+  src/piespService.ts — camada de dados (porta do piespDataService.ts)
+  dist/               — compilado (usado pelo Claude Desktop)
+  knowledge_base/     — symlink → iCloud/Seade/Piesp/Nadia-PIESP/knowledge_base/
+```
+
+O symlink garante que qualquer atualização nos CSVs do iCloud é refletida automaticamente.
+
+### Registro no Claude Desktop
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "piesp": {
+      "command": "node",
+      "args": ["/Users/vagnerbessa/Documents/projetos/nadia-piesp/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### 5 tools disponíveis
+
+| Tool | O que faz |
+|---|---|
+| `consultar_projetos_piesp` | Busca com valor — filtra por ano, município, região, termo |
+| `consultar_anuncios_sem_valor` | Anúncios sem cifra |
+| `filtrar_para_relatorio` | Agregações completas por setor, região, tipo e ano |
+| `get_metadados` | Lista setores, regiões, anos e tipos válidos na base |
+| `buscar_empresa` | Dossiê de empresa com totais por ano e município |
+
+### Diferenças em relação ao piespDataService.ts da Nadia
+
+- Leitura dos CSVs via `fs.readFileSync` (em vez de `import ?raw` do Vite)
+- Suporte a modo HTTP+SSE além de stdio (ativar com `PORT=3456 node dist/index.js`)
+- Filtro por `regiao` com `normalizarRegiao()` idêntico ao da Nadia
+
+### Como usar
+
+Basta fazer perguntas normais no Claude Desktop — as tools são acionadas automaticamente. Para confirmar que o servidor está ativo: **Settings → Developer** — o servidor `piesp` deve aparecer com status verde.
+
+### Manutenção
+
+Se os CSVs forem atualizados, não é preciso fazer nada — o symlink garante acesso imediato.
+Se o código do `piespService.ts` for alterado, recompilar e reiniciar o serviço:
+```bash
+cd ~/Documents/projetos/nadia-piesp/mcp-server && npm run build
+launchctl unload ~/Library/LaunchAgents/com.seade.nadia-piesp-mcp.plist
+launchctl load ~/Library/LaunchAgents/com.seade.nadia-piesp-mcp.plist
+```
+
+### Modo HTTP+SSE (Hermes Agent e outros clientes de rede)
+
+O servidor suporta dois modos de transporte:
+
+| Modo | Como ativar | Usado por |
+|---|---|---|
+| stdio | padrão (`node dist/index.js`) | Claude Desktop |
+| HTTP+SSE | `PORT=3456 node dist/index.js` | Hermes Agent, clientes de rede |
+
+**Para o Hermes**, conectar em: `http://localhost:3456/sse`
+
+Endpoints disponíveis no modo HTTP:
+- `http://localhost:3456/sse` — conexão SSE (cliente conecta aqui)
+- `http://localhost:3456/messages?sessionId=...` — mensagens MCP
+- `http://localhost:3456/health` — health check
+
+### launchd — servidor HTTP sempre ativo (10/abr/2026)
+
+O servidor HTTP (porta 3456) roda como serviço de sistema via `launchd`, iniciando automaticamente com o Mac.
+
+**Arquivo plist:** `~/Library/LaunchAgents/com.seade.nadia-piesp-mcp.plist`
+
+**Logs:**
+```bash
+tail -f ~/Documents/projetos/nadia-piesp/mcp-server/logs/server.log
+tail -f ~/Documents/projetos/nadia-piesp/mcp-server/logs/server.error.log
+```
+
+**Comandos:**
+```bash
+# Status
+launchctl list | grep nadia-piesp
+
+# Parar
+launchctl unload ~/Library/LaunchAgents/com.seade.nadia-piesp-mcp.plist
+
+# Iniciar
+launchctl load ~/Library/LaunchAgents/com.seade.nadia-piesp-mcp.plist
+```
+
+**Nota:** O Claude Desktop usa o servidor em modo stdio (entrada direta no config.json), independente do launchd. O launchd serve exclusivamente para o modo HTTP (Hermes e outros clientes de rede).
+
+---
+
 ## Ferramentas de Desenvolvimento
 
 ### skill-creator
