@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
-import { GEMINI_API_KEY } from '../config';
+import { generateWithFallback } from '../services/geminiService';
 import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
@@ -430,21 +429,16 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
       // 2. Monta o prompt combinado
       const prompt = buildDossiePrompt(empresa, piespData);
 
-      // 3. Chama Gemini com Google Search habilitado
-      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          tools: [{ googleSearch: {} }],
-          thinkingConfig: { thinkingBudget: 0 },
-        },
+      // 3. Chama Gemini com Google Search habilitado (fallback OpenRouter sem fontes se 503)
+      const response = await generateWithFallback({
+        prompt,
+        tools: [{ googleSearch: {} }],
+        thinkingBudget: 0,
       });
 
-      // 4. Extrai fontes e citações do grounding metadata
-      const groundingMeta = response.candidates?.[0]?.groundingMetadata;
-      const groundingChunks = groundingMeta?.groundingChunks ?? [];
-      const groundingSupports = groundingMeta?.groundingSupports ?? [];
+      // 4. Extrai fontes e citações do grounding metadata (ausentes no fallback OpenRouter)
+      const groundingChunks = response.groundingChunks ?? [];
+      const groundingSupports = response.groundingSupports ?? [];
 
       const extractedSources: SourceItem[] = [];
       const indexMap: Record<number, number> = {};

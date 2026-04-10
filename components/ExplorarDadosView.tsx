@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
-import { GEMINI_API_KEY } from '../config';
+import { generateWithFallback } from '../services/geminiService';
 import { getMetadados, filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
@@ -167,13 +166,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
       const prompt = buildPrompt(filtro, resumo);
 
-      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { thinkingConfig: { thinkingBudget: 0 } },
-      });
-
+      const response = await generateWithFallback({ prompt, thinkingBudget: 0 });
       setRelatorio(response.text || 'Não foi possível gerar o relatório.');
     } catch (e: any) {
       setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente novamente.');

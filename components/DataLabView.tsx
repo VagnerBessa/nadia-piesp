@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI } from '@google/genai';
-import { GEMINI_API_KEY } from '../config';
+import { generateWithFallback } from '../services/geminiService';
 import { filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
 import { DynamicDashboard, DashboardData, parseDashboard } from './DynamicDashboard';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
@@ -198,14 +197,11 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
     setInputValue('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
       // ── Passo 1: extrai filtros da linguagem natural ──
       setLoadingStep('Interpretando sua solicitação...');
-      const filterResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: buildExtractFiltersPrompt(query) }] }],
-        config: { thinkingConfig: { thinkingBudget: 0 } },
+      const filterResponse = await generateWithFallback({
+        prompt: buildExtractFiltersPrompt(query),
+        thinkingBudget: 0,
       });
 
       let filtros: FiltroRelatorio = {};
@@ -229,10 +225,9 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
 
       // ── Passo 3: gera o json-dashboard ──
       setLoadingStep(`Analisando ${resumo.total} projetos (R$ ${(resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi)...`);
-      const dashResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: buildDashboardPrompt(query, resumo) }] }],
-        config: { thinkingConfig: { thinkingBudget: 0 } },
+      const dashResponse = await generateWithFallback({
+        prompt: buildDashboardPrompt(query, resumo),
+        thinkingBudget: 0,
       });
 
       const parsed = parseDashboard(dashResponse.text || '');
