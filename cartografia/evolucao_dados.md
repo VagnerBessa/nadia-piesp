@@ -205,7 +205,7 @@ Nadia / Hermes → MCP Server → SQL Server (porta 1433) ou PostgreSQL (porta 5
 | **Limite de dados** | ~15 MB | Gigabytes | Ilimitado | Ilimitado | Ilimitado |
 | **Atualização do dado** | Redeploy | Troca arquivo | Atualiza no servidor | DML no banco | DML no banco |
 | **Dado compartilhado** | Não | Não | Sim | Sim | Sim |
-| **Hermes conecta** | Não | Sim (MCP local) | Sim | Sim (via MCP) | Sim |
+| **Hermes conecta** | Sim (MCP já existe) | Sim | Sim | Sim | Sim |
 | **Queries complexas** | Limitado (JS) | SQL completo | SQL completo | SQL completo | SQL completo |
 | **Backup/DR** | Manual | Manual | Manual | Nativo | Nativo |
 | **Controle de acesso** | Nenhum | Nenhum | Autenticação básica | Por schema/usuário | Por schema/usuário |
@@ -217,14 +217,20 @@ Nadia / Hermes → MCP Server → SQL Server (porta 1433) ou PostgreSQL (porta 5
 
 ## Trajetória recomendada para o Seade
 
+O Hermes é um eixo paralelo — não é uma fase futura. Pode ser introduzido hoje, na Fase 1, porque o MCP server já existe e já lê os CSVs. A evolução do armazenamento é independente da presença do Hermes.
+
 ```
-Agora          Quando 2ª Nadia      Quando TI embarcar     Longo prazo
-   │                  │                    │                    │
-   ▼                  ▼                    ▼                    ▼
+                    HERMES AGENT (presente desde agora, cresce junto)
+                    ────────────────────────────────────────────────▶
+
+Armazenamento:
 CSV local  →  DuckDB + MCP local  →  MCP centralizado  →  SQL Server/PG
-                                      + DuckDB              + MCP unificado
+   │                  │                    │                    │
+  Agora         2ª Nadia aparece     TI do Seade embarca    Longo prazo
 ```
 
-**Não pular etapas prematuramente.** Cada fase entrega valor independente. A Fase 2 (DuckDB) já resolve o problema de performance sem nenhuma dependência nova. A Fase 3 (MCP centralizado) só vale quando houver pelo menos dois sistemas consumindo o mesmo dado. A Fase 4 (SQL Server) só vale quando a TI do Seade precisar gerenciar o dado como ativo corporativo.
+**O MCP server é o ponto fixo.** O que muda entre as fases é apenas o que está atrás dele. O Hermes, as Nadias e qualquer outro sistema futuro sempre veem a mesma interface.
+
+**Não pular etapas prematuramente.** A Fase 2 (DuckDB) resolve performance sem dependência nova. A Fase 3 (MCP centralizado) vale quando dois ou mais sistemas consumirem o mesmo dado. A Fase 4 (SQL Server) vale quando a TI do Seade precisar gerenciar o dado como ativo corporativo.
 
 O risco de pular para Fase 4 diretamente é criar dependência de infraestrutura antes de validar os casos de uso. O risco de ficar muito tempo na Fase 1 é acumular dívida técnica quando a segunda Nadia chegar.
