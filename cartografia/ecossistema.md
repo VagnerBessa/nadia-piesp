@@ -1,87 +1,106 @@
-# Ecossistema Nadia + Hermes
+# Ecossistema Nadia — Arquitetura Técnica
 
 **Data:** Abril de 2026
-**Contexto:** Discussão arquitetural sobre como expandir o projeto Nadia para múltiplas bases de dados do Seade, integrando o Hermes Agent como camada de inteligência persistente.
+**Contexto:** Visão técnica do ecossistema de IA do Seade. Para a discussão sobre marca e posicionamento organizacional, ver `marca_nadia.md`.
 
 ---
 
-## A arquitetura em três camadas
+## Modelo conceitual: Nadia como sistema de canais
+
+Nadia não é uma aplicação — é um sistema com três canais de acesso, cada um com motor e propósito diferentes.
 
 ```
+┌──────────────────────────────────────────────────────────┐
+│                        NADIA                             │
+│                Sistema de IA do Seade                    │
+├──────────────┬─────────────────┬────────────────────────-┤
+│  Nadia Web   │  Nadia Mobile   │       Nadia API          │
+│              │                 │                          │
+│  Browser     │  Telegram       │  MCP servers             │
+│  Gemini 2.5  │  Slack          │  Protocolo aberto        │
+│  Dashboards  │  WhatsApp       │  Qualquer consumidor     │
+│  Voz         │                 │                          │
+│              │  Motor: Hermes  │                          │
+└──────────────┴─────────────────┴──────────────────────────┘
+                        │               │
+              ┌─────────┴───────────────┘
+              ▼
 ┌─────────────────────────────────────────────────────┐
-│              CAMADA DE APRESENTAÇÃO                 │
+│               CAMADA MCP (dados do Seade)           │
 │                                                     │
-│  Nadia-PIESP    Nadia-Emprego    Nadia-Municipal    │
-│  (web, rich UI) (web, rich UI)  (web, rich UI)     │
-│  Gemini Flash   Gemini Flash    Gemini Flash        │
-└────────────┬────────────┬────────────┬─────────────┘
-             │            │            │
-┌────────────▼────────────▼────────────▼─────────────┐
-│                  CAMADA MCP                         │
-│                                                     │
-│   piesp-mcp      emprego-mcp     municipal-mcp      │
-│   (pronto ✓)     (a construir)   (a construir)      │
-└────────────┬────────────┬────────────┬─────────────┘
-             │            │            │
-             └────────────▼────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────┐
-│                    HERMES AGENT                     │
-│                                                     │
-│  Conectado a todos os MCP servers                  │
-│  Acessível via Telegram / Slack / WhatsApp          │
-│  Memória persistente + skills que crescem           │
-│  Respostas cruzadas entre domínios                 │
+│  seade-economia-mcp    seade-trabalho-mcp           │
+│  seade-indices-mcp     seade-demografia-mcp         │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
+## O que cada canal entrega
+
+**Nadia Web** — profundidade analítica, interface rica
+- Dashboards generativos (Data Lab), relatórios, gráficos Recharts
+- Voz via Gemini Live API
+- Chat com function calling determinístico
+- Sem memória entre sessões — cada análise começa do zero
+
+**Nadia Mobile (Hermes)** — abrangência e continuidade
+- Acesso via Telegram, Slack, WhatsApp — qualquer dispositivo
+- Memória persistente: lembra conversas e padrões de cada analista
+- Loop de aprendizagem: cria skills a partir de boas respostas, melhora com o uso
+- Respostas cruzadas entre domínios numa única conversa
+
+**Nadia API (MCP servers)** — infraestrutura agnóstica
+- Dados do Seade expostos via Model Context Protocol
+- Consumíveis por qualquer cliente: Claude Desktop, Cursor, scripts, Power BI
+- Não são "da Nadia" — são do Seade, e sobrevivem a qualquer troca de tecnologia de IA
+
+---
+
 ## Princípio de design
 
-**Nadias = profundidade.** Cada Nadia é especializada num domínio, roda no browser, oferece UI rica (gráficos, dashboards, voz). Serve o analista que quer mergulhar num tema.
+> **Dado vive no domínio que o produz. Perfil municipal é sempre síntese da inteligência. A marca (Nadia) é mais durável que a tecnologia que a sustenta.**
 
-**Hermes = abrangência e continuidade.** Acessa todos os MCP servers simultaneamente, lembra de conversas anteriores, aprende padrões de uso. Serve o gestor que quer respostas rápidas no celular ou o pesquisador que precisa cruzar domínios.
-
-**MCP servers = fonte de verdade.** Cada base de dados tem seu MCP server. Tanto as Nadias (via function calling do Gemini) quanto o Hermes (via protocolo MCP) leem da mesma fonte. Melhorias na camada de dados refletem nos dois sistemas.
+Cada indicador — PIB, IDH, IPRS, emprego — pertence ao domínio que o produz e ao seu MCP server correspondente. Não existe "base municipal": quando um analista pergunta sobre Campinas, o Hermes consulta múltiplos MCPs e sintetiza a resposta. O dado não é duplicado; a inteligência faz a síntese.
 
 ---
 
-## O que cada camada serve
+## Estrutura dos MCP servers
 
-| Perfil | Canal | Caso de uso |
-|---|---|---|
-| Analista do Seade | Nadia web app | Análise profunda com gráficos, dashboards, relatórios |
-| Gestor / Secretaria | Hermes no Telegram | Pergunta rápida no celular |
-| Pesquisador | Hermes | Correlacionar PIESP + emprego + demografia |
-| Outro sistema | MCP direto | Integração programática |
+Um MCP server por domínio temático — não por CSV, não por tabela:
 
----
+| Servidor | Domínio | Dono | Ciclo |
+|---|---|---|---|
+| `seade-economia-mcp` | PIESP, PIB, produção industrial | Contas Regionais + PIESP | Anual/Trimestral |
+| `seade-trabalho-mcp` | Emprego formal, desemprego, salários | Mercado de Trabalho | Mensal |
+| `seade-indices-mcp` | IPRS, IDH, IVJ | Índices e Indicadores | Variável |
+| `seade-demografia-mcp` | População, migrações, domicílios | Estatísticas Populacionais | Anual/Decenal |
 
-## O que o Hermes acumula que as Nadias nunca terão
-
-As Nadias são stateless — cada sessão começa do zero. O Hermes constrói conhecimento composto:
-
-- Padrões de interesse por analista ("João sempre pergunta sobre Campinas e Sorocaba")
-- Correlações entre domínios descobertas em sessões anteriores
-- Skills procedurais criadas automaticamente a partir de boas respostas
-- Histórico de análises para auditoria e referência futura
+O critério de agrupamento é quem produz e quem atualiza — times diferentes, ciclos diferentes, propriedade diferente.
 
 ---
 
-## Por que Hermes e não OpenClaw
+## O Hermes é permanente, não uma fase futura
 
-OpenClaw (247k stars, criado em nov/2025) é fundamentalmente um **roteador de mensagens** — conecta plataformas de chat a modelos de IA, mas não aprende, não persiste conhecimento entre sessões.
+O Hermes conecta via protocolo MCP, não via tecnologia de armazenamento. O que está atrás do MCP server — CSV, SQLite, SQL Server — é transparente para ele. Pode ser conectado hoje, com os dados atuais em CSV.
 
-Hermes Agent (NousResearch, v0.8.0 em abr/2026) é um **agente adaptativo com loop de aprendizagem embutido**. Cria skills a partir da experiência, mantém memória FTS5 entre sessões, suporta MCP nativo.
+```
+Fase 1: CSV    →  MCP server lê CSV         ← Hermes conectado ✓
+Fase 2: DuckDB →  MCP server lê .db         ← Hermes conectado ✓ (mesma URL)
+Fase 3: Remoto →  MCP server centralizado   ← Hermes conectado ✓ (mesma URL)
+Fase 4: SQL    →  MCP server lê SQL Server  ← Hermes conectado ✓ (mesma URL)
+```
 
-Critério decisivo para o Seade: a Cisco encontrou uma skill maliciosa no repositório do OpenClaw que fazia exfiltração de dados. Para uma fundação pública trabalhando com dados do estado de SP, esse risco de governança é inaceitável.
+A evolução do armazenamento não afeta o Hermes. A interface MCP é o ponto fixo.
 
 ---
 
-## Estado atual
+## Estado atual de implementação
 
-- ✅ `mcp-server/` implementado — expõe 5 tools da PIESP via stdio e HTTP/SSE
-- ⬜ Deploy do Hermes num servidor do Seade
-- ⬜ Conexão Hermes ↔ piesp-mcp-server via SSE
-- ⬜ Testes de queries cruzadas via Telegram
+| Canal | Status |
+|---|---|
+| Nadia Web (PIESP) | ✅ Implementado — chat, voz, dashboards, Data Lab |
+| MCP server PIESP | ✅ Implementado — stdio + HTTP/SSE, 5 tools |
+| Nadia Mobile (Hermes) | ⬜ Aguarda deploy em servidor do Seade |
+| seade-trabalho-mcp | ⬜ A construir |
+| seade-indices-mcp | ⬜ A construir |
+| seade-demografia-mcp | ⬜ A construir |
