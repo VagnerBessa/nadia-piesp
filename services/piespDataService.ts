@@ -268,6 +268,26 @@ export function getMetadados(): { setores: string[]; regioes: string[]; anos: st
   };
 }
 
+/** DEBUG — remover após diagnóstico */
+export function debugRegioes(): void {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const amostra = new Map<string, string[]>(); // regiao → [municipios]
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    if (!linhaValida(cols)) continue;
+    const reg = (cols[8] || '').trim();
+    const mun = (cols[7] || '').trim();
+    if (!amostra.has(reg)) amostra.set(reg, []);
+    const lista = amostra.get(reg)!;
+    if (lista.length < 3) lista.push(mun);
+  }
+  console.log('=== REGIOES NO CSV (col 8) ===');
+  for (const [r, ms] of amostra.entries()) {
+    console.log(`"${r}" → ex: ${ms.join(', ')}`);
+  }
+  console.log('==============================');
+}
+
 export function getUniqueEmpresas(): string[] {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
   const empresas = new Set<string>();
