@@ -1,10 +1,26 @@
 import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
-// Valores canônicos — usados para filtrar linhas corrompidas do CSV
+// Valores canônicos — para display e ferramentas
 const SETORES_VALIDOS = new Set([
   'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
 ]);
+
+/**
+ * Identifica o setor canônico a partir de uma string, tolerando encoding corrompido.
+ * Funciona tanto com CSV UTF-8 correto quanto com Latin-1 lido como UTF-8
+ * (onde "Comércio" vira "Com?rcio", "Indústria" vira "Ind?stria", etc.).
+ * Usa padrões de substrings ASCII que sobrevivem a ambos os encodings.
+ */
+function canonicalSetor(s: string): string | null {
+  const l = s.toLowerCase();
+  if (l.includes('infraestrutura'))            return 'Infraestrutura';
+  if (l.includes('ind') && l.includes('stria')) return 'Indústria';
+  if (l.includes('com') && l.includes('rcio'))  return 'Comércio';
+  if (l.includes('servi'))                      return 'Serviços';
+  if (l.includes('agropec'))                    return 'Agropecuária';
+  return null;
+}
 
 const TIPOS_VALIDOS = new Set([
   'Implantação', 'Ampliação', 'Modernização', 'Ampliação/Modernização',
@@ -170,7 +186,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
     const regiaoLinha = colunas[8]?.trim()?.toLowerCase() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
-    const setorLinha = colunas[10] || 'Geral';
+    const setorLinha = canonicalSetor(colunas[10] || '') || colunas[10] || 'Geral';
     const descricaoLinha = colunas[9] || '';
 
     let match = true;
@@ -187,7 +203,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       match = false;
     }
 
-    if (filtro.setor && setorLinha.toLowerCase() !== filtro.setor.toLowerCase()) {
+    if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) {
       match = false;
     }
 
@@ -264,7 +280,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 
     const anoLinha = (cols[1] || '').trim();
     const empresaLinha = (cols[3] || 'Desconhecida').trim();
-    const setorLinha = (cols[10] || 'Outros').trim();
+    const setorLinha = canonicalSetor((cols[10] || '').trim()) || (cols[10] || 'Outros').trim();
     const municipioLinha = (cols[7] || 'Não informado').trim();
     const regiaoLinha = (cols[8] || 'Não informada').trim();
     const tipoLinha = (cols[14] || '').trim();
@@ -272,7 +288,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
     const valorStr = (cols[5] || '0').trim();
 
     if (filtro.ano && anoLinha !== filtro.ano) continue;
-    if (filtro.setor && setorLinha !== filtro.setor) continue;
+    if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) continue;
     if (filtro.regiao && !regiaoMatch(regiaoLinha, municipioLinha, filtro.regiao)) continue;
     if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
     if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
@@ -349,7 +365,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 function linhaValida(cols: string[]): boolean {
   if (cols.length < 15) return false;
   const setor = (cols[10] || '').trim();
-  return SETORES_VALIDOS.has(setor);
+  return canonicalSetor(setor) !== null;
 }
 
 export function getMetadados(): { setores: string[]; regioes: string[]; anos: string[]; tipos: string[] } {
@@ -368,7 +384,8 @@ export function getMetadados(): { setores: string[]; regioes: string[]; anos: st
     const ano = (cols[1] || '').trim();
     const tipo = (cols[14] || '').trim();
 
-    if (setor && SETORES_VALIDOS.has(setor)) setores.add(setor);
+    const setorCanonical = canonicalSetor(setor);
+    if (setorCanonical) setores.add(setorCanonical);
     if (regiao) regioes.add(regiao);
     if (ano && /^\d{4}$/.test(ano)) anos.add(ano);
     if (tipo && TIPOS_VALIDOS.has(tipo)) tipos.add(tipo);
@@ -491,7 +508,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
       match = false;
     }
 
-    if (filtro.setor && setorLinha.toLowerCase() !== filtro.setor.toLowerCase()) {
+    if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) {
       match = false;
     }
 
