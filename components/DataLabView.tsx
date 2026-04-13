@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY } from '../config';
-import { filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
+import { filtrarParaRelatorio, getMetadados, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
 import { DynamicDashboard, DashboardData, parseDashboard } from './DynamicDashboard';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
@@ -16,7 +16,14 @@ interface DataLabViewProps {
 // Prompts
 // ───────────────────────────────────────────────
 
+// Carregado uma vez — metadados não mudam durante a sessão
+const _metadadosDataLab = getMetadados();
+
 function buildExtractFiltersPrompt(query: string): string {
+  const regioesList = _metadadosDataLab.regioes.length > 0
+    ? _metadadosDataLab.regioes.join(', ')
+    : 'Região Metropolitana de São Paulo, Região Administrativa de Campinas, Região Administrativa de Sorocaba';
+
   return `Você é um extrator de filtros para a base de dados PIESP (investimentos no Estado de SP).
 
 O usuário fez a seguinte solicitação de análise:
@@ -24,12 +31,14 @@ O usuário fez a seguinte solicitação de análise:
 
 Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto adicional:
 {
-  "municipio": "nome do município se mencionado, senão omita",
+  "municipio": "nome do município específico se mencionado, senão omita",
   "setor": "um de: Agropecuária, Comércio, Indústria, Infraestrutura, Serviços — apenas se mencionado",
-  "regiao": "nome da região administrativa de SP se mencionada, senão omita",
+  "regiao": "nome EXATO da região, copiado da lista abaixo — apenas se o usuário mencionar uma região, senão omita",
   "ano": "ano com 4 dígitos se mencionado, senão omita",
   "termo_busca": "palavra-chave temática (ex: 'energia', 'automóvel', 'data center') se a análise for sobre tema específico, senão omita"
 }
+
+Regiões válidas na base (usar o nome exato): ${regioesList}
 
 Omita campos não mencionados. Retorne apenas o JSON.`;
 }

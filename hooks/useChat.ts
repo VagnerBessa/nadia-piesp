@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { consultarPiespData, consultarAnunciosSemValor, getMetadados } from '../services/piespDataService';
 import { buildSystemInstructionWithSkill, detectSkill } from '../services/skillDetector';
 
 export interface Source {
@@ -30,8 +30,16 @@ const initialMessage: Message = {
     text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
 };
 
+// Carregado uma vez — os metadados não mudam durante a sessão
+const _metadados = getMetadados();
+
 // Ferramentas PIESP: function calling para dados estruturados
 // (não pode ser combinado com googleSearch na mesma chamada)
+// Inclui os valores reais de regiões para que o Gemini não precise adivinhar.
+const regiaoDesc = _metadados.regioes.length > 0
+  ? `Região administrativa do Estado de SP. Valores válidos: ${_metadados.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
+  : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+
 const piespTools = [
   {
     functionDeclarations: [
@@ -43,7 +51,7 @@ const piespTools = [
           properties: {
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-            regiao: { type: Type.STRING, description: 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo", "Região Administrativa de Campinas". Usar quando o usuário perguntar por região, não por município.' },
+            regiao: { type: Type.STRING, description: regiaoDesc },
             termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
           }
         }
