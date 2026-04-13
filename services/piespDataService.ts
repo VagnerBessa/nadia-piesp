@@ -152,6 +152,7 @@ export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
   regiao?: string;
+  setor?: string;
   termo_busca?: string;
 }
 
@@ -183,6 +184,10 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     }
 
     if (filtro.regiao && !regiaoMatch(regiaoLinha, municipioLinha, filtro.regiao)) {
+      match = false;
+    }
+
+    if (filtro.setor && setorLinha.toLowerCase() !== filtro.setor.toLowerCase()) {
       match = false;
     }
 
@@ -483,6 +488,10 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     }
 
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
+      match = false;
+    }
+
+    if (filtro.setor && setorLinha.toLowerCase() !== filtro.setor.toLowerCase()) {
       match = false;
     }
 

@@ -52,7 +52,8 @@ const piespTools = [
             ano: { type: Type.STRING, description: 'Ano específico, ex: "2026". OMITA para consultas sobre períodos, tendências ou múltiplos anos — sem este filtro a ferramenta retorna todos os anos disponíveis.' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
+            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Use APENAS estes valores — não invente variações.' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade"). NÃO usar para setores — use o parâmetro setor.' }
           }
         }
       },
@@ -65,7 +66,8 @@ const piespTools = [
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
             regiao: { type: Type.STRING, description: regiaoDesc },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento.' }
+            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento. NÃO usar para setores.' }
           }
         }
       }
@@ -82,11 +84,11 @@ const searchTools = [
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
   if (nome === 'consultar_projetos_piesp') {
-    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, termo_busca: args.termo_busca });
+    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, termo_busca: args.termo_busca });
+    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   return { error: 'Ferramenta não reconhecida' };
