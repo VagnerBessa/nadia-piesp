@@ -92,12 +92,28 @@ function executarFerramenta(nome: string, args: any): any {
   }
   console.log(`🔧 TOOL CALL: ${nome}`, JSON.stringify(args));
   if (nome === 'consultar_projetos_piesp') {
-    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    let resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
+    // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
+    if (resultados.total === 0 && args.ano) {
+      const semAno = consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.total > 0) {
+        console.log(`⚠️ Retry sem ano: ${semAno.total} resultados`);
+        resultados = semAno;
+      }
+    }
     console.log(`📊 TOOL RESULT: total=${resultados.total}`);
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    let resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    if (resultados.total === 0 && args.ano) {
+      const semAno = consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.total > 0) {
+        console.log(`⚠️ Retry sem ano: ${semAno.total} resultados`);
+        resultados = semAno;
+      }
+    }
     console.log(`📊 TOOL RESULT: total=${resultados.total}`);
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
