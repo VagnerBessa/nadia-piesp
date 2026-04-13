@@ -160,7 +160,9 @@ export const useChat = () => {
       });
 
       // Loop de Function Calling: executa ferramentas até o modelo retornar texto final
-      let maxIterations = 3; // Segurança contra loop infinito
+      // Máx 2: suficiente para chamar as duas bases (projetos + sem_valor) sem permitir
+      // iteração ano-a-ano (que gera 4+ chamadas quando o modelo filtra por período)
+      let maxIterations = 2;
       while (maxIterations > 0) {
         const candidate = response.candidates?.[0];
         const parts = candidate?.content?.parts;
