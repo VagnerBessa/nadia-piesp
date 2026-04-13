@@ -1,13 +1,6 @@
 import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
-// DEBUG ENCODING — remove após diagnóstico
-const _primeiraLinha = PIESP_DATA.split('\n')[0];
-const _amostra = PIESP_DATA.split('\n').slice(1, 4);
-console.log('🔍 CSV header:', _primeiraLinha);
-console.log('🔍 CSV amostra linhas 1-3:');
-_amostra.forEach((l, i) => { if (l.trim()) { const cols = l.split(';'); console.log(`  linha ${i+1} | col8="${cols[8]}" | col10="${cols[10]}" | municipio="${cols[7]}"`); } });
-
 // Valores canônicos — usados para filtrar linhas corrompidas do CSV
 const SETORES_VALIDOS = new Set([
   'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
@@ -525,4 +518,23 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   // Retorna todos os resultados (mais recentes primeiro)
   const total = resultados.length;
   return { total, projetos: resultados.slice(0, 10) };
+}
+
+/** Diagnóstico de encoding — retorna valores brutos das primeiras linhas do CSV */
+export function getPiespDebugInfo(): Record<string, any> {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const header = linhas[0];
+  const amostras = linhas.slice(1, 6).map((l, i) => {
+    const cols = l.split(';');
+    return { idx: i + 1, col7_municipio: cols[7], col8_regiao: cols[8], col10_setor: cols[10] };
+  });
+  // Conta bruto por setor (sem linhaValida)
+  const setorBruto = new Map<string, number>();
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    const s = (cols[10] || '').trim();
+    setorBruto.set(s, (setorBruto.get(s) || 0) + 1);
+  }
+  const topSetores = Array.from(setorBruto.entries()).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  return { header: header.substring(0, 100), amostras, topSetores };
 }

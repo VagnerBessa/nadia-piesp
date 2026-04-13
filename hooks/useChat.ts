@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor, getMetadados } from '../services/piespDataService';
+import { consultarPiespData, consultarAnunciosSemValor, getMetadados, getPiespDebugInfo } from '../services/piespDataService';
 import { buildSystemInstructionWithSkill, detectSkill } from '../services/skillDetector';
 
 export interface Source {
@@ -32,8 +32,6 @@ const initialMessage: Message = {
 
 // Carregado uma vez — os metadados não mudam durante a sessão
 const _metadados = getMetadados();
-console.log('📊 PIESP setores:', _metadados.setores);
-console.log('📊 PIESP regioes:', _metadados.regioes);
 
 // Ferramentas PIESP: function calling para dados estruturados
 // (não pode ser combinado com googleSearch na mesma chamada)
@@ -83,8 +81,15 @@ const searchTools = [
   { googleSearch: {} }
 ];
 
+let _debugDone = false;
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
+  if (!_debugDone) {
+    _debugDone = true;
+    console.log('📊 PIESP setores (getMetadados):', _metadados.setores);
+    console.log('📊 PIESP regioes (getMetadados):', _metadados.regioes);
+    console.log('📊 CSV debug (raw):', getPiespDebugInfo());
+  }
   console.log(`🔧 TOOL CALL: ${nome}`, JSON.stringify(args));
   if (nome === 'consultar_projetos_piesp') {
     const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
