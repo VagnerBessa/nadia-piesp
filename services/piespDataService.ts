@@ -133,7 +133,18 @@ function municipioNaRegiao(municipioNaBase: string, municipiosRegiao: Set<string
 }
 
 /**
- * Compara dois nomes de região de forma tolerante — sem diacríticos.
+ * Remove tudo exceto letras a-z. Funciona para ambos os encodings:
+ * - UTF-8 correto: "RA São Paulo" → "rasopaulo" (ã vira '' via remove)
+ * - Latin-1 garbled: "RA S\uFFFDo Paulo" → "rasopaulo" (FFFD vira '' via remove)
+ * O resultado é idêntico nos dois casos.
+ */
+function normAsciiOnly(s: string): string {
+  return s.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+/**
+ * Compara dois nomes de região de forma tolerante — sem diacríticos e
+ * resistente a encoding corrompido (Latin-1 lido como UTF-8).
  */
 function regiaoMatchPorNome(regiaoNaBase: string, filtroRegiao: string): boolean {
   const a = norm(regiaoNaBase);
@@ -150,7 +161,18 @@ function regiaoMatchPorNome(regiaoNaBase: string, filtroRegiao: string): boolean
 
   const keyA = stripPrefix(a);
   const keyB = stripPrefix(b);
-  return keyA.length > 0 && (keyA.includes(keyB) || keyB.includes(keyA));
+  if (keyA.length > 0 && (keyA.includes(keyB) || keyB.includes(keyA))) return true;
+
+  // Fallback: comparação só-ASCII — resolve mismatch de encoding entre
+  // o modelo (Unicode correto) e o CSV (Latin-1 garbled como UTF-8).
+  // Ex: normAscii("RA São Paulo") = normAscii("RA S\uFFFDo Paulo") = "rasopaulo"
+  const aa = normAsciiOnly(regiaoNaBase);
+  const bb = normAsciiOnly(filtroRegiao);
+  if (aa.length > 3 && (aa === bb || aa.includes(bb) || bb.includes(aa))) return true;
+
+  const keyAa = normAsciiOnly(stripPrefix(a));
+  const keyBb = normAsciiOnly(stripPrefix(b));
+  return keyAa.length > 3 && (keyAa === keyBb || keyAa.includes(keyBb) || keyBb.includes(keyAa));
 }
 
 /**
