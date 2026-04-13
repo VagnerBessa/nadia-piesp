@@ -128,7 +128,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 
     if (filtro.ano && anoLinha !== filtro.ano) continue;
     if (filtro.setor && setorLinha !== filtro.setor) continue;
-    if (filtro.regiao && regiaoLinha !== filtro.regiao) continue;
+    if (filtro.regiao && !regiaoLinha.toLowerCase().includes(filtro.regiao.toLowerCase())) continue;
     if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
     if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
     if (filtro.termo_busca) {
