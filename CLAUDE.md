@@ -71,31 +71,86 @@ Solução arquitetural:
 
 **Sintoma:** O Chat retorna "Não foram encontrados projetos" para perguntas como "investimentos de comércio na Região Metropolitana de São Paulo", mesmo com dados confirmados na base. A aba Explorar funciona corretamente com os mesmos filtros.
 
-**Causa raiz identificada:** O CSV da PIESP está em Latin-1, mas o Vite o importa como UTF-8 via `?raw`. Caracteres acentuados viram U+FFFD (símbolo de substituição): `"Comércio"` → `"Com\uFFFDrcio"`, `"Indústria"` → `"Ind\uFFFDstria"`, `"RA São Paulo"` → `"RA S\uFFFDo Paulo"`.
+---
 
-Isso afeta dois filtros:
+### Por que o Explorar funciona e o Chat não
 
-1. **Filtro de setor:** A função `linhaValida` usava `SETORES_VALIDOS.has(cols[10])` — comparação exata que falha para strings garbled. Apenas "Infraestrutura" (sem acentos) passava. **Parcialmente corrigido** com `canonicalSetor()` — usa padrões de substring ASCII que sobrevivem ao encoding corrompido.
+O Explorar popula seus dropdowns com valores extraídos diretamente do CSV garbled. Então quando o usuário seleciona uma região, o valor do filtro é idêntico ao que está no CSV — ambos os lados da comparação são igualmente corrompidos, então o match ocorre.
 
-2. **Filtro de região:** O Explorar funciona porque usa strings extraídas diretamente do CSV garbled (ambos os lados são garbled → match). O Chat falha porque o Gemini envia Unicode correto (`"RA São Paulo"`) enquanto o CSV tem garbled (`"RA S\uFFFDo Paulo"`): `norm("RA São Paulo")` = `"ra sao paulo"` ≠ `norm("RA S\uFFFDo Paulo")` = `"ra s\uFFFDo paulo"` → sem match. **Tentativa de correção** com `normAsciiOnly()` adicionada a `regiaoMatchPorNome` — remove todos os não-[a-z] de ambos os lados, produzindo `"rasopaulo"` para ambas as formas.
+No Chat, o Gemini gera texto Unicode correto (`"Região Metropolitana de São Paulo"`, `"Comércio"`). Esses valores são comparados contra strings garbled do CSV → sem match.
 
-**Por que a correção não funcionou na prática:**
-A `normAsciiOnly` foi adicionada ao `regiaoMatchPorNome`, mas os dados continuam retornando 0. Hipóteses ainda não descartadas:
-- O Gemini pode estar passando o argumento `regiao` com nome diferente (ex: `"Região Metropolitana de São Paulo"` em vez de `"RA São Paulo"`) e a lógica de `stripPrefix` não está cobrindo a variante
-- O problema pode ser a combinação de setor + região simultaneamente — mesmo que um filtro funcione isolado, a interseção retorna 0
-- O `canonicalSetor` pode estar filtrando corretamente, mas o `regiaoMatch` ainda estar falhando para a variante enviada pelo Gemini
+---
 
-**O que foi testado sem sucesso:**
-- Adicionar `setor` como parâmetro explícito na declaração da tool com valores válidos
-- `canonicalSetor()` com padrões ASCII para matching de setor garbled
-- `normAsciiOnly()` como fallback final em `regiaoMatchPorNome`
-- Reduzir `maxIterations` de 3 para 2 para evitar loops ano-a-ano
-- Retry automático sem filtro de ano quando total = 0
+### O que foi tentado e por que falhou
 
-**Próximos passos recomendados:**
-1. Adicionar logging temporário no `executarFerramenta` para ver exatamente quais argumentos o Gemini está passando (`regiao`, `setor`) em tempo de execução no browser
-2. Testar `regiaoMatchPorNome` isoladamente no console com os valores reais enviados pelo modelo
-3. Considerar a solução definitiva: **ler o CSV com encoding Latin-1 correto**. O Vite não suporta `?raw` com encoding customizado, mas é possível: (a) converter os CSVs para UTF-8 na build (script de pré-build), ou (b) usar `fetch()` com `TextDecoder('latin-1')` em vez de `?raw`
+**Tentativa 1 — `canonicalSetor()` (linhaValida)**
+Substituiu `SETORES_VALIDOS.has(cols[10])` por reconhecimento via substrings ASCII. Funciona para que as linhas passem pelo portão `linhaValida`. **Provavelmente correto**, mas não suficiente se o problema era outro.
+
+**Tentativa 2 — `normAsciiOnly()` em `regiaoMatchPorNome`**
+Hipótese: remover todos os não-[a-z] igualaria as duas formas — `normAsciiOnly("RA S\uFFFDo Paulo")` e `normAsciiOnly("RA São Paulo")` produziriam ambas `"rasopaulo"`.
+
+**A hipótese estava errada.** O bug é mais sutil:
+
+`normAsciiOnly` é aplicada sobre o resultado de `norm()`, não sobre as strings brutas. E `norm()` trata as duas formas de forma diferente:
+- `norm("São Paulo")` usa NFD: `ã` → `a` + combining tilde → strip combining → **'a' preservada** → `"sao paulo"`
+- `norm("S\uFFFDo Paulo")`: U+FFFD não é diacrítico, não é decomposto → continua como U+FFFD → `"s\uFFFDo paulo"`
+
+Depois do `stripPrefix` e `normAsciiOnly`:
+- Caminho Unicode correto: `"sao paulo"` → `normAsciiOnly` → **`"saopaulo"`** ('a' presente)
+- Caminho garbled: `"s\uFFFDo paulo"` → `normAsciiOnly` → **`"sopaulo"`** (U+FFFD removido, sem 'a')
+
+`"saopaulo" ≠ "sopaulo"` → ainda sem match.
+
+A lógica só funcionaria se `normAsciiOnly` fosse aplicada às strings brutas (antes de `norm()`), mas a função `stripPrefix` depende de `norm()` para funcionar (usa padrões ASCII como `"regiao"` que só aparecem depois de `norm()` remover os diacríticos). As duas operações são mutuamente exclusivas nesta arquitetura.
+
+**Tentativa 3 — Fallback por municípios (`resolverRegiaoEmMunicipios`)**
+Já existia: se o nome da região não bater, verifica se o município da linha pertence ao set de municípios da região. Mas também falha: `municipioNaRegiao` chama `norm(municipioNaBase)` — que para `"S\uFFFDo Paulo"` produz `"s\uFFFDo paulo"` (U+FFFD não é diacrítico, não removido) — e compara com o set `RMSP` que contém `"sao paulo"` (sem U+FFFD). Match falha pelos mesmos motivos.
+
+**Tentativa 4 — Fortalecer descrição do parâmetro `ano`**
+Reduziu chamadas iterativas por ano, mas não resolveu o problema central.
+
+**Tentativa 5 — Retry sem ano quando total = 0**
+Proteção contra falsos negativos por filtro de ano incorreto. Independente do bug de região/setor.
+
+---
+
+### Falhas de método (autocrítica)
+
+1. **Operamos sem visibilidade.** Nunca confirmamos quais argumentos o Gemini estava passando para a ferramenta antes de implementar correções. Isso é o equivalente a consertar um motor com os olhos fechados.
+
+2. **Adicionamos logs e os removemos antes de verificar que o bug estava resolvido.** Os logs deveriam ter permanecido até o teste final.
+
+3. **Empilhamos múltiplas correções simultâneas sem isolar cada uma.** Não sabemos se `canonicalSetor` funciona corretamente de forma independente, porque sempre foi combinado com outras mudanças.
+
+4. **A hipótese central (`normAsciiOnly` corrige o mismatch) nunca foi validada com um teste unitário simples.** Um `console.assert(normAsciiOnly(norm("S\uFFFDo Paulo")) === normAsciiOnly(norm("São Paulo")))` teria revelado o problema imediatamente.
+
+5. **Confundimos "provavelmente está certo" com "está certo".** A análise teórica parecia convincente mas tinha um erro de raciocínio sobre a interação `norm()` + `normAsciiOnly`.
+
+---
+
+### Solução correta
+
+A única correção robusta é **eliminar o garbling na origem**: decodificar o CSV com Latin-1 em vez de UTF-8. Não há manipulação de string que recupere um caractere que foi irrecuperavelmente perdido na corrupção de encoding.
+
+O Vite não suporta `?raw` com encoding personalizado, mas existem duas opções:
+
+**Opção A — Script de pré-build (recomendada):**
+Adicionar um script Node.js que lê os CSVs com `iconv-lite` (ou `TextDecoder('latin-1')`) e os re-escreve como UTF-8 antes do build do Vite.
+
+```js
+// scripts/convert-csvs.js
+import { readFileSync, writeFileSync } from 'fs';
+const buf = readFileSync('knowledge_base/piesp_confirmados_com_valor.csv');
+const text = new TextDecoder('latin-1').decode(buf);
+writeFileSync('knowledge_base/piesp_confirmados_com_valor.utf8.csv', text, 'utf-8');
+```
+
+Adicionar ao `package.json`: `"prebuild": "node scripts/convert-csvs.js"`. Mudar os imports no `piespDataService.ts` para `*.utf8.csv`.
+
+**Opção B — fetch() com TextDecoder:**
+Trocar `import CSV from '...?raw'` por `fetch('/knowledge_base/...')` com `response.arrayBuffer()` + `new TextDecoder('latin-1').decode(buffer)`. Requer que os CSVs sejam servidos como assets estáticos (colocar em `public/`). Introduz carregamento assíncrono — o serviço precisaria ser inicializado com `await`.
+
+A Opção A é menos invasiva para a arquitetura existente.
 
 ---
 
