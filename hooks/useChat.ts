@@ -49,7 +49,7 @@ const piespTools = [
         parameters: {
           type: Type.OBJECT,
           properties: {
-            ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
+            ano: { type: Type.STRING, description: 'Ano específico, ex: "2026". OMITA para consultas sobre períodos, tendências ou múltiplos anos — sem este filtro a ferramenta retorna todos os anos disponíveis.' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
