@@ -559,21 +559,3 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   return { total, projetos: resultados.slice(0, 10) };
 }
 
-/** Diagnóstico de encoding — retorna valores brutos das primeiras linhas do CSV */
-export function getPiespDebugInfo(): Record<string, any> {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
-  const header = linhas[0];
-  const amostras = linhas.slice(1, 6).map((l, i) => {
-    const cols = l.split(';');
-    return { idx: i + 1, col7_municipio: cols[7], col8_regiao: cols[8], col10_setor: cols[10] };
-  });
-  // Conta bruto por setor (sem linhaValida)
-  const setorBruto = new Map<string, number>();
-  for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(';');
-    const s = (cols[10] || '').trim();
-    setorBruto.set(s, (setorBruto.get(s) || 0) + 1);
-  }
-  const topSetores = Array.from(setorBruto.entries()).sort((a,b) => b[1]-a[1]).slice(0, 8);
-  return { header: header.substring(0, 100), amostras, topSetores };
-}

@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor, getMetadados, getPiespDebugInfo } from '../services/piespDataService';
+import { consultarPiespData, consultarAnunciosSemValor, getMetadados } from '../services/piespDataService';
 import { buildSystemInstructionWithSkill, detectSkill } from '../services/skillDetector';
 
 export interface Source {
@@ -81,40 +81,24 @@ const searchTools = [
   { googleSearch: {} }
 ];
 
-let _debugDone = false;
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
-  if (!_debugDone) {
-    _debugDone = true;
-    console.log('📊 PIESP setores (getMetadados):', _metadados.setores);
-    console.log('📊 PIESP regioes (getMetadados):', _metadados.regioes);
-    console.log('📊 CSV debug (raw):', getPiespDebugInfo());
-  }
-  console.log(`🔧 TOOL CALL: ${nome}`, JSON.stringify(args));
   if (nome === 'consultar_projetos_piesp') {
     let resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
     // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
     if (resultados.total === 0 && args.ano) {
       const semAno = consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total > 0) {
-        console.log(`⚠️ Retry sem ano: ${semAno.total} resultados`);
-        resultados = semAno;
-      }
+      if (semAno.total > 0) resultados = semAno;
     }
-    console.log(`📊 TOOL RESULT: total=${resultados.total}`);
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
     let resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     if (resultados.total === 0 && args.ano) {
       const semAno = consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total > 0) {
-        console.log(`⚠️ Retry sem ano: ${semAno.total} resultados`);
-        resultados = semAno;
-      }
+      if (semAno.total > 0) resultados = semAno;
     }
-    console.log(`📊 TOOL RESULT: total=${resultados.total}`);
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   return { error: 'Ferramenta não reconhecida' };
@@ -167,10 +151,6 @@ export const useChat = () => {
       const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
       const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
 
-      if (usarPesquisa) {
-        console.log('🔍 Modo: Google Search (skill empresa detectada)');
-      }
-
       // Primeira chamada: envia a mensagem com as ferramentas selecionadas
       let response = await ai.models.generateContent({
         model: modelName,
@@ -195,11 +175,9 @@ export const useChat = () => {
         if (!functionCallPart || !functionCallPart.functionCall) break; // Sem tool call, temos a resposta final
 
         const fcall = functionCallPart.functionCall;
-        console.log("🛠️ Chat Tool Call:", fcall.name, fcall.args);
 
         // Executa a ferramenta localmente
         const resultado = executarFerramenta(fcall.name!, fcall.args || {});
-        console.log("📊 Resultado da ferramenta:", resultado);
 
         // Monta o histórico com a resposta da ferramenta
         const updatedContents = [
