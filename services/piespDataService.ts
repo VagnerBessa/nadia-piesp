@@ -236,6 +236,27 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   // Retorna todos os resultados ordenados por valor (maiores primeiro)
   // Se houver muitos, o top 10 é enviado ao modelo + total real para contexto
   const total = resultados.length;
+
+  // DEBUG: se filtro por região retorna 0, inclui diagnóstico no retorno
+  if (total === 0 && filtro.regiao) {
+    const regioesVistas = new Map<string, string[]>();
+    for (let i = 1; i < linhas.length; i++) {
+      const cols = linhas[i].split(';');
+      if (!linhaValida(cols)) continue;
+      const r = (cols[8] || '').trim();
+      const m = (cols[7] || '').trim();
+      if (!regioesVistas.has(r)) regioesVistas.set(r, []);
+      if (regioesVistas.get(r)!.length < 3) regioesVistas.get(r)!.push(m);
+    }
+    const diagnostico: Record<string, string[]> = {};
+    for (const [r, ms] of regioesVistas.entries()) {
+      diagnostico[`"${r}" [norm="${norm(r)}"]`] = ms;
+    }
+    console.log('=== DEBUG REGIAO: filtro =', filtro.regiao, '| norm =', norm(filtro.regiao), '===');
+    console.log('Regiões no CSV:', diagnostico);
+    return { total: 0, projetos: [], _debug_regioes: diagnostico, _debug_filtro_norm: norm(filtro.regiao) };
+  }
+
   return { total, projetos: resultados.slice(0, 10) };
 }
 
