@@ -1,9 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { debugCsv } from './services/piespDataService';
-
-debugCsv(); // DEBUG — remove após diagnóstico
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
