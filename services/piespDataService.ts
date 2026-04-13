@@ -16,81 +16,109 @@ const TIPOS_VALIDOS = new Set([
 // Nomes em minúsculas para comparação case-insensitive.
 // ─────────────────────────────────────────────────────────────
 
+// Todos os nomes SEM diacríticos (norm() remove acentos antes de comparar)
 const RMSP = new Set([
-  'arujá','barueri','biritiba-mirim','biritiba mirim','caieiras','cajamar',
-  'carapicuíba','carapicuiba','cotia','diadema','embu das artes','embu-guaçu',
-  'embu guaçu','ferraz de vasconcelos','francisco morato','franco da rocha',
-  'guararema','guarulhos','itapecerica da serra','itapevi','itaquaquecetuba',
-  'jandira','juquitiba','mairiporã','mairipora','mauá','maua',
-  'mogi das cruzes','osasco','pirapora do bom jesus','poá','poa',
-  'ribeirão pires','ribeirao pires','rio grande da serra','salesópolis',
-  'salesopolis','santa isabel','santana de parnaíba','santana de parnaiba',
-  'santo andré','santo andre','são bernardo do campo','sao bernardo do campo',
-  'são caetano do sul','sao caetano do sul','são lourenço da serra',
-  'sao lourenco da serra','são paulo','sao paulo','suzano','taboão da serra',
-  'tabao da serra','vargem grande paulista',
+  'aruja','barueri','biritiba-mirim','biritiba mirim','caieiras','cajamar',
+  'carapicuiba','cotia','diadema','embu das artes','embu-guacu','embu guacu',
+  'ferraz de vasconcelos','francisco morato','franco da rocha','guararema',
+  'guarulhos','itapecerica da serra','itapevi','itaquaquecetuba','jandira',
+  'juquitiba','mairipora','maua','mogi das cruzes','osasco',
+  'pirapora do bom jesus','poa','ribeirao pires','rio grande da serra',
+  'salesopolis','santa isabel','santana de parnaiba','santo andre',
+  'sao bernardo do campo','sao caetano do sul','sao lourenco da serra',
+  'sao paulo','suzano','tabao da serra','vargem grande paulista',
 ]);
 
 const RM_CAMPINAS = new Set([
-  'americana','artur nogueira','campinas','cosmópolis','cosmopolis',
-  'engenheiro coelho','holambra','hortolândia','hortolandia','indaiatuba',
-  'itatiba','jaguariúna','jaguariuna','monte mor','morungaba','nova odessa',
-  'paulínia','paulinia','pedreira','santa bárbara d\'oeste','santa barbara d oeste',
-  'santo antônio de posse','santo antonio de posse','sumaré','sumare',
-  'valinhos','vinhedo',
+  'americana','artur nogueira','campinas','cosmopolis','engenheiro coelho',
+  'holambra','hortolandia','indaiatuba','itatiba','jaguariuna','monte mor',
+  'morungaba','nova odessa','paulinia','pedreira','santa barbara d oeste',
+  'santo antonio de posse','sumare','valinhos','vinhedo',
 ]);
 
 const RM_BAIXADA_SANTISTA = new Set([
-  'bertioga','cubatão','cubatao','guarujá','guaruja','itanhaém','itanhaem',
-  'mongaguá','mongagua','peruíbe','peruibe','praia grande','santos',
-  'são vicente','sao vicente',
+  'bertioga','cubatao','guaruja','itanhaem','mongagua',
+  'peruibe','praia grande','santos','sao vicente',
 ]);
 
 const RM_VALE_PARAIBA = new Set([
-  'caçapava','cacapava','caraguatatuba','guaratinguetá','guaratingueta',
-  'jacareí','jacarei','lorena','pindamonhangaba','são josé dos campos',
-  'sao jose dos campos','taubaté','taubate','ubatuba',
+  'cacapava','caraguatatuba','guaratingueta','jacarei','lorena',
+  'pindamonhangaba','sao jose dos campos','taubate','ubatuba',
 ]);
 
 const RM_SOROCABA = new Set([
-  'alumínio','aluminio','araçariguama','araçoiaba da serra','aracoiaba da serra',
-  'boituva','capela do alto','cerquilho','cesário lange','cesario lange',
-  'ibiúna','ibiuna','iperó','ipero','itapetininga','itu','jumirim',
+  'aluminio','aracariguama','aracoiaba da serra','boituva','capela do alto',
+  'cerquilho','cesario lange','ibiuna','ipero','itapetininga','itu','jumirim',
   'laranjal paulista','mairinque','piedade','pilar do sul','porto feliz',
-  'salto','salto de pirapora','são miguel arcanjo','sao miguel arcanjo',
-  'sarapuí','sarapui','sorocaba','tapiraí','tapiai','tatui','tatuí','votorantim',
+  'salto','salto de pirapora','sao miguel arcanjo','sarapui','sorocaba',
+  'tapiai','tatui','votorantim',
 ]);
 
-// Termos que o usuário pode usar → set de municípios correspondente
+// Termos já normalizados (sem diacríticos) — norm() é aplicado antes da comparação
 const REGIAO_MUNICIPIOS: Array<{ termos: string[]; municipios: Set<string> }> = [
   {
-    termos: ['são paulo','sao paulo','rmsp','grande sp','grande são paulo','grande sao paulo','metropolitana de são paulo','metropolitana de sao paulo'],
+    termos: ['sao paulo','rmsp','grande sp','grande sao paulo','metropolitana de sao paulo','ra sao paulo'],
     municipios: RMSP,
   },
   {
-    termos: ['campinas','rm campinas','metropolitana de campinas'],
+    termos: ['campinas','rm campinas','metropolitana de campinas','ra campinas'],
     municipios: RM_CAMPINAS,
   },
   {
-    termos: ['baixada santista','santos','rm baixada','litoral','metropolitana de santos'],
+    termos: ['baixada santista','santos','rm baixada','litoral','metropolitana de santos','ra santos'],
     municipios: RM_BAIXADA_SANTISTA,
   },
   {
-    termos: ['vale do paraíba','vale do paraiba','vale paraíba','são josé dos campos','sao jose dos campos','metropolitana de são josé','metropolitana de sao jose'],
+    termos: ['vale do paraiba','vale paraiba','sao jose dos campos','metropolitana de sao jose','ra sao jose dos campos'],
     municipios: RM_VALE_PARAIBA,
   },
   {
-    termos: ['sorocaba','rm sorocaba','metropolitana de sorocaba'],
+    termos: ['sorocaba','rm sorocaba','metropolitana de sorocaba','ra sorocaba'],
     municipios: RM_SOROCABA,
   },
 ];
 
 /**
+ * Remove diacríticos e normaliza para comparação robusta,
+ * independente de encoding do CSV (Latin-1 vs UTF-8).
+ */
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[^\w\s-]/g, ' ')       // remove caracteres estranhos (encoding garbled)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** DEBUG — exibe no console os valores reais lidos do CSV */
+export function debugCsv(): void {
+  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const regioes = new Map<string, string[]>();
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = linhas[i].split(';');
+    if (!linhaValida(cols)) continue;
+    const reg = (cols[8] || '').trim();
+    const mun = (cols[7] || '').trim();
+    if (!regioes.has(reg)) regioes.set(reg, []);
+    const lista = regioes.get(reg)!;
+    if (lista.length < 5) lista.push(mun);
+  }
+  console.log('=== REGIOES (col 8) + exemplos de municípios ===');
+  for (const [r, ms] of regioes.entries()) {
+    console.log(`"${r}" [norm="${norm(r)}"] → ${ms.join(', ')}`);
+  }
+  console.log('=================================================');
+}
+
+/**
  * Dado o nome de região digitado pelo usuário, retorna o Set de municípios
  * correspondente (ou null se não for uma região conhecida).
+ * Usa norm() para comparação sem diacríticos.
  */
 function resolverRegiaoEmMunicipios(filtroRegiao: string): Set<string> | null {
-  const q = filtroRegiao.toLowerCase().trim();
+  const q = norm(filtroRegiao);
   for (const { termos, municipios } of REGIAO_MUNICIPIOS) {
     if (termos.some(t => q.includes(t) || t.includes(q))) {
       return municipios;
@@ -100,28 +128,28 @@ function resolverRegiaoEmMunicipios(filtroRegiao: string): Set<string> | null {
 }
 
 /**
- * Verifica se um município (nome da base) está na região solicitada pelo usuário.
+ * Verifica se um município (nome da base) está na região solicitada.
+ * Compara sem diacríticos para robustez.
  */
 function municipioNaRegiao(municipioNaBase: string, municipiosRegiao: Set<string>): boolean {
-  const m = municipioNaBase.toLowerCase().trim();
+  const m = norm(municipioNaBase);
   return municipiosRegiao.has(m);
 }
 
 /**
- * Compara dois nomes de região de forma tolerante — comparação por prefixo.
- * Usado como verificação rápida na coluna "regiao" do CSV.
+ * Compara dois nomes de região de forma tolerante — sem diacríticos.
  */
 function regiaoMatchPorNome(regiaoNaBase: string, filtroRegiao: string): boolean {
-  const a = regiaoNaBase.toLowerCase();
-  const b = filtroRegiao.toLowerCase();
+  const a = norm(regiaoNaBase);
+  const b = norm(filtroRegiao);
   if (a.includes(b) || b.includes(a)) return true;
 
   const stripPrefix = (s: string) =>
     s
-      .replace(/^ra\s+/i, '')
-      .replace(/^região\s+(administrativa|metropolitana|admin\.?)\s+(de|do|da|dos|das)\s+/i, '')
-      .replace(/^região\s+(de|do|da)\s+/i, '')
-      .replace(/^grande\s+/i, '')
+      .replace(/^ra\s+/, '')
+      .replace(/^regiao\s+(administrativa|metropolitana|admin\.?)\s+(de|do|da|dos|das)\s+/, '')
+      .replace(/^regiao\s+(de|do|da)\s+/, '')
+      .replace(/^grande\s+/, '')
       .trim();
 
   const keyA = stripPrefix(a);
