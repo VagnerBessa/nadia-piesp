@@ -45,11 +45,11 @@ const piespTools = [
     functionDeclarations: [
       {
         name: 'consultar_projetos_piesp',
-        description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro.',
+        description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Para filtrar por setor (Indústria, Infraestrutura etc.), use o parâmetro `setor`. Retorna os principais projetos confirmados com montante financeiro.',
         parameters: {
           type: Type.OBJECT,
           properties: {
-            ano: { type: Type.STRING, description: 'Ano específico, ex: "2026". OMITA para consultas sobre períodos, tendências ou múltiplos anos — sem este filtro a ferramenta retorna todos os anos disponíveis.' },
+            ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Use APENAS estes valores — não invente variações.' },
@@ -63,7 +63,7 @@ const piespTools = [
         parameters: {
           type: Type.OBJECT,
           properties: {
-            ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
+            ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
@@ -83,12 +83,15 @@ const searchTools = [
 
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
+  console.log(`🔧 TOOL CALL: ${nome}`, JSON.stringify(args));
   if (nome === 'consultar_projetos_piesp') {
     const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    console.log(`📊 TOOL RESULT: total=${resultados.total}`);
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
     const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    console.log(`📊 TOOL RESULT: total=${resultados.total}`);
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   return { error: 'Ferramenta não reconhecida' };
