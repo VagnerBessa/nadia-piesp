@@ -1,6 +1,13 @@
 import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
+// DEBUG ENCODING — remove após diagnóstico
+const _primeiraLinha = PIESP_DATA.split('\n')[0];
+const _amostra = PIESP_DATA.split('\n').slice(1, 4);
+console.log('🔍 CSV header:', _primeiraLinha);
+console.log('🔍 CSV amostra linhas 1-3:');
+_amostra.forEach((l, i) => { if (l.trim()) { const cols = l.split(';'); console.log(`  linha ${i+1} | col8="${cols[8]}" | col10="${cols[10]}" | municipio="${cols[7]}"`); } });
+
 // Valores canônicos — usados para filtrar linhas corrompidas do CSV
 const SETORES_VALIDOS = new Set([
   'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',

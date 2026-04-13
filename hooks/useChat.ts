@@ -32,6 +32,8 @@ const initialMessage: Message = {
 
 // Carregado uma vez — os metadados não mudam durante a sessão
 const _metadados = getMetadados();
+console.log('📊 PIESP setores:', _metadados.setores);
+console.log('📊 PIESP regioes:', _metadados.regioes);
 
 // Ferramentas PIESP: function calling para dados estruturados
 // (não pode ser combinado com googleSearch na mesma chamada)
