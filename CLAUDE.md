@@ -65,6 +65,38 @@ Solução arquitetural:
 - Nova tabela CSV → Nova tool (`consultar_anuncios_sem_valor`)
 - UX: instrução de apresentação da base secundária apenas na primeira fala, sem repetição
 
+**Problema 6 — Filtros de setor e região retornam 0 no Chat (BUG EM ABERTO)**
+
+**Data:** Abril de 2026. **Status: não resolvido.**
+
+**Sintoma:** O Chat retorna "Não foram encontrados projetos" para perguntas como "investimentos de comércio na Região Metropolitana de São Paulo", mesmo com dados confirmados na base. A aba Explorar funciona corretamente com os mesmos filtros.
+
+**Causa raiz identificada:** O CSV da PIESP está em Latin-1, mas o Vite o importa como UTF-8 via `?raw`. Caracteres acentuados viram U+FFFD (símbolo de substituição): `"Comércio"` → `"Com\uFFFDrcio"`, `"Indústria"` → `"Ind\uFFFDstria"`, `"RA São Paulo"` → `"RA S\uFFFDo Paulo"`.
+
+Isso afeta dois filtros:
+
+1. **Filtro de setor:** A função `linhaValida` usava `SETORES_VALIDOS.has(cols[10])` — comparação exata que falha para strings garbled. Apenas "Infraestrutura" (sem acentos) passava. **Parcialmente corrigido** com `canonicalSetor()` — usa padrões de substring ASCII que sobrevivem ao encoding corrompido.
+
+2. **Filtro de região:** O Explorar funciona porque usa strings extraídas diretamente do CSV garbled (ambos os lados são garbled → match). O Chat falha porque o Gemini envia Unicode correto (`"RA São Paulo"`) enquanto o CSV tem garbled (`"RA S\uFFFDo Paulo"`): `norm("RA São Paulo")` = `"ra sao paulo"` ≠ `norm("RA S\uFFFDo Paulo")` = `"ra s\uFFFDo paulo"` → sem match. **Tentativa de correção** com `normAsciiOnly()` adicionada a `regiaoMatchPorNome` — remove todos os não-[a-z] de ambos os lados, produzindo `"rasopaulo"` para ambas as formas.
+
+**Por que a correção não funcionou na prática:**
+A `normAsciiOnly` foi adicionada ao `regiaoMatchPorNome`, mas os dados continuam retornando 0. Hipóteses ainda não descartadas:
+- O Gemini pode estar passando o argumento `regiao` com nome diferente (ex: `"Região Metropolitana de São Paulo"` em vez de `"RA São Paulo"`) e a lógica de `stripPrefix` não está cobrindo a variante
+- O problema pode ser a combinação de setor + região simultaneamente — mesmo que um filtro funcione isolado, a interseção retorna 0
+- O `canonicalSetor` pode estar filtrando corretamente, mas o `regiaoMatch` ainda estar falhando para a variante enviada pelo Gemini
+
+**O que foi testado sem sucesso:**
+- Adicionar `setor` como parâmetro explícito na declaração da tool com valores válidos
+- `canonicalSetor()` com padrões ASCII para matching de setor garbled
+- `normAsciiOnly()` como fallback final em `regiaoMatchPorNome`
+- Reduzir `maxIterations` de 3 para 2 para evitar loops ano-a-ano
+- Retry automático sem filtro de ano quando total = 0
+
+**Próximos passos recomendados:**
+1. Adicionar logging temporário no `executarFerramenta` para ver exatamente quais argumentos o Gemini está passando (`regiao`, `setor`) em tempo de execução no browser
+2. Testar `regiaoMatchPorNome` isoladamente no console com os valores reais enviados pelo modelo
+3. Considerar a solução definitiva: **ler o CSV com encoding Latin-1 correto**. O Vite não suporta `?raw` com encoding customizado, mas é possível: (a) converter os CSVs para UTF-8 na build (script de pré-build), ou (b) usar `fetch()` com `TextDecoder('latin-1')` em vez de `?raw`
+
 ---
 
 ## Arquitetura
