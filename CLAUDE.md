@@ -87,13 +87,11 @@ Então no Explorar, quando o usuário seleciona uma região do dropdown, o `filt
 
 O Gemini gera `"Região Metropolitana de São Paulo"` (Unicode correto). Esse valor é comparado contra `"RA S\uFFFDo Paulo"` (garbled do CSV) → nenhuma das comparações em `regiaoMatchPorNome` funciona.
 
-**O filtro de setor provavelmente já funciona no Chat:**
+**O filtro de setor também falha no Chat.**
 
-`canonicalSetor("Comércio")` (Unicode correto, enviado pelo Gemini) retorna `"Comércio"`.
-`canonicalSetor("Com\uFFFDrcio")` (garbled do CSV) também retorna `"Comércio"`.
-Comparação `canonicalSetor(linha) !== canonicalSetor(filtro)` → `"Comércio" !== "Comércio"` → match. ✓
+Afirmei anteriormente que `canonicalSetor()` resolveria o setor no Chat — essa afirmação estava errada. O setor continua retornando 0. Como removemos os logs antes de confirmar, não sei qual argumento o Gemini está passando para a ferramenta: se usa `setor: "Comércio"` (canonical) ou `termo_busca: "comércio"` (texto livre), ou se `canonicalSetor()` tem um bug de cobertura. Sem logs, não é possível diagnosticar.
 
-O setor não é o bloqueador. O bloqueador é **exclusivamente** o filtro de região.
+**Ambos os filtros — setor e região — falham no Chat.**
 
 ---
 
