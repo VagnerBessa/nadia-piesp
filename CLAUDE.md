@@ -65,7 +65,7 @@ Solução arquitetural:
 - Nova tabela CSV → Nova tool (`consultar_anuncios_sem_valor`)
 - UX: instrução de apresentação da base secundária apenas na primeira fala, sem repetição
 
-**Problema 6 — Filtros de setor e região retornam 0 no Chat (BUG EM ABERTO)**
+**Problema 6 — Filtro de região retorna 0 no Chat (BUG EM ABERTO)**
 
 **Data:** Abril de 2026. **Status: não resolvido.**
 
@@ -73,69 +73,79 @@ Solução arquitetural:
 
 ---
 
-### Por que o Explorar funciona e o Chat não
+### Diagnóstico correto: o problema é exclusivamente o filtro de região no Chat
 
-O Explorar popula seus dropdowns com valores extraídos diretamente do CSV garbled. Então quando o usuário seleciona uma região, o valor do filtro é idêntico ao que está no CSV — ambos os lados da comparação são igualmente corrompidos, então o match ocorre.
+**Por que o Explorar funciona:**
 
-No Chat, o Gemini gera texto Unicode correto (`"Região Metropolitana de São Paulo"`, `"Comércio"`). Esses valores são comparados contra strings garbled do CSV → sem match.
+`getMetadados()` (linha 393 de `piespDataService.ts`) trata setores e regiões de forma diferente:
+- **Setores** (linha 410): `canonicalSetor(setor)` → dropdown mostra nomes canônicos em Unicode correto (`"Comércio"`, `"Indústria"`)
+- **Regiões** (linha 411): `regioes.add(regiao)` → valor bruto do CSV, garbled (`"RA S\uFFFDo Paulo"`)
+
+Então no Explorar, quando o usuário seleciona uma região do dropdown, o `filtro.regiao` é o mesmo string garbled que está no CSV. Em `regiaoMatchPorNome`, ambos os lados da comparação são garbled e idênticos → match imediato na primeira linha.
+
+**Por que o Chat falha:**
+
+O Gemini gera `"Região Metropolitana de São Paulo"` (Unicode correto). Esse valor é comparado contra `"RA S\uFFFDo Paulo"` (garbled do CSV) → nenhuma das comparações em `regiaoMatchPorNome` funciona.
+
+**O filtro de setor provavelmente já funciona no Chat:**
+
+`canonicalSetor("Comércio")` (Unicode correto, enviado pelo Gemini) retorna `"Comércio"`.
+`canonicalSetor("Com\uFFFDrcio")` (garbled do CSV) também retorna `"Comércio"`.
+Comparação `canonicalSetor(linha) !== canonicalSetor(filtro)` → `"Comércio" !== "Comércio"` → match. ✓
+
+O setor não é o bloqueador. O bloqueador é **exclusivamente** o filtro de região.
 
 ---
 
-### O que foi tentado e por que falhou
+### Por que a correção com `normAsciiOnly` não funcionou
 
-**Tentativa 1 — `canonicalSetor()` (linhaValida)**
-Substituiu `SETORES_VALIDOS.has(cols[10])` por reconhecimento via substrings ASCII. Funciona para que as linhas passem pelo portão `linhaValida`. **Provavelmente correto**, mas não suficiente se o problema era outro.
+A hipótese era: remover todos os não-`[a-z]` de ambos os lados produziria strings idênticas.
 
-**Tentativa 2 — `normAsciiOnly()` em `regiaoMatchPorNome`**
-Hipótese: remover todos os não-[a-z] igualaria as duas formas — `normAsciiOnly("RA S\uFFFDo Paulo")` e `normAsciiOnly("RA São Paulo")` produziriam ambas `"rasopaulo"`.
+Isso funciona para a comparação direta (linhas 169–171 de `piespDataService.ts`):
+```
+normAsciiOnly("RA S\uFFFDo Paulo")         = "rasopaulo"
+normAsciiOnly("Região Metropolitana...")   = "regiometropolitanadesopaulo"
+```
+`bb.includes(aa)`? `"regiometropolitanadesopaulo".includes("rasopaulo")`? **Não** — não existe a sequência `ra...s` nessa string.
 
-**A hipótese estava errada.** O bug é mais sutil:
+Então o código cai no caminho `stripPrefix` + `normAsciiOnly` (linhas 173–175). E aqui está o erro:
 
-`normAsciiOnly` é aplicada sobre o resultado de `norm()`, não sobre as strings brutas. E `norm()` trata as duas formas de forma diferente:
-- `norm("São Paulo")` usa NFD: `ã` → `a` + combining tilde → strip combining → **'a' preservada** → `"sao paulo"`
-- `norm("S\uFFFDo Paulo")`: U+FFFD não é diacrítico, não é decomposto → continua como U+FFFD → `"s\uFFFDo paulo"`
+`stripPrefix` recebe o resultado de `norm()`, não a string bruta. E `norm()` trata U+FFFD e ã de forma assimétrica:
+- `norm("São Paulo")`: NFD decompõe `ã` → `a` + combining tilde → strip combining → **`"sao paulo"`** (`a` preservado)
+- `norm("S\uFFFDo Paulo")`: U+FFFD não é diacrítico, não é tocado → **`"s\uFFFDo paulo"`** (sem `a`)
 
-Depois do `stripPrefix` e `normAsciiOnly`:
-- Caminho Unicode correto: `"sao paulo"` → `normAsciiOnly` → **`"saopaulo"`** ('a' presente)
-- Caminho garbled: `"s\uFFFDo paulo"` → `normAsciiOnly` → **`"sopaulo"`** (U+FFFD removido, sem 'a')
+Após `stripPrefix` e `normAsciiOnly`:
+| Origem | Após norm + stripPrefix | Após normAsciiOnly |
+|---|---|---|
+| `"RA S\uFFFDo Paulo"` (CSV garbled) | `"s\uFFFDo paulo"` | **`"sopaulo"`** |
+| `"Região Metropolitana de São Paulo"` (Gemini) | `"sao paulo"` | **`"saopaulo"`** |
 
-`"saopaulo" ≠ "sopaulo"` → ainda sem match.
+`"sopaulo" ≠ "saopaulo"` → ainda sem match. O `a` de `ã` é recuperado por `norm()` no caminho Unicode correto, mas não existe no caminho garbled. `normAsciiOnly` joga fora o `a` de um lado mas não do outro.
 
-A lógica só funcionaria se `normAsciiOnly` fosse aplicada às strings brutas (antes de `norm()`), mas a função `stripPrefix` depende de `norm()` para funcionar (usa padrões ASCII como `"regiao"` que só aparecem depois de `norm()` remover os diacríticos). As duas operações são mutuamente exclusivas nesta arquitetura.
-
-**Tentativa 3 — Fallback por municípios (`resolverRegiaoEmMunicipios`)**
-Já existia: se o nome da região não bater, verifica se o município da linha pertence ao set de municípios da região. Mas também falha: `municipioNaRegiao` chama `norm(municipioNaBase)` — que para `"S\uFFFDo Paulo"` produz `"s\uFFFDo paulo"` (U+FFFD não é diacrítico, não removido) — e compara com o set `RMSP` que contém `"sao paulo"` (sem U+FFFD). Match falha pelos mesmos motivos.
-
-**Tentativa 4 — Fortalecer descrição do parâmetro `ano`**
-Reduziu chamadas iterativas por ano, mas não resolveu o problema central.
-
-**Tentativa 5 — Retry sem ano quando total = 0**
-Proteção contra falsos negativos por filtro de ano incorreto. Independente do bug de região/setor.
+O fallback por municípios (`resolverRegiaoEmMunicipios`) falha pelo mesmo motivo: o set `RMSP` contém `"sao paulo"` (normalizado com `a`), mas `norm("s\uFFFDo paulo")` produz `"s\uFFFDo paulo"` — não está no set.
 
 ---
 
 ### Falhas de método (autocrítica)
 
-1. **Operamos sem visibilidade.** Nunca confirmamos quais argumentos o Gemini estava passando para a ferramenta antes de implementar correções. Isso é o equivalente a consertar um motor com os olhos fechados.
+1. **Depuramos sem visibilidade.** Removemos os logs de diagnóstico antes de confirmar que o bug foi resolvido. O correto seria: manter logs → testar → confirmar → remover.
 
-2. **Adicionamos logs e os removemos antes de verificar que o bug estava resolvido.** Os logs deveriam ter permanecido até o teste final.
+2. **Empilhamos correções sem isolar cada uma.** Não sabemos com certeza se `canonicalSetor` está ou não funcionando para Chat, porque nunca testamos apenas o setor isolado (sem região).
 
-3. **Empilhamos múltiplas correções simultâneas sem isolar cada uma.** Não sabemos se `canonicalSetor` funciona corretamente de forma independente, porque sempre foi combinado com outras mudanças.
+3. **Nunca validamos a hipótese com um teste simples antes de implementar.** Um `console.assert` no console do browser teria revelado imediatamente que `normAsciiOnly(norm("S\uFFFDo Paulo"))` ≠ `normAsciiOnly(norm("São Paulo"))`.
 
-4. **A hipótese central (`normAsciiOnly` corrige o mismatch) nunca foi validada com um teste unitário simples.** Um `console.assert(normAsciiOnly(norm("S\uFFFDo Paulo")) === normAsciiOnly(norm("São Paulo")))` teria revelado o problema imediatamente.
-
-5. **Confundimos "provavelmente está certo" com "está certo".** A análise teórica parecia convincente mas tinha um erro de raciocínio sobre a interação `norm()` + `normAsciiOnly`.
+4. **Confundimos "a análise faz sentido" com "o código vai funcionar".** A interação entre `norm()` e `normAsciiOnly` tinha um comportamento assimétrico que não foi percebido antes de escrever o código.
 
 ---
 
 ### Solução correta
 
-A única correção robusta é **eliminar o garbling na origem**: decodificar o CSV com Latin-1 em vez de UTF-8. Não há manipulação de string que recupere um caractere que foi irrecuperavelmente perdido na corrupção de encoding.
+O filtro de região precisa comparar a string garbled do CSV com a string Unicode correta do Gemini. Existem dois caminhos:
 
-O Vite não suporta `?raw` com encoding personalizado, mas existem duas opções:
+**Caminho A — Corrigir o encoding do CSV na origem (recomendado):**
+Decodificar o CSV com Latin-1 antes de parsear. Resolve todos os problemas de encoding de uma vez.
 
-**Opção A — Script de pré-build (recomendada):**
-Adicionar um script Node.js que lê os CSVs com `iconv-lite` (ou `TextDecoder('latin-1')`) e os re-escreve como UTF-8 antes do build do Vite.
+O Vite não suporta `?raw` com encoding customizado, mas é possível via script de pré-build:
 
 ```js
 // scripts/convert-csvs.js
@@ -145,12 +155,24 @@ const text = new TextDecoder('latin-1').decode(buf);
 writeFileSync('knowledge_base/piesp_confirmados_com_valor.utf8.csv', text, 'utf-8');
 ```
 
-Adicionar ao `package.json`: `"prebuild": "node scripts/convert-csvs.js"`. Mudar os imports no `piespDataService.ts` para `*.utf8.csv`.
+Adicionar `"prebuild": "node scripts/convert-csvs.js"` ao `package.json`. Mudar os imports para `.utf8.csv`. Com isso, `regiaoMatchPorNome` funciona sem modificações — `norm("RA São Paulo")` = `norm("RA São Paulo")` → match.
 
-**Opção B — fetch() com TextDecoder:**
-Trocar `import CSV from '...?raw'` por `fetch('/knowledge_base/...')` com `response.arrayBuffer()` + `new TextDecoder('latin-1').decode(buffer)`. Requer que os CSVs sejam servidos como assets estáticos (colocar em `public/`). Introduz carregamento assíncrono — o serviço precisaria ser inicializado com `await`.
+**Caminho B — Corrigir `municipioNaRegiao` com duplo lookup:**
+O fallback de municípios (`resolverRegiaoEmMunicipios`) já identifica `"Região Metropolitana de São Paulo"` corretamente (a função usa `norm()` e o set `REGIAO_MUNICIPIOS` tem `"metropolitana de sao paulo"` como termo). O problema é que `municipioNaRegiao` falha para municípios garbled.
 
-A Opção A é menos invasiva para a arquitetura existente.
+Adicionar ao set `RMSP` as versões `normAsciiOnly` dos nomes garbled, e checar ambas:
+```typescript
+function municipioNaRegiao(municipioNaBase: string, municipiosRegiao: Set<string>): boolean {
+  const m = norm(municipioNaBase);
+  if (municipiosRegiao.has(m)) return true;
+  // fallback para garbled: normAsciiOnly remove o U+FFFD
+  const mAscii = normAsciiOnly(municipioNaBase);
+  return municipiosRegiao.has(mAscii);
+}
+```
+E adicionar entradas `normAsciiOnly`-d ao set `RMSP` (ex: `"sopaulo"` para `"São Paulo"`). É um hack, mas menor escopo que o Caminho A.
+
+O Caminho A é definitivo e limpo. O Caminho B resolve só o fallback de município, não o match direto por nome de região.
 
 ---
 
