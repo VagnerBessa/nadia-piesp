@@ -42,7 +42,8 @@ const piespTools = [
           type: Type.OBJECT,
           properties: {
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+            municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+            regiao: { type: Type.STRING, description: 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo", "Região Administrativa de Campinas". Usar quando o usuário perguntar por região, não por município.' },
             termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
           }
         }
@@ -72,7 +73,7 @@ const searchTools = [
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
   if (nome === 'consultar_projetos_piesp') {
-    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, termo_busca: args.termo_busca });
+    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {

@@ -13,21 +13,23 @@ const TIPOS_VALIDOS = new Set([
 export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
+  regiao?: string;
   termo_busca?: string;
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
   const resultados = [];
-  
+
   // A primeira linha é o cabeçalho
-  // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 9=descr_investimento, 10=setor
+  // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 8=regiao, 9=descr_investimento, 10=setor
   for (let i = 1; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
     if (!linhaValida(colunas)) continue;
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
+    const regiaoLinha = colunas[8]?.trim()?.toLowerCase() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
     const setorLinha = colunas[10] || 'Geral';
     const descricaoLinha = colunas[9] || '';
@@ -39,6 +41,10 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     }
 
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
+      match = false;
+    }
+
+    if (filtro.regiao && !regiaoLinha.includes(filtro.regiao.toLowerCase())) {
       match = false;
     }
 
