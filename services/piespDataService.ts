@@ -10,6 +10,37 @@ const TIPOS_VALIDOS = new Set([
   'Implantação', 'Ampliação', 'Modernização', 'Ampliação/Modernização',
 ]);
 
+/**
+ * Compara dois nomes de região de forma tolerante.
+ * Extrai o "termo principal" de cada um (remove prefixos como "RA", "Região Administrativa de",
+ * "Região Metropolitana de") e verifica se há sobreposição.
+ *
+ * Exemplos que devem ser equivalentes:
+ *   "RA São Paulo"  ↔  "Região Metropolitana de São Paulo"
+ *   "RA Campinas"   ↔  "Região Metropolitana de Campinas"
+ */
+function regiaoMatch(regiaoNaBase: string, filtroRegiao: string): boolean {
+  const a = regiaoNaBase.toLowerCase();
+  const b = filtroRegiao.toLowerCase();
+
+  // Correspondência direta (substring em qualquer direção)
+  if (a.includes(b) || b.includes(a)) return true;
+
+  // Remove prefixos administrativos para extrair o nome geográfico núcleo
+  const stripPrefix = (s: string) =>
+    s
+      .replace(/^ra\s+/i, '')
+      .replace(/^região\s+(administrativa|metropolitana|admin\.?)\s+(de|do|da|dos|das)\s+/i, '')
+      .replace(/^região\s+(de|do|da)\s+/i, '')
+      .replace(/^grande\s+/i, '')
+      .trim();
+
+  const keyA = stripPrefix(a);
+  const keyB = stripPrefix(b);
+
+  return keyA.includes(keyB) || keyB.includes(keyA);
+}
+
 export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
@@ -44,7 +75,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       match = false;
     }
 
-    if (filtro.regiao && !regiaoLinha.includes(filtro.regiao.toLowerCase())) {
+    if (filtro.regiao && !regiaoMatch(regiaoLinha, filtro.regiao)) {
       match = false;
     }
 
@@ -128,7 +159,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 
     if (filtro.ano && anoLinha !== filtro.ano) continue;
     if (filtro.setor && setorLinha !== filtro.setor) continue;
-    if (filtro.regiao && !regiaoLinha.toLowerCase().includes(filtro.regiao.toLowerCase())) continue;
+    if (filtro.regiao && !regiaoMatch(regiaoLinha, filtro.regiao)) continue;
     if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
     if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
     if (filtro.termo_busca) {

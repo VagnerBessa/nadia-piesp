@@ -58,12 +58,13 @@ const piespTools = [
       },
       {
         name: 'consultar_anuncios_sem_valor',
-        description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais ainda não se sabe o valor financeiro, APENAS QUANDO o usuário demonstrar interesse nesses anúncios sem cifra.',
+        description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas.',
         parameters: {
           type: Type.OBJECT,
           properties: {
             ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+            regiao: { type: Type.STRING, description: regiaoDesc },
             termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento.' }
           }
         }
@@ -85,7 +86,7 @@ function executarFerramenta(nome: string, args: any): any {
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, termo_busca: args.termo_busca });
+    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, termo_busca: args.termo_busca });
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   return { error: 'Ferramenta não reconhecida' };
