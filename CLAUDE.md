@@ -36,7 +36,17 @@ Ver detalhes completos em [`docs/bugs-abertos.md`](docs/bugs-abertos.md).
 
 ---
 
-## Arquitetura Futura
+## Pendências
+
+| ID | Descrição | Status |
+|---|---|---|
+| PEND-001 | Proteção da API key do Gemini | Decidir antes do deploy |
+
+Ver detalhes e alternativas em [`docs/pendencias.md`](docs/pendencias.md).
+
+---
+
+## Arquitetura
 
 Direções planejadas mas não implementadas:
 - Backend mínimo (proteger API key + centralizar dados)
