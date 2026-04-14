@@ -426,6 +426,18 @@ generateWithFallback({ prompt, systemInstruction?, thinkingBudget?, tools? })
 
 **Fallback visual:** spinner `rose-500` animado enquanto o chunk carrega (`ViewLoader` em `App.tsx`).
 
+### Merge com branch claude/review-ag-ui-I7D3s — 14/abr/2026
+
+**Problema pós-merge:** o remote havia adotado um script `scripts/convert-csvs.js` que converte os CSVs para UTF-8 e gera arquivos `*.utf8.csv`, com os imports apontando para esses arquivos. Como mantivemos o `package.json` local (sem o script de conversão), os arquivos `.utf8.csv` não existiam e o Vite quebrava na inicialização.
+
+**Solução:** revertido os imports em `piespDataService.ts` para os arquivos originais:
+```ts
+import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
+import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
+```
+
+**Regra:** não usar o script `convert-csvs.js` nem arquivos `.utf8.csv` neste projeto. Os CSVs originais funcionam corretamente com o `piespDataService.ts` atual, que já trata o encoding internamente via `canonicalSetor()` e normalização de strings.
+
 ---
 
 ## Resiliência de Infraestrutura — Lições de 08/abr/2026

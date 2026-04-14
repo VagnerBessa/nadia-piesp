@@ -1,5 +1,5 @@
-import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.utf8.csv?raw';
-import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.utf8.csv?raw';
+import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
+import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
 // Valores canônicos — para display e ferramentas
 const SETORES_VALIDOS = new Set([
