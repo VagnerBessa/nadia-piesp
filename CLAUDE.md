@@ -90,6 +90,29 @@ npx vercel --prod --yes
 
 ---
 
+## Correção: Busca por Atividade Econômica (CNAE) — 14/abr/2026
+
+### Problema
+Buscas por termos como "saúde", "hospital", "educação", "turismo" retornavam zero resultados mesmo existindo investimentos relacionados na base.
+
+### Causa
+O `termo_busca` em `consultarPiespData()` e `consultarAnunciosSemValor()` pesquisava apenas três campos: empresa + setor + descrição do investimento. Porém, o PIESP classifica atividades econômicas pelo código CNAE — e "Saúde", por exemplo, aparece no campo `cnae_inv_2_desc` como "Atividades de atenção à saúde humana", nunca na descrição textual do projeto.
+
+### Estrutura do CSV (coluna CNAE)
+| CSV | Coluna | Campo |
+|---|---|---|
+| `piesp_confirmados_com_valor.csv` | col[11] | `cnae_inv_2_desc` |
+| `piesp_confirmados_com_valor.csv` | col[12] | `cnae_inv_5_cod_desc` |
+| `piesp_confirmados_com_valor.csv` | col[13] | `cnae_empresa_5_cod_desc` |
+| `piesp_confirmados_sem_valor.csv` | col[9] | `cnae_inv_2_desc` |
+| `piesp_confirmados_sem_valor.csv` | col[10] | `cnae_inv_5_cod_desc` |
+| `piesp_confirmados_sem_valor.csv` | col[11] | `cnae_empresa_5_cod_desc` |
+
+### Solução
+Adicionadas as colunas CNAE ao `textToSearch` em ambas as funções de consulta em `services/piespDataService.ts`. Buscas por "saúde", "hospital", "farmácia", "educação", "turismo", "energia" etc. agora retornam resultados corretos.
+
+---
+
 ## Bugs Abertos
 
 | ID | Descrição | Status |
