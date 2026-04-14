@@ -26,6 +26,70 @@ Para detalhes, ver `docs/`.
 
 ---
 
+## Deploy Vercel — Branch `feature/nadia-mobile` — 14/abr/2026
+
+### URL de produção
+**https://nadia-piesp-mobile.vercel.app**
+
+Projeto Vercel: `vagner-bessas-projects/nadia-piesp-mobile`
+
+### Como fazer redeploy
+```bash
+cd "/Users/vagnerbessa/Library/Mobile Documents/com~apple~CloudDocs/Seade/Piesp/Nadia-PIESP"
+npx vercel --prod --yes
+```
+
+### Variáveis de ambiente no Vercel
+Três variáveis configuradas em Production:
+- `VITE_GEMINI_API_KEY` — chave do AI Studio (conta pessoal, não @seade.gov.br)
+- `VITE_GOOGLE_MAPS_API_KEY`
+- `VITE_OPENROUTER_API_KEY`
+
+Para atualizar uma variável:
+```bash
+npx vercel env rm NOME_DA_VAR production --yes
+printf '%s' "NOVO_VALOR" | npx vercel env add NOME_DA_VAR production --yes
+npx vercel --prod --yes
+```
+
+**Regra:** usar `printf '%s'` e não `echo` — o `echo` adiciona `\n` ao final, corrompendo o valor da chave.
+
+---
+
+### Problemas encontrados no deploy e soluções
+
+#### Problema 1: `config.ts` no `.gitignore` impedia o build correto no Vercel
+
+**Sintoma:** Chat e voz retornavam "Problema com a chave de API" mesmo com as variáveis configuradas no Vercel.
+
+**Causa:** `config.ts` estava no `.gitignore`. O Vercel CLI usa o `.gitignore` como filtro de upload quando não existe `.vercelignore`. Sem o `config.ts`, o Vite não conseguia injetar as variáveis `VITE_*` corretamente.
+
+**Solução:** Remover `config.ts` do `.gitignore` e commitá-lo. É seguro — o arquivo agora usa apenas `import.meta.env.VITE_*`, sem chaves hardcoded.
+
+---
+
+#### Problema 2: Chave de API bloqueada pelo Google ("API key was reported as leaked")
+
+**Sintoma:** Curl direto à API retornava `403 — Your API key was reported as leaked`.
+
+**Causa:** A chave original (`AIzaSyD_nULg...`) apareceu em texto plano nesta conversa quando o Claude leu o arquivo `.env`. O Google monitora repositórios e conversas públicas e revoga chaves expostas automaticamente.
+
+**Solução:** Gerar nova chave e atualizar o Vercel. **Nunca ler o `.env` em voz alta nem compartilhar chaves no chat.**
+
+---
+
+#### Problema 3: Organização Seade no Google Cloud exige conta de serviço
+
+**Sintoma:** A chave criada no Google Cloud Console (projeto Seade) tinha formato `AQ.Ab8RN...` em vez de `AIzaSy...`, e não funcionava como chave de API simples.
+
+**Causa:** A organização Seade tem uma policy que obriga todas as chaves Gemini/Vertex a serem vinculadas a uma conta de serviço (`nadia-vercel@gen-lang-client-0635245579.iam.gserviceaccount.com`). Esse tipo de chave é OAuth2 e não pode ser usada diretamente em um app frontend estático.
+
+**Solução:** Criar a chave pelo **Google AI Studio** ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) com uma **conta Google pessoal** (não @seade.gov.br). Chaves do AI Studio têm o formato `AIzaSy...` e funcionam normalmente em frontends.
+
+**Regra para o futuro:** Qualquer nova chave Gemini para deploy externo deve ser criada via AI Studio com conta pessoal, não pelo Console da organização Seade.
+
+---
+
 ## Bugs Abertos
 
 | ID | Descrição | Status |
