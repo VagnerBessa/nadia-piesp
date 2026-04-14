@@ -194,7 +194,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
       {pickerOpen && (
         <div
           ref={pickerRef}
-          className={`absolute left-0 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl z-50 flex flex-col ${chatStarted ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+          className={`xl:hidden absolute left-0 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl z-50 flex flex-col ${chatStarted ? 'bottom-full mb-2' : 'top-full mt-2'}`}
           style={{ animation: 'dropdown-in 140ms ease-out forwards' }}
         >
           {/* Opção fixa no topo */}
@@ -294,7 +294,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
           <button
             ref={triggerRef}
             onClick={() => setPickerOpen(p => !p)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+            className={`xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
               activeAgent
                 ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                 : pickerOpen
@@ -346,84 +346,140 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
         }
       `}</style>
 
-      <div className="w-full h-full flex flex-col max-w-3xl mx-auto bg-transparent">
+      {/* Layout: left spacer | chat column | agent sidebar */}
+      <div className="w-full h-full flex">
 
-        {/* Header */}
-        <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-slate-700/50">
-          <div className="flex items-center gap-4">
-            <ChatHeaderSphere />
-            <h1 className="text-xl font-bold text-slate-100">Nadia</h1>
-          </div>
-          <button
-            onClick={onNavigateHome}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg"
-          >
-            <SwitchModeIcon className="h-5 w-5" />
-            <span className="hidden sm:inline text-sm font-medium leading-none">Voltar</span>
-          </button>
-        </header>
+        {/* Left spacer — mirrors sidebar width on XL to keep chat centered */}
+        <div className="hidden xl:block xl:w-56 flex-shrink-0" />
 
-        {!chatStarted ? (
-          /* Estado inicial — input posicionado no terço superior */
-          <div className="flex-grow flex flex-col items-center px-4 pt-[12%]">
-            <p className="text-slate-500 text-sm mb-6 font-mono tracking-wide">
-              Como posso ajudar?
-            </p>
-            <div className="w-full max-w-2xl">
-              {InputBox}
+        {/* Chat column */}
+        <div className="flex-1 flex flex-col min-w-0 max-w-3xl bg-transparent">
+
+          {/* Header */}
+          <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-slate-700/50">
+            <div className="flex items-center gap-4">
+              <ChatHeaderSphere />
+              <h1 className="text-xl font-bold text-slate-100">Nadia</h1>
             </div>
-          </div>
-        ) : (
-          /* Estado de chat — mensagens + input no rodapé */
-          <>
-            <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'model' && <div className="flex-shrink-0"><ChatHeaderSphere /></div>}
-                  <div className={`max-w-xl rounded-2xl px-4 py-3 ${
-                    msg.role === 'user'
-                      ? 'bg-rose-600 text-white rounded-br-none'
-                      : 'bg-slate-700 text-slate-200 rounded-bl-none'
-                  }`}>
-                    <MarkdownRenderer content={msg.text} />
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-600">
-                        <h4 className="text-xs font-semibold text-slate-400 mb-1.5">Fontes:</h4>
-                        <ul className="text-xs space-y-1">
-                          {msg.sources.map((source, i) => (
-                            <li key={i}>
-                              <a href={source.uri} target="_blank" rel="noopener noreferrer"
-                                className="text-sky-400 hover:text-sky-300 hover:underline truncate block">
-                                {source.title}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0"><ChatHeaderSphere /></div>
-                  <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">
-                    <SmallNadiaSphere />
-                    <span className="text-slate-400 animate-pulse">Pensando...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </main>
+            <button
+              onClick={onNavigateHome}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg"
+            >
+              <SwitchModeIcon className="h-5 w-5" />
+              <span className="hidden sm:inline text-sm font-medium leading-none">Voltar</span>
+            </button>
+          </header>
 
-            <footer className="flex-shrink-0 px-4 pt-3 pb-safe border-t border-slate-700/50">
-              {InputBox}
-            </footer>
-          </>
-        )}
+          {!chatStarted ? (
+            /* Estado inicial — input posicionado no terço superior */
+            <div className="flex-grow flex flex-col items-center px-4 pt-[12%]">
+              <p className="text-slate-500 text-sm mb-6 font-mono tracking-wide">
+                Como posso ajudar?
+              </p>
+              <div className="w-full max-w-2xl">
+                {InputBox}
+              </div>
+            </div>
+          ) : (
+            /* Estado de chat — mensagens + input no rodapé */
+            <>
+              <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
+                {messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {msg.role === 'model' && <div className="flex-shrink-0"><ChatHeaderSphere /></div>}
+                    <div className={`max-w-xl rounded-2xl px-4 py-3 ${
+                      msg.role === 'user'
+                        ? 'bg-rose-600 text-white rounded-br-none'
+                        : 'bg-slate-700 text-slate-200 rounded-bl-none'
+                    }`}>
+                      <MarkdownRenderer content={msg.text} />
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-600">
+                          <h4 className="text-xs font-semibold text-slate-400 mb-1.5">Fontes:</h4>
+                          <ul className="text-xs space-y-1">
+                            {msg.sources.map((source, i) => (
+                              <li key={i}>
+                                <a href={source.uri} target="_blank" rel="noopener noreferrer"
+                                  className="text-sky-400 hover:text-sky-300 hover:underline truncate block">
+                                  {source.title}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0"><ChatHeaderSphere /></div>
+                    <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">
+                      <SmallNadiaSphere />
+                      <span className="text-slate-400 animate-pulse">Pensando...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </main>
+
+              <footer className="flex-shrink-0 px-4 pt-3 pb-safe border-t border-slate-700/50">
+                {InputBox}
+              </footer>
+            </>
+          )}
+        </div>
+
+        {/* Agent sidebar — desktop only (XL+), uses negative space outside max-w-3xl */}
+        <aside className="hidden xl:flex flex-col w-56 flex-shrink-0 border-l border-slate-800/60 pt-6 px-4 overflow-y-auto custom-scrollbar">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4 px-1">
+            Agente Ativo
+          </p>
+
+          {/* Geral */}
+          <button
+            onClick={() => handleSelectAgent(null)}
+            className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-150 mb-1 ${
+              activeAgent === null
+                ? 'bg-slate-800 text-slate-100 border border-slate-600/60'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${
+              activeAgent === null ? 'bg-slate-300' : 'bg-slate-700'
+            }`} />
+            <span className={activeAgent === null ? 'font-medium' : ''}>Geral</span>
+          </button>
+
+          <div className="border-t border-slate-800 my-3" />
+
+          {/* Agent list */}
+          <div className="flex flex-col gap-0.5">
+            {AGENTS.map(agent => {
+              const isActive = activeAgent?.name === agent.name;
+              return (
+                <button
+                  key={agent.name}
+                  onClick={() => handleSelectAgent(isActive ? null : agent)}
+                  className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-150 border ${
+                    isActive
+                      ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border-transparent'
+                  }`}
+                >
+                  <span className={`flex-shrink-0 transition-colors ${isActive ? 'text-rose-400' : 'text-slate-600'}`}>
+                    {agent.icon}
+                  </span>
+                  <span className={`leading-snug ${isActive ? 'font-medium' : ''}`}>{agent.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
       </div>
     </>
   );
