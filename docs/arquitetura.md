@@ -1,6 +1,6 @@
-# Arquitetura Futura
+# Arquitetura
 
-Decisões e direções arquiteturais ainda não implementadas.
+Decisões e direções arquiteturais — implementadas e planejadas.
 
 ---
 

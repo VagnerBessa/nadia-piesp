@@ -43,7 +43,7 @@ Direções planejadas mas não implementadas:
 - MCP server como única fonte de verdade (eliminar duplicação `piespDataService` / `piespService`)
 - Nadia Mobile (branch `mobile` — Chat + Voz, mobile-first)
 
-Ver [`docs/arquitetura-futura.md`](docs/arquitetura-futura.md).
+Ver [`docs/arquitetura.md`](docs/arquitetura.md).
 
 ---
 
