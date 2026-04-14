@@ -2,21 +2,18 @@ import React from 'react';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 
 interface HeaderProps {
-  onNavigateToDashboards?: () => void;
-  onNavigateToMunicipal?: () => void;
   onNavigateHome?: () => void;
-  onNavigateToExplorar?: () => void;
-  onNavigateToPerfilEmpresa?: () => void;
-  onNavigateToDataLab?: () => void;
+  onNavigateToChat?: () => void;
+  onNavigateToVoice?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateHome, onNavigateToExplorar, onNavigateToPerfilEmpresa, onNavigateToDataLab }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNavigateToVoice }) => {
   return (
     <header className="flex-shrink-0 w-full max-w-7xl mx-auto px-6 py-4">
       <div className="grid grid-cols-3 items-center">
-        {/* Left container: Logo and Home Link */}
+        {/* Left: Logo */}
         <div className="justify-self-start">
-          <button 
+          <button
             onClick={onNavigateHome}
             className="flex items-center gap-3 group focus:outline-none"
             aria-label="Voltar para a página inicial"
@@ -30,10 +27,10 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMun
         </div>
 
         {/* Navigation (centered) */}
-        <nav className="hidden md:block justify-self-center">
+        <nav className="justify-self-center">
           <ul className="flex items-center space-x-1 bg-slate-900/50 backdrop-blur-md rounded-full px-2 py-1.5 border border-white/5 shadow-xl">
-             <li>
-              <button 
+            <li>
+              <button
                 onClick={onNavigateHome}
                 className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all"
               >
@@ -41,57 +38,26 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMun
               </button>
             </li>
             <li>
-              <button 
-                onClick={onNavigateToDashboards}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
+              <button
+                onClick={onNavigateToChat}
+                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all"
               >
-                Dashboards
+                Chat
               </button>
             </li>
             <li>
               <button
-                onClick={onNavigateToMunicipal}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
+                onClick={onNavigateToVoice}
+                className="px-4 py-1.5 text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-full transition-all"
               >
-                Municípios
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onNavigateToExplorar}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
-              >
-                Explorar
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onNavigateToPerfilEmpresa}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
-              >
-                Empresas
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onNavigateToDataLab}
-                className="px-4 py-1.5 text-sm font-medium text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 rounded-full transition-all whitespace-nowrap"
-              >
-                Data Lab
+                Voz
               </button>
             </li>
           </ul>
         </nav>
 
-        {/* Right container */}
-        <div className="justify-self-end flex items-center gap-4">
-           <button className="p-2 text-slate-400 hover:text-white transition-colors">
-             <span className="sr-only">Menu</span>
-             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-           </button>
-        </div>
+        {/* Right: placeholder para alinhar grid */}
+        <div className="justify-self-end" />
       </div>
     </header>
   );
