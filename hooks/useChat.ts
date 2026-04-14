@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { consultarPiespData, consultarAnunciosSemValor, getMetadados } from '../services/piespDataService';
 import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
 import { callOpenRouter } from '../services/openrouterService';
 import { OPENROUTER_API_KEY } from '../config';
@@ -32,33 +32,44 @@ const initialMessage: Message = {
     text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
 };
 
+// Carregado uma vez — os metadados não mudam durante a sessão
+const _metadados = getMetadados();
+
 // Ferramentas PIESP: function calling para dados estruturados
 // (não pode ser combinado com googleSearch na mesma chamada)
+// Inclui os valores reais de regiões para que o Gemini não precise adivinhar.
+const regiaoDesc = _metadados.regioes.length > 0
+  ? `Região administrativa do Estado de SP. Valores válidos: ${_metadados.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
+  : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+
 const piespTools = [
   {
     functionDeclarations: [
       {
         name: 'consultar_projetos_piesp',
-        description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro.',
+        description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Para filtrar por setor (Indústria, Infraestrutura etc.), use o parâmetro `setor`. Retorna os principais projetos confirmados com montante financeiro.',
         parameters: {
           type: Type.OBJECT,
           properties: {
-            ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-            regiao: { type: Type.STRING, description: 'A Região Administrativa (RA) do Estado de SP, ex: "RA Santos", "RA Campinas". Use este campo quando o usuário mencionar região, RA ou Região Administrativa — NÃO tente municipio por municipio.' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
+            ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+            municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+            regiao: { type: Type.STRING, description: regiaoDesc },
+            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Use APENAS estes valores — não invente variações.' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade"). NÃO usar para setores — use o parâmetro setor.' }
           }
         }
       },
       {
         name: 'consultar_anuncios_sem_valor',
-        description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais ainda não se sabe o valor financeiro, APENAS QUANDO o usuário demonstrar interesse nesses anúncios sem cifra.',
+        description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas.',
         parameters: {
           type: Type.OBJECT,
           properties: {
-            ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
+            ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento.' }
+            regiao: { type: Type.STRING, description: regiaoDesc },
+            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento. NÃO usar para setores.' }
           }
         }
       }
@@ -75,11 +86,21 @@ const searchTools = [
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
   if (nome === 'consultar_projetos_piesp') {
-    const resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, termo_busca: args.termo_busca });
+    let resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
+    // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
+    if (resultados.total === 0 && args.ano) {
+      const semAno = consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.total > 0) resultados = semAno;
+    }
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    const resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, termo_busca: args.termo_busca });
+    let resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    if (resultados.total === 0 && args.ano) {
+      const semAno = consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.total > 0) resultados = semAno;
+    }
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   return { error: 'Ferramenta não reconhecida' };
@@ -164,10 +185,6 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
         }
       }
 
-      if (usarPesquisa) {
-        console.log('🔍 Modo: Google Search (skill empresa detectada)');
-      }
-
       // Primeira chamada: envia a mensagem com as ferramentas selecionadas (com retry automático para 503)
       let response = await withRetry(() => ai.models.generateContent({
         model: modelName,
@@ -180,7 +197,9 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       }));
 
       // Loop de Function Calling: executa ferramentas até o modelo retornar texto final
-      let maxIterations = 3; // Segurança contra loop infinito
+      // Máx 2: suficiente para chamar as duas bases (projetos + sem_valor) sem permitir
+      // iteração ano-a-ano (que gera 4+ chamadas quando o modelo filtra por período)
+      let maxIterations = 2;
       while (maxIterations > 0) {
         const candidate = response.candidates?.[0];
         const parts = candidate?.content?.parts;
@@ -190,11 +209,9 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
         if (!functionCallPart || !functionCallPart.functionCall) break; // Sem tool call, temos a resposta final
 
         const fcall = functionCallPart.functionCall;
-        console.log("🛠️ Chat Tool Call:", fcall.name, fcall.args);
 
         // Executa a ferramenta localmente
         const resultado = executarFerramenta(fcall.name!, fcall.args || {});
-        console.log("📊 Resultado da ferramenta:", resultado);
 
         // Monta o histórico com a resposta da ferramenta
         const updatedContents = [

@@ -35,3 +35,5 @@ test-api.js
 knowledge_base/piesp_confirmados_com_valor.csv
 knowledge_base/piesp_confirmados_sem_valor.csv
 knowledge_base/piesp_mini.csv
+# Versões UTF-8 geradas automaticamente pelo scripts/convert-csvs.js
+knowledge_base/*.utf8.csv

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateWithFallback } from '../services/geminiService';
-import { filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
+import { filtrarParaRelatorio, getMetadados, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
 import { DynamicDashboard, DashboardData, parseDashboard } from './DynamicDashboard';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import SoundWaveIcon from './SoundWaveIcon';
 import DESIGN_SKILL from '../skills/datalab_design.md?raw';
 
 interface DataLabViewProps {
@@ -16,24 +15,31 @@ interface DataLabViewProps {
 // Prompts
 // ───────────────────────────────────────────────
 
+// Carregado uma vez — metadados não mudam durante a sessão
+const _metadadosDataLab = getMetadados();
+
 function buildExtractFiltersPrompt(query: string): string {
+  const regioesList = _metadadosDataLab.regioes.length > 0
+    ? _metadadosDataLab.regioes.join(', ')
+    : 'Região Metropolitana de São Paulo, Região Administrativa de Campinas, Região Administrativa de Sorocaba';
+
   return `Você é um extrator de filtros para a base de dados PIESP (investimentos no Estado de SP).
 
 O usuário fez a seguinte solicitação de análise:
 "${query}"
 
-Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto adicional.
-Atenção: como o usuário pode pedir mais de um município/região (ex: compare "X e Y"), devolva listas (arrays) de strings.
-
+Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto adicional:
 {
-  "municipio": ["nome 1", "nome 2"], // omita se não citado
-  "setor": ["Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços"], // apenas os listados
-  "regiao": ["RA Campinas"], // nome da região administrativa se mencionada, senão omita
-  "ano": ["2023", "2024"], // anos com 4 dígitos se mencionados
-  "termo_busca": "palavra temática (ex: 'energia') se for o caso"
+  "municipio": "nome do município específico se mencionado, senão omita",
+  "setor": "um de: Agropecuária, Comércio, Indústria, Infraestrutura, Serviços — apenas se mencionado",
+  "regiao": "nome EXATO da região, copiado da lista abaixo — apenas se o usuário mencionar uma região, senão omita",
+  "ano": "ano com 4 dígitos se mencionado, senão omita",
+  "termo_busca": "palavra-chave temática (ex: 'energia', 'automóvel', 'data center') se a análise for sobre tema específico, senão omita"
 }
 
-Omita campos não mencionados. Retorne apenas o JSON puro, com arrays de string para as categorias.`;
+Regiões válidas na base (usar o nome exato): ${regioesList}
+
+Omita campos não mencionados. Retorne apenas o JSON.`;
 }
 
 function buildDashboardPrompt(query: string, resumo: ResumoRelatorio): string {
@@ -227,7 +233,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       setLoadingStep(`Analisando ${resumo.total} projetos (R$ ${(resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi)...`);
       const dashResponse = await generateWithFallback({
         prompt: buildDashboardPrompt(query, resumo),
-        thinkingBudget: 0,
+        thinkingBudget: 1024,
       });
 
       const parsed = parseDashboard(dashResponse.text || '');
@@ -240,12 +246,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       setDashboard(parsed);
       setQueryHistory(prev => [query, ...prev.slice(0, 4)]);
     } catch (e: any) {
-      const errorMsg = e?.message || JSON.stringify(e) || 'Falha desconhecida.';
-      if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('UNAVAILABLE') || errorMsg.includes('overloaded')) {
-        setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente analisar novamente.');
-      } else {
-        setError('Nadia (servidores do Google Gemini) está enfrentando uma instabilidade/alta demanda momentânea. Por favor, aguarde alguns segundos e tente analisar novamente.');
-      }
+      setError(`Erro: ${e?.message || 'Falha desconhecida.'}`);
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -276,29 +277,22 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
 
       <div className="w-full h-full flex flex-col overflow-hidden">
 
-        {/* Título da Página / Hero Section (Frontend Design Applied) */}
-        <div className="flex-shrink-0 px-8 pt-10 pb-8 border-b border-slate-700/60 bg-gradient-to-b from-slate-900/80 to-transparent">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              <div className="p-3.5 bg-rose-500/10 rounded-2xl ring-1 ring-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.15)] flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-rose-400">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-                </svg>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-50 tracking-tight">Data Lab</h1>
-                <p className="text-sm font-medium text-slate-400">Dashboards gerados pela Nadia sob demanda</p>
-              </div>
+        {/* Header interno */}
+        <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
+          <div className="flex items-center gap-3">
+            <ChatHeaderSphere />
+            <div>
+              <h1 className="text-lg font-bold text-slate-100">Data Lab</h1>
+              <p className="text-xs text-slate-400">Dashboards gerados pela Nadia sob demanda</p>
             </div>
-            <button
-              onClick={onNavigateHome}
-              className="px-5 py-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-300 hover:text-white text-sm font-bold transition-all shadow hover:shadow-lg"
-            >
-              ← Voltar ao Início
-            </button>
           </div>
-        </div>
+          <button
+            onClick={onNavigateHome}
+            className="px-4 py-2 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 text-sm transition-all"
+          >
+            Voltar
+          </button>
+        </header>
 
         {/* Área de prompt */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-slate-700/30 bg-slate-900/30">
@@ -346,7 +340,10 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
                         : 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10'
                     } disabled:opacity-40`}
                   >
-                    <SoundWaveIcon className="w-5 h-5" isListening={isListening} />
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                      <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
+                      <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
+                    </svg>
                   </button>
                 )}
               </div>

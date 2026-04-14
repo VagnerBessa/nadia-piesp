@@ -1,36 +1,204 @@
-import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
-import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
+import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.utf8.csv?raw';
+import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.utf8.csv?raw';
 
-// Valores canônicos — usados para filtrar linhas corrompidas do CSV
+// Valores canônicos — para display e ferramentas
 const SETORES_VALIDOS = new Set([
   'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
 ]);
+
+/**
+ * Identifica o setor canônico a partir de uma string, tolerando encoding corrompido.
+ * Funciona tanto com CSV UTF-8 correto quanto com Latin-1 lido como UTF-8
+ * (onde "Comércio" vira "Com?rcio", "Indústria" vira "Ind?stria", etc.).
+ * Usa padrões de substrings ASCII que sobrevivem a ambos os encodings.
+ */
+function canonicalSetor(s: string): string | null {
+  const l = s.toLowerCase();
+  if (l.includes('infraestrutura'))            return 'Infraestrutura';
+  if (l.includes('ind') && l.includes('stria')) return 'Indústria';
+  if (l.includes('com') && l.includes('rcio'))  return 'Comércio';
+  if (l.includes('servi'))                      return 'Serviços';
+  if (l.includes('agropec'))                    return 'Agropecuária';
+  return null;
+}
 
 const TIPOS_VALIDOS = new Set([
   'Implantação', 'Ampliação', 'Modernização', 'Ampliação/Modernização',
 ]);
 
+// ─────────────────────────────────────────────────────────────
+// Mapeamento de regiões → municípios (fallback quando a coluna
+// "regiao" do CSV não tem o nome esperado pelo usuário).
+// Nomes em minúsculas para comparação case-insensitive.
+// ─────────────────────────────────────────────────────────────
+
+// Todos os nomes SEM diacríticos (norm() remove acentos antes de comparar)
+const RMSP = new Set([
+  'aruja','barueri','biritiba-mirim','biritiba mirim','caieiras','cajamar',
+  'carapicuiba','cotia','diadema','embu das artes','embu-guacu','embu guacu',
+  'ferraz de vasconcelos','francisco morato','franco da rocha','guararema',
+  'guarulhos','itapecerica da serra','itapevi','itaquaquecetuba','jandira',
+  'juquitiba','mairipora','maua','mogi das cruzes','osasco',
+  'pirapora do bom jesus','poa','ribeirao pires','rio grande da serra',
+  'salesopolis','santa isabel','santana de parnaiba','santo andre',
+  'sao bernardo do campo','sao caetano do sul','sao lourenco da serra',
+  'sao paulo','suzano','tabao da serra','vargem grande paulista',
+]);
+
+const RM_CAMPINAS = new Set([
+  'americana','artur nogueira','campinas','cosmopolis','engenheiro coelho',
+  'holambra','hortolandia','indaiatuba','itatiba','jaguariuna','monte mor',
+  'morungaba','nova odessa','paulinia','pedreira','santa barbara d oeste',
+  'santo antonio de posse','sumare','valinhos','vinhedo',
+]);
+
+const RM_BAIXADA_SANTISTA = new Set([
+  'bertioga','cubatao','guaruja','itanhaem','mongagua',
+  'peruibe','praia grande','santos','sao vicente',
+]);
+
+const RM_VALE_PARAIBA = new Set([
+  'cacapava','caraguatatuba','guaratingueta','jacarei','lorena',
+  'pindamonhangaba','sao jose dos campos','taubate','ubatuba',
+]);
+
+const RM_SOROCABA = new Set([
+  'aluminio','aracariguama','aracoiaba da serra','boituva','capela do alto',
+  'cerquilho','cesario lange','ibiuna','ipero','itapetininga','itu','jumirim',
+  'laranjal paulista','mairinque','piedade','pilar do sul','porto feliz',
+  'salto','salto de pirapora','sao miguel arcanjo','sarapui','sorocaba',
+  'tapiai','tatui','votorantim',
+]);
+
+// Termos já normalizados (sem diacríticos) — norm() é aplicado antes da comparação
+const REGIAO_MUNICIPIOS: Array<{ termos: string[]; municipios: Set<string> }> = [
+  {
+    termos: ['sao paulo','rmsp','grande sp','grande sao paulo','metropolitana de sao paulo','ra sao paulo'],
+    municipios: RMSP,
+  },
+  {
+    termos: ['campinas','rm campinas','metropolitana de campinas','ra campinas'],
+    municipios: RM_CAMPINAS,
+  },
+  {
+    termos: ['baixada santista','santos','rm baixada','litoral','metropolitana de santos','ra santos'],
+    municipios: RM_BAIXADA_SANTISTA,
+  },
+  {
+    termos: ['vale do paraiba','vale paraiba','sao jose dos campos','metropolitana de sao jose','ra sao jose dos campos'],
+    municipios: RM_VALE_PARAIBA,
+  },
+  {
+    termos: ['sorocaba','rm sorocaba','metropolitana de sorocaba','ra sorocaba'],
+    municipios: RM_SOROCABA,
+  },
+];
+
+/**
+ * Remove diacríticos e normaliza para comparação robusta,
+ * independente de encoding do CSV (Latin-1 vs UTF-8).
+ */
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[^\w\s-]/g, ' ')       // remove caracteres estranhos (encoding garbled)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Dado o nome de região digitado pelo usuário, retorna o Set de municípios
+ * correspondente (ou null se não for uma região conhecida).
+ * Usa norm() para comparação sem diacríticos.
+ */
+function resolverRegiaoEmMunicipios(filtroRegiao: string): Set<string> | null {
+  const q = norm(filtroRegiao);
+  for (const { termos, municipios } of REGIAO_MUNICIPIOS) {
+    if (termos.some(t => q.includes(t) || t.includes(q))) {
+      return municipios;
+    }
+  }
+  return null;
+}
+
+/**
+ * Verifica se um município (nome da base) está na região solicitada.
+ * Compara sem diacríticos para robustez.
+ */
+function municipioNaRegiao(municipioNaBase: string, municipiosRegiao: Set<string>): boolean {
+  const m = norm(municipioNaBase);
+  return municipiosRegiao.has(m);
+}
+
+/**
+ * Remove tudo exceto letras a-z. Funciona para ambos os encodings:
+ * - UTF-8 correto: "RA São Paulo" → "rasopaulo" (ã vira '' via remove)
+ * - Latin-1 garbled: "RA S\uFFFDo Paulo" → "rasopaulo" (FFFD vira '' via remove)
+ * O resultado é idêntico nos dois casos.
+ */
+function normAsciiOnly(s: string): string {
+  return s.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+/**
+ * Compara dois nomes de região de forma tolerante — sem diacríticos e
+ * resistente a encoding corrompido (Latin-1 lido como UTF-8).
+ */
+function regiaoMatchPorNome(regiaoNaBase: string, filtroRegiao: string): boolean {
+  const a = norm(regiaoNaBase);
+  const b = norm(filtroRegiao);
+  if (a.includes(b) || b.includes(a)) return true;
+
+  const stripPrefix = (s: string) =>
+    s
+      .replace(/^ra\s+/, '')
+      .replace(/^regiao\s+(administrativa|metropolitana|admin\.?)\s+(de|do|da|dos|das)\s+/, '')
+      .replace(/^regiao\s+(de|do|da)\s+/, '')
+      .replace(/^grande\s+/, '')
+      .trim();
+
+  const keyA = stripPrefix(a);
+  const keyB = stripPrefix(b);
+  if (keyA.length > 0 && (keyA.includes(keyB) || keyB.includes(keyA))) return true;
+
+  // Fallback: comparação só-ASCII — resolve mismatch de encoding entre
+  // o modelo (Unicode correto) e o CSV (Latin-1 garbled como UTF-8).
+  // Ex: normAscii("RA São Paulo") = normAscii("RA S\uFFFDo Paulo") = "rasopaulo"
+  const aa = normAsciiOnly(regiaoNaBase);
+  const bb = normAsciiOnly(filtroRegiao);
+  if (aa.length > 3 && (aa === bb || aa.includes(bb) || bb.includes(aa))) return true;
+
+  const keyAa = normAsciiOnly(stripPrefix(a));
+  const keyBb = normAsciiOnly(stripPrefix(b));
+  return keyAa.length > 3 && (keyAa === keyBb || keyAa.includes(keyBb) || keyBb.includes(keyAa));
+}
+
+/**
+ * Match completo: tenta por nome da coluna "regiao" do CSV e,
+ * se falhar, verifica se o município é membro da região pedida.
+ */
+function regiaoMatch(regiaoNaBase: string, municipioNaBase: string, filtroRegiao: string): boolean {
+  if (regiaoMatchPorNome(regiaoNaBase, filtroRegiao)) return true;
+  const municipios = resolverRegiaoEmMunicipios(filtroRegiao);
+  if (municipios) return municipioNaRegiao(municipioNaBase, municipios);
+  return false;
+}
+
 export interface FiltroPiesp {
   ano?: string;
   municipio?: string;
   regiao?: string;
+  setor?: string;
   termo_busca?: string;
-}
-
-// Normaliza termos de região: "Região Administrativa de Santos", "RA de Santos", "RA Santos" → "ra santos"
-function normalizarRegiao(texto: string): string {
-  return texto
-    .toLowerCase()
-    .replace(/regi[aã]o administrativa d[eoa]?\s*/i, 'ra ')
-    .replace(/\bra de\b/gi, 'ra')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
   const resultados = [];
 
+  // A primeira linha é o cabeçalho
   // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 8=regiao, 9=descr_investimento, 10=setor
   for (let i = 1; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
@@ -38,9 +206,9 @@ export function consultarPiespData(filtro: FiltroPiesp) {
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
-    const regiaoLinha = colunas[8]?.trim() || '';
+    const regiaoLinha = colunas[8]?.trim()?.toLowerCase() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
-    const setorLinha = colunas[10] || 'Geral';
+    const setorLinha = canonicalSetor(colunas[10] || '') || colunas[10] || 'Geral';
     const descricaoLinha = colunas[9] || '';
 
     let match = true;
@@ -49,20 +217,21 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       match = false;
     }
 
-    if (filtro.regiao) {
-      const regiaoFiltro = normalizarRegiao(filtro.regiao);
-      const regiaoNorm = normalizarRegiao(regiaoLinha);
-      if (!regiaoNorm.includes(regiaoFiltro) && !regiaoFiltro.includes(regiaoNorm)) {
-        match = false;
-      }
+    if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
+      match = false;
     }
 
-    if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
+    if (filtro.regiao && !regiaoMatch(regiaoLinha, municipioLinha, filtro.regiao)) {
+      match = false;
+    }
+
+    if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) {
       match = false;
     }
 
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
+      // busca semântica livre em vários campos textuais
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
         match = false;
@@ -73,7 +242,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       resultados.push({
         empresa: empresaLinha,
         municipio: colunas[7] || 'Não informado',
-        regiao: regiaoLinha || 'Não informada',
+        regiao: colunas[8] || 'Não informada',
         ano: anoLinha,
         setor: setorLinha,
         descricao: descricaoLinha.substring(0, 150),
@@ -91,15 +260,16 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   // Retorna todos os resultados ordenados por valor (maiores primeiro)
   // Se houver muitos, o top 10 é enviado ao modelo + total real para contexto
   const total = resultados.length;
+
   return { total, projetos: resultados.slice(0, 10) };
 }
 
 export interface FiltroRelatorio {
-  setor?: string | string[];
-  regiao?: string | string[];
-  ano?: string | string[];
-  tipo?: string | string[];
-  municipio?: string | string[];
+  setor?: string;
+  regiao?: string;
+  ano?: string;
+  tipo?: string;
+  municipio?: string;
   termo_busca?: string;
 }
 
@@ -132,35 +302,18 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 
     const anoLinha = (cols[1] || '').trim();
     const empresaLinha = (cols[3] || 'Desconhecida').trim();
-    const setorLinha = (cols[10] || 'Outros').trim();
+    const setorLinha = canonicalSetor((cols[10] || '').trim()) || (cols[10] || 'Outros').trim();
     const municipioLinha = (cols[7] || 'Não informado').trim();
     const regiaoLinha = (cols[8] || 'Não informada').trim();
     const tipoLinha = (cols[14] || '').trim();
     const descricaoLinha = (cols[9] || '').trim();
     const valorStr = (cols[5] || '0').trim();
 
-    const checkMatch = (valor: string, filtroVal?: string | string[], exact = true): boolean => {
-      if (!filtroVal) return true;
-      const arr = Array.isArray(filtroVal) ? filtroVal : [filtroVal];
-      if (arr.length === 0) return true;
-      const vLower = valor.toLowerCase();
-      
-      return arr.some(f => {
-         const fStr = typeof f === 'string' ? f.toLowerCase() : String(f).toLowerCase();
-         // Para matches flexíveis (como "RA de Campinas" vs "RA Campinas"), aceitamos se houver intersecção significativa
-         if (!exact) {
-            return vLower.includes(fStr) || fStr.includes(vLower);
-         }
-         return vLower === fStr;
-      });
-    };
-
-    if (!checkMatch(anoLinha, filtro.ano)) continue;
-    if (!checkMatch(setorLinha, filtro.setor)) continue;
-    if (!checkMatch(regiaoLinha, filtro.regiao, false)) continue; // flexível para "RA de alguma coisa"
-    if (!checkMatch(tipoLinha, filtro.tipo)) continue;
-    if (!checkMatch(municipioLinha, filtro.municipio, false)) continue;
-    
+    if (filtro.ano && anoLinha !== filtro.ano) continue;
+    if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) continue;
+    if (filtro.regiao && !regiaoMatch(regiaoLinha, municipioLinha, filtro.regiao)) continue;
+    if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
+    if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
@@ -234,7 +387,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 function linhaValida(cols: string[]): boolean {
   if (cols.length < 15) return false;
   const setor = (cols[10] || '').trim();
-  return SETORES_VALIDOS.has(setor);
+  return canonicalSetor(setor) !== null;
 }
 
 export function getMetadados(): { setores: string[]; regioes: string[]; anos: string[]; tipos: string[] } {
@@ -253,7 +406,8 @@ export function getMetadados(): { setores: string[]; regioes: string[]; anos: st
     const ano = (cols[1] || '').trim();
     const tipo = (cols[14] || '').trim();
 
-    if (setor && SETORES_VALIDOS.has(setor)) setores.add(setor);
+    const setorCanonical = canonicalSetor(setor);
+    if (setorCanonical) setores.add(setorCanonical);
     if (regiao) regioes.add(regiao);
     if (ano && /^\d{4}$/.test(ano)) anos.add(ano);
     if (tipo && TIPOS_VALIDOS.has(tipo)) tipos.add(tipo);
@@ -376,6 +530,10 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
       match = false;
     }
 
+    if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) {
+      match = false;
+    }
+
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
       // busca semântica livre
@@ -400,3 +558,4 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   const total = resultados.length;
   return { total, projetos: resultados.slice(0, 10) };
 }
+

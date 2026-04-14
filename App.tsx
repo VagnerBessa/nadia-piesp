@@ -29,7 +29,6 @@ const App: React.FC = () => {
   const handleNavigateHome           = () => setView('home');
   const handleNavigateToDashboards   = () => setView('dashboards');
   const handleNavigateToMunicipal    = () => setView('municipal');
-  const handleNavigateToUpload       = () => setView('upload');
   const handleNavigateToExplorar     = () => setView('explorar');
   const handleNavigateToPerfilEmpresa = () => setView('perfil-empresa');
   const handleNavigateToDataLab      = () => setView('datalab');
@@ -60,7 +59,7 @@ const App: React.FC = () => {
       <Header
         onNavigateToDashboards={handleNavigateToDashboards}
         onNavigateToMunicipal={handleNavigateToMunicipal}
-        onNavigateToUpload={handleNavigateToUpload}
+
         onNavigateHome={handleNavigateHome}
         onNavigateToExplorar={handleNavigateToExplorar}
         onNavigateToPerfilEmpresa={handleNavigateToPerfilEmpresa}

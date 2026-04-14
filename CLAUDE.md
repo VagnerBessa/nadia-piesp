@@ -1,135 +1,127 @@
-# CLAUDE.md — Histórico de Decisões e Contexto do Projeto
+# CLAUDE.md — Contexto do Projeto
 
-Este arquivo é lido automaticamente pelo Claude Code no início de cada sessão.
-Registra decisões arquiteturais, lições aprendidas e features implementadas.
+Lido automaticamente pelo Claude Code no início de cada sessão.
+Para detalhes, ver `docs/`.
 
 ---
 
-## Visão Geral do Projeto
+## Visão Geral
 
-**Nadia-PIESP** é um assistente de IA da Fundação Seade para análise de investimentos no Estado de São Paulo, baseado nos dados da PIESP (Pesquisa de Investimentos no Estado de São Paulo).
+**Nadia-PIESP** — assistente de IA da Fundação Seade para análise de investimentos no Estado de São Paulo (PIESP).
 
 - **Stack:** React 19 + TypeScript + Vite, Material-UI + Tailwind CSS
 - **IA:** Google Gemini 2.5 Flash (chat e relatórios), Gemini Live API (voz)
 - **Dados:** CSVs do PIESP em `knowledge_base/` (importados como `?raw` via Vite)
+- **Sem backend** — app puramente frontend
 
 ---
 
-## Lições Aprendidas: Contexto Longo vs Dados Tabulares
-
-**Data:** Abril de 2026.
-**Objetivo do Teste:** Verificar se é viável carregar a base completa da PIESP diretamente na janela de contexto do Gemini Flash Native Audio sem RAG ou Function Calling.
-
-### Resultados
-
-1. **Viabilidade Técnica (WebSocket):** Injetar megabytes de dados via WebSocket em navegadores falha por limites de frames (Chrome bloqueia a conexão). Contornado criando `piesp_mini.csv` (~1 MB, sem a coluna `descr_investimento`).
-
-2. **"Colapso da Atenção" em Agregações:** Com contexto longo carregado, a Nadia alucinava ao responder perguntas analíticas como "cite os principais investimentos em 2026". LLMs não agem como bancos de dados SQL — com 5.000 linhas de texto tabular denso, a atenção se dilui, o modelo tenta adivinhar/interpolar e gera respostas incorretas.
-
-### A Solução: Function Calling
-
-Abandonamos o contexto longo para tabelas e implementamos **Function Calling (Tools)**:
-- `piespDataService.ts` — motor de filtro determinístico (CSV parser + array map)
-- A IA é instruída a nunca adivinhar: chama `consultar_projetos_piesp` com os argumentos, filtramos os resultados em JavaScript e devolvemos o JSON compacto
-- Resultado: precisão de 100% com latência baixa
-
-### Regra de Ouro
+## Regra de Ouro: Dados Tabulares vs Contexto Longo
 
 | Tipo de conteúdo | Estratégia | Por quê |
 |---|---|---|
-| Texto narrativo (metodologia, regras, manuais) | Contexto longo (`systemInstruction`) | LLMs compreendem e evocam prosa com excelência |
-| Dados tabulares / CSV / planilhas | Function Calling (Tools) | LLMs falham em filtrar, agregar e rankear linhas numéricas densas |
-| Dados pequenos (< 50 linhas, dicionários) | Contexto longo | Volume insignificante, sem risco de diluição de atenção |
+| Texto narrativo (metodologia, regras) | Contexto longo (`systemInstruction`) | LLMs compreendem prosa com excelência |
+| Dados tabulares / CSV | Function Calling (Tools) | LLMs falham em filtrar e agregar linhas numéricas densas |
+| Dados pequenos (< 50 linhas) | Contexto longo | Volume insignificante |
 
-### Cronologia de Problemas e Soluções
+---
 
-**Problema 1 — WebSocket recusado ("Não foi possível se conectar com Nadia")**
-Causa: `piesp_confirmados_com_valor.csv` (2,1 MB) injetado inteiro na `systemInstruction`. Browser rejeitava o frame inicial.
-Solução: Criamos `piesp_mini.csv` (~1 MB) e `piesp_micro.csv` (300 linhas para debug).
+## Bugs Abertos
 
-**Problema 2 — API Key bloqueada (`API_KEY_SERVICE_BLOCKED`)**
-Causa: Chave herdada do Nadia-2 sem permissão para a Generative Language API.
-Solução: Nova chave gerada no Google AI Studio com permissões corretas.
+| ID | Descrição | Status |
+|---|---|---|
+| BUG-001 | Filtros de setor e região retornam 0 no Chat | Resolvido |
 
-**Problema 3 — Tela em branco após troca de chave**
-Causa: Chave colada sem aspas no `config.ts` — TypeScript interpretou como expressão aritmética.
-Solução: Envolver os valores das constantes com aspas duplas.
+Ver detalhes completos em [`docs/bugs-abertos.md`](docs/bugs-abertos.md).
 
-**Problema 4 — Nadia conecta mas alucina os dados**
-Causa: Contexto longo com dados tabulares causa diluição de atenção (ver acima).
-Solução: Function Calling com `piespDataService.ts`.
+---
 
-**Problema 5 — Expansão de escopo (nova base + metodologia)**
-Solução arquitetural:
-- Metodologia → Contexto longo (texto narrativo)
-- Nova tabela CSV → Nova tool (`consultar_anuncios_sem_valor`)
-- UX: instrução de apresentação da base secundária apenas na primeira fala, sem repetição
+## Pendências
+
+| ID | Descrição | Status |
+|---|---|---|
+| PEND-001 | Proteção da API key do Gemini | Decidir antes do deploy |
+
+Ver detalhes e alternativas em [`docs/pendencias.md`](docs/pendencias.md).
 
 ---
 
 ## Arquitetura
 
+Direções planejadas mas não implementadas:
+- Backend mínimo (proteger API key + centralizar dados)
+- MCP server como única fonte de verdade (eliminar duplicação `piespDataService` / `piespService`)
+- Nadia Mobile (branch `mobile` — Chat + Voz, mobile-first)
+
+Ver [`docs/arquitetura.md`](docs/arquitetura.md).
+
+---
+
+## Decisões Técnicas
+
+Raciocínio por trás das escolhas — becos sem saída já explorados e trade-offs conscientes.
+
+Ver [`docs/decisoes-tecnicas.md`](docs/decisoes-tecnicas.md).
+
+---
+
+## Arquitetura Atual
+
 ```
-┌─────────────────────────────────────────────────────┐
-│                 NAVEGADOR (Chrome)                   │
-│                                                     │
-│  ┌──────────┐   ┌──────────────┐   ┌─────────────┐ │
-│  │ Microfone│──▶│  VoiceView   │──▶│ useLive     │ │
-│  │  (Audio) │   │  .tsx        │   │ Connection  │ │
-│  └──────────┘   │  onToolCall  │   │ .ts         │ │
-│                 │  handler ────┼──▶│ WebSocket   │ │
-│                 └──────┬───────┘   │ (Gemini     │ │
-│                        │           │  Live API)  │ │
-│                        ▼           └──────┬──────┘ │
-│              ┌─────────────────┐          │        │
-│              │ piespDataService│◀─────────┘        │
-│              │ .ts             │  (tool response)  │
-│              └─────────────────┘                   │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐    │
-│  │ prompts.ts (SYSTEM_INSTRUCTION)             │    │
-│  │  ├── Persona Nadia                          │    │
-│  │  ├── Metodologia PIESP (contexto longo) ✓   │    │
-│  │  └── Dicionário de Variáveis (contexto) ✓   │    │
-│  └─────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────┘
+Browser
+  ├── ChatView → useChat.ts → Gemini (function calling) → piespDataService.ts
+  ├── VoiceView → useLiveConnection.ts → Gemini Live API (WebSocket)
+  └── Outras views → Gemini (direto, sem function calling)
+
+MCP Server (independente)
+  └── piespService.ts (cópia de piespDataService) → Hermes / Claude Desktop
 ```
 
 ---
 
 ## Estrutura de Views
 
-| View | Rota (`App.tsx`) | Descrição |
+| View | Rota | Descrição |
 |---|---|---|
 | `LandingPage` | `home` | Página inicial |
 | `VoiceView` | `voice` | Conversa por voz (Gemini Live API) |
 | `ChatView` | `chat` | Chat texto com function calling |
 | `PiespDashboardView` | `dashboards` | Dashboard com gráficos Recharts |
 | `PerfilMunicipalView` | `municipal` | Mapa 3D + voz para municípios |
+| `ExplorarDadosView` | `explorar` | Relatórios analíticos por filtro |
+| `PerfilEmpresaView` | `perfil-empresa` | Dossiê de empresa com web search |
+| `DataLabView` | `datalab` | Dashboards generativos com voz |
 | `UploadView` | `upload` | Publicação de arquivos |
-| `ExplorarDadosView` | `explorar` | Relatórios analíticos por filtro *(abril/2026)* |
-| `PerfilEmpresaView` | `perfil-empresa` | Dossiê de empresa com web search *(abril/2026)* |
-| `DataLabView` | `datalab` | Dashboards generativos sob demanda com voz *(abril/2026)* |
 
 ---
 
 ## Decisões Arquiteturais
 
 ### Function calling: PIESP vs Google Search (não podem ser combinados)
-As ferramentas `piespTools` (function calling local) e `searchTools` (Google Search grounding) **não podem ser usadas na mesma chamada** da Gemini API. A lógica em `useChat.ts` detecta a skill e escolhe qual conjunto usar. Nas novas views (`ExplorarDadosView`, `PerfilEmpresaView`), cada uma usa diretamente a ferramenta adequada sem passar pelo `useChat`.
+`piespTools` (function calling local) e `searchTools` (Google Search grounding) não podem ser usados na mesma chamada da Gemini API. `useChat.ts` detecta a skill e escolhe qual usar.
 
 ### CSV parseado em runtime
-Os arquivos CSV do PIESP são importados como string raw (`?raw`) e parseados no browser. Não há backend. O cache de `getDashboardData()` em `piespDashboardData.ts` é estático (módulo singleton) para evitar reparsing.
+Importados como `?raw` e parseados no browser. Sem backend. O cache de `getDashboardData()` em `piespDashboardData.ts` é singleton para evitar reparsing.
 
-### Separação: `piespDataService` vs `piespDashboardData`
-- `piespDataService.ts` — filtragem e busca por registro (consultas pontuais, function calling)
-- `piespDashboardData.ts` — agregação completa para gráficos (single-pass, cached)
+### Separação de serviços de dados
+- `piespDataService.ts` — filtragem por registro (function calling)
+- `piespDashboardData.ts` — agregação completa para gráficos (cached)
+
+### canonicalSetor()
+O CSV está em Latin-1, lido pelo Vite como UTF-8. Acentos viram U+FFFD: `"Comércio"` → `"Com\uFFFDrcio"`. `canonicalSetor()` usa padrões ASCII que sobrevivem ao encoding corrompido para identificar setores. `linhaValida()` usa essa função para aceitar linhas de todos os setores.
+
+### MCP Server (`mcp-server/`)
+Servidor independente que expõe os dados PIESP via protocolo MCP para agentes externos (Hermes, Claude Desktop). Usa `fs.readFileSync` em vez de `?raw`. Transporte dual: stdio (Claude Desktop) e HTTP+SSE (Hermes).
 
 ---
 
 ## Features Implementadas
 
-### Abril/2026 — Branch `claude/add-data-exploration-reports-5yplM`
+### Branch `claude/add-data-exploration-reports-5yplM`
+- **ExplorarDadosView** — filtros → `filtrarParaRelatorio()` → relatório via Gemini
+- **PerfilEmpresaView** — busca empresa → dados PIESP + Google Search grounding → dossiê com citações inline
+- **EmbeddedChart** — gráficos Recharts embutidos na resposta da IA via blocos ` ```json-chart ` `
+- **Sanitização UTF-8 nas citações** — `endIndex` da Grounding API é em bytes UTF-8, JS conta em chars UTF-16; corrigido via `TextEncoder/Decoder`
 
 #### Aba "Explorar Dados" (`ExplorarDadosView.tsx`)
 
@@ -375,85 +367,13 @@ launchctl load ~/Library/LaunchAgents/com.seade.nadia-piesp-mcp.plist
 
 ## Ferramentas de Desenvolvimento
 
-### skill-creator
-
-Instalada em `.agents/skills/skill-creator/` (symlink em `.claude/skills/skill-creator`).
-
-**O que faz:** guia a criação e melhoria iterativa de skills com loop estruturado:
-1. Esboço do que a skill deve fazer
-2. Criação de prompts de teste
-3. Execução e avaliação (quantitativa + qualitativa)
-4. Reescrita baseada nos resultados
-5. Expansão dos testes em escala
-
-**Como usar:** invoque com `/skill-creator` no Claude Code. Serve tanto para criar skills do zero quanto para melhorar skills existentes.
-
-**Instalação:**
-```bash
-npx skills add https://github.com/anthropics/skills --skill skill-creator
-```
-
-### find-skills
-
-Instalada em `.agents/skills/find-skills/` (symlink em `.claude/skills/find-skills`).
-
-**O que faz:** descobre e instala skills do ecossistema open agent skills. Útil quando o usuário pergunta "existe uma skill para X?" ou "como faço Y?" — a skill pesquisa no repositório e sugere o que instalar.
-
-**Comandos principais do CLI:**
-```bash
-npx skills find [query]   # busca skills por palavra-chave
-npx skills add <pacote>   # instala uma skill do GitHub
-npx skills check          # verifica atualizações
-npx skills update         # atualiza todas as skills instaladas
-```
-
-**Catálogo público:** https://skills.sh/
-
-**Como usar:** invoque com `/find-skills` descrevendo o que precisa. Exemplo: `/find-skills preciso de uma skill para escrever testes`.
-
-**Instalação:**
-```bash
-npx skills add https://github.com/vercel-labs/skills --skill find-skills
-```
-
-### frontend-design
-
-Instalada em `.agents/skills/frontend-design/` (anthropics/skills).
-
-**O que faz:** guia a criação de interfaces com design intencional e diferenciado — evita padrões genéricos. Define direção estética antes de codificar (minimalismo, bold, retro-futurista, etc.) e executa com tipografia, paleta e composição espacial coerentes.
-
-**Quando ativa:** ao construir novos componentes, views ou refinar UI existente.
-
-**Instalação:**
-```bash
-npx skills add https://github.com/anthropics/skills --skill frontend-design
-```
-
-### vercel-react-best-practices
-
-Instalada em `.agents/skills/vercel-react-best-practices/` (vercel-labs/agent-skills).
-
-**O que faz:** 69 regras de performance para React organizadas em 8 categorias — eliminar waterfalls, otimizar bundle, evitar re-renders, data fetching correto, padrões avançados. Cada regra inclui exemplos incorreto/correto.
-
-**Quando ativa:** ao escrever ou revisar componentes React e hooks.
-
-**Instalação:**
-```bash
-npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices
-```
-
-### web-design-guidelines
-
-Instalada em `.agents/skills/web-design-guidelines/` (vercel-labs/agent-skills).
-
-**O que faz:** audita código de UI contra acessibilidade, padrões de design e UX — funciona como linter visual. Retorna achados no formato `arquivo:linha`.
-
-**Quando ativa:** ao pedir "revise minha UI", "audite o design" ou "verifique acessibilidade".
-
-**Instalação:**
-```bash
-npx skills add https://github.com/vercel-labs/agent-skills --skill web-design-guidelines
-```
+| Skill | Comando | O que faz |
+|---|---|---|
+| skill-creator | `/skill-creator` | Cria e melhora skills com loop iterativo |
+| find-skills | `/find-skills` | Descobre skills no ecossistema |
+| frontend-design | automático | Design intencional e diferenciado |
+| vercel-react-best-practices | automático | 69 regras de performance React |
+| web-design-guidelines | automático | Auditoria de UI/acessibilidade |
 
 ---
 
