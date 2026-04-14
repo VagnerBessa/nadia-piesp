@@ -54,8 +54,8 @@ const piespTools = [
             ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Use APENAS estes valores — não invente variações.' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade"). NÃO usar para setores — use o parâmetro setor.' }
+            setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
+            termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
           }
         }
       },
@@ -68,8 +68,8 @@ const piespTools = [
             ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
             regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento. NÃO usar para setores.' }
+            setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Para atividades específicas (saúde, educação, farmácia etc.) use termo_busca.' },
+            termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia" etc.' }
           }
         }
       }
