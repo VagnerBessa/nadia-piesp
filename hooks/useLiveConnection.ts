@@ -168,6 +168,15 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       const outputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
       outputAudioContextRef.current = outputContext;
 
+      // iOS Safari suspende o AudioContext mesmo criado durante gesto do usuário.
+      // resume() garante que o contexto esteja ativo antes de qualquer reprodução.
+      if (outputContext.state === 'suspended') {
+        await outputContext.resume();
+      }
+      if (inputAudioContextRef.current.state === 'suspended') {
+        await inputAudioContextRef.current.resume();
+      }
+
       // Setup AnalyserNode for real-time visualization
       analyserRef.current = outputContext.createAnalyser();
       analyserRef.current.fftSize = 256; // Smaller FFT size for faster response
@@ -292,6 +301,12 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 console.log('[Nadia] Received audio response from API');
                 setIsSpeaking(true);
                 const currentOutputContext = outputAudioContextRef.current;
+
+                // iOS pode suspender o contexto novamente em background — garantir retomada
+                if (currentOutputContext.state === 'suspended') {
+                  await currentOutputContext.resume();
+                }
+
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, currentOutputContext.currentTime);
 
                 const audioBuffer = await decodeAudioData(
