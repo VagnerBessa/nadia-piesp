@@ -1,26 +1,20 @@
 // =================================================================================
-//  CONFIGURAÇÃO DE CHAVES DE API
+//  CONFIGURAÇÃO DE CHAVES DE API - ARQUIVO DE EXEMPLO
 // =================================================================================
-// As chaves são lidas de variáveis de ambiente Vite (.env).
+// Este é um arquivo de EXEMPLO. Para usar o projeto:
 //
-// Para desenvolvimento local:
-//   1. Copie .env.example para .env
-//   2. Preencha com suas chaves
-//   3. NUNCA faça commit do .env (já está no .gitignore)
+// 1. Copie este arquivo para "config.ts"
+// 2. Substitua as chaves de API pelas suas próprias chaves
+// 3. NUNCA faça commit do arquivo config.ts (ele está no .gitignore)
 //
-// Para produção (Firebase / GitHub Actions):
-//   Defina VITE_GEMINI_API_KEY e VITE_GOOGLE_MAPS_API_KEY
-//   como secrets no ambiente de CI/CD — nunca no código.
-//
-// Este arquivo (config.ts) não precisa mais conter as chaves.
-// Pode ser commitado com segurança.
 // =================================================================================
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
+// Chave para Gemini AI
+// Obtenha em: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = "SUA_CHAVE_GEMINI_AQUI";
 
-if (!GEMINI_API_KEY) {
-  console.error('❌ VITE_GEMINI_API_KEY não definida. Verifique seu arquivo .env');
-}
+// Chave para Google Maps
+// Obtenha em: https://console.cloud.google.com/google/maps-apis/credentials
+const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_MAPS_AQUI";
 
 export { GEMINI_API_KEY, GOOGLE_MAPS_API_KEY };
