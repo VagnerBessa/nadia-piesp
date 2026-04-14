@@ -419,7 +419,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
               <div ref={messagesEndRef} />
             </main>
 
-            <footer className="flex-shrink-0 px-4 pt-3 pb-8 border-t border-slate-700/50">
+            <footer className="flex-shrink-0 px-4 pt-3 pb-safe border-t border-slate-700/50">
               {InputBox}
             </footer>
           </>

@@ -28,11 +28,11 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNav
 
         {/* Navigation (centered) */}
         <nav className="justify-self-center">
-          <ul className="flex items-center space-x-1 bg-slate-900/50 backdrop-blur-md rounded-full px-2 py-1.5 border border-white/5 shadow-xl">
+          <ul className="flex items-center space-x-0.5 bg-slate-900/50 backdrop-blur-md rounded-full px-1.5 py-1 border border-white/5 shadow-xl">
             <li>
               <button
                 onClick={onNavigateHome}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all"
+                className="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all"
               >
                 Home
               </button>
@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNav
             <li>
               <button
                 onClick={onNavigateToChat}
-                className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all"
+                className="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all"
               >
                 Chat
               </button>
@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNav
             <li>
               <button
                 onClick={onNavigateToVoice}
-                className="px-4 py-1.5 text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-full transition-all"
+                className="px-3 py-1.5 text-xs sm:text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-full transition-all"
               >
                 Voz
               </button>

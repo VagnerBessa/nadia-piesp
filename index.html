@@ -2,7 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Nadia AI Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
@@ -27,16 +30,20 @@
 </script>
 <style>
   body {
-    /* 
-      This style creates a dark, sophisticated background based on the NeuraCore design.
-      - A radial gradient at the top-center adds a subtle teal glow.
-      - The base color is a very dark teal/blue.
-    */
-    background-color: #042a3a; /* Dark Teal Base */
+    background-color: #042a3a;
     background-image: radial-gradient(at 50% 0%, rgba(28, 106, 133, 0.4) 0%, transparent 50%);
     background-repeat: no-repeat;
     background-size: 100vw 100vh;
     background-attachment: fixed;
+    /* Respeita notch e home indicator do iOS */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  /* Input area respeita teclado virtual no iOS/Android */
+  .pb-safe {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
   }
 </style>
 </head>
