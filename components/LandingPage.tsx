@@ -11,9 +11,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
   return (
     <div className="flex flex-col items-center justify-between w-full h-full px-6 py-8 overflow-y-auto">
 
-      {/* Esfera — tamanho controlado em mobile */}
-      <div className="flex-shrink-0 flex items-center justify-center w-40 h-40 sm:w-56 sm:h-56 mt-2">
-        <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} />
+      {/* Esfera — size="small" garante shader e container proporcionais */}
+      <div className="flex-shrink-0 mt-2">
+        <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} size="small" />
       </div>
 
       {/* Conteúdo central */}
