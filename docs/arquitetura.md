@@ -4,6 +4,25 @@ Decisões e direções arquiteturais — implementadas e planejadas.
 
 ---
 
+## Proteção da API Key
+
+**Status: pendente**
+
+A chave do Gemini está em `config.ts` (gitignored localmente). No deploy, o Vite a embute no bundle JavaScript — qualquer pessoa pode extraí-la inspecionando o código.
+
+### Alternativas em ordem de complexidade
+
+**Opção 1 — Restrição por domínio (sem código, 5 min)**
+No Google AI Studio, restringir a chave para funcionar apenas no domínio de deploy (ex: `nadia-piesp.web.app`). A chave continua no bundle, mas é inútil fora desse domínio. Adequado para uso interno com pessoas de confiança.
+
+**Opção 2 — Variável de ambiente Vite (mudança mínima no código)**
+Mover a chave para `.env` (`VITE_GEMINI_API_KEY`). O Vite substitui em tempo de build — a chave ainda vai para o bundle, mas sai do `config.ts` e pode ser gerenciada como secret no CI/CD. Não requer backend.
+
+**Opção 3 — Backend proxy (proteção real)**
+A chave fica no servidor, nunca no bundle. O frontend chama o backend, que chama o Gemini. Requer criar um backend (Firebase Function ou Cloud Run). Ver seção "Backend para Nadia" abaixo.
+
+---
+
 ## Backend para Nadia
 
 **Status: planejado**
@@ -27,8 +46,6 @@ Browser → Backend → MCP server (dados centralizados)
 ```
 
 O backend seria um proxy simples — Firebase Function ou Google Cloud Run. Não é um sistema complexo.
-
-**Efeito colateral:** com backend, o encoding do CSV é lido corretamente no servidor (Latin-1), eliminando o BUG-001 de filtros no Chat.
 
 ---
 
