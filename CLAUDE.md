@@ -47,6 +47,14 @@ Ver [`docs/arquitetura.md`](docs/arquitetura.md).
 
 ---
 
+## Decisões Técnicas
+
+Raciocínio por trás das escolhas — becos sem saída já explorados e trade-offs conscientes.
+
+Ver [`docs/decisoes-tecnicas.md`](docs/decisoes-tecnicas.md).
+
+---
+
 ## Arquitetura Atual
 
 ```
