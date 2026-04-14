@@ -517,6 +517,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
 
     const anoLinha = colunas[1]?.trim();
     const municipioLinha = colunas[5]?.trim()?.toLowerCase() || '';
+    const regiaoLinha = colunas[6]?.trim()?.toLowerCase() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
     const setorLinha = colunas[8] || 'Geral';
     const descricaoLinha = colunas[7] || '';
@@ -528,6 +529,10 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     }
 
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
+      match = false;
+    }
+
+    if (filtro.regiao && !regiaoMatch(regiaoLinha, municipioLinha, filtro.regiao)) {
       match = false;
     }
 
@@ -549,6 +554,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
       resultados.push({
         empresa: empresaLinha,
         municipio: colunas[5] || 'Não informado',
+        regiao: colunas[6] || 'Não informada',
         ano: anoLinha,
         setor: setorLinha,
         descricao: descricaoLinha.substring(0, 150)
