@@ -231,8 +231,9 @@ export function consultarPiespData(filtro: FiltroPiesp) {
 
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      // busca semântica livre em vários campos textuais
-      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      // busca semântica livre em vários campos textuais, incluindo CNAE (atividade econômica)
+      const cnaeLinha = (colunas[11] || '') + ' ' + (colunas[12] || '') + ' ' + (colunas[13] || '');
+      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
         match = false;
       }
@@ -536,8 +537,9 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
 
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      // busca semântica livre
-      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      // busca semântica livre, incluindo CNAE (atividade econômica)
+      const cnaeLinha = (colunas[9] || '') + ' ' + (colunas[10] || '') + ' ' + (colunas[11] || '');
+      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
         match = false;
       }
