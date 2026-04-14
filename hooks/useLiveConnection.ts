@@ -168,14 +168,23 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       const outputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
       outputAudioContextRef.current = outputContext;
 
-      // iOS Safari suspende o AudioContext mesmo criado durante gesto do usuário.
-      // resume() garante que o contexto esteja ativo antes de qualquer reprodução.
+      // iOS Safari e Chrome Android suspendem o AudioContext mesmo criado durante
+      // gesto do usuário. resume() garante que o contexto esteja ativo.
       if (outputContext.state === 'suspended') {
         await outputContext.resume();
       }
       if (inputAudioContextRef.current.state === 'suspended') {
         await inputAudioContextRef.current.resume();
       }
+
+      // Chrome Android bloqueia reprodução real de áudio se ela não ocorrer
+      // diretamente no gesto do usuário. Tocar um buffer silencioso imediatamente
+      // "desbloqueia" o contexto para reproduções futuras (resposta da Nadia).
+      const silentBuffer = outputContext.createBuffer(1, 1, OUTPUT_SAMPLE_RATE);
+      const silentSource = outputContext.createBufferSource();
+      silentSource.buffer = silentBuffer;
+      silentSource.connect(outputContext.destination);
+      silentSource.start(0);
 
       // Setup AnalyserNode for real-time visualization
       analyserRef.current = outputContext.createAnalyser();

@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # API Keys (NUNCA fazer commit!)
-config.ts
+# config.ts agora usa import.meta.env — sem chaves hardcoded, pode ser commitado
 .env
 
 # Test files (limpos, mas por precaução)
@@ -37,3 +37,4 @@ knowledge_base/piesp_confirmados_sem_valor.csv
 knowledge_base/piesp_mini.csv
 # Versões UTF-8 geradas automaticamente pelo scripts/convert-csvs.js
 knowledge_base/*.utf8.csv
+.vercel
