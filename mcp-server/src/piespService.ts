@@ -17,7 +17,10 @@ const PIESP_SEM_VALOR_CSV_PATH = resolve(REPO_ROOT, 'knowledge_base/piesp_confir
 
 function loadCsv(path: string, label: string): string {
   try {
-    return readFileSync(path, 'utf-8');
+    // Lê como binário e decodifica com Latin-1 — os CSVs da PIESP estão em Latin-1,
+    // não UTF-8. Ler diretamente como 'utf-8' transforma acentos em U+FFFD (garbled).
+    const buf = readFileSync(path);
+    return new TextDecoder('latin-1').decode(buf);
   } catch {
     process.stderr.write(`[piesp-mcp] ⚠️  Arquivo não encontrado: ${path}\n`);
     process.stderr.write(`[piesp-mcp] Coloque o ${label} em knowledge_base/ na raiz do repositório.\n`);

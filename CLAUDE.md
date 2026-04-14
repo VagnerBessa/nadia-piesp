@@ -30,7 +30,7 @@ Para detalhes, ver `docs/`.
 
 | ID | Descrição | Status |
 |---|---|---|
-| BUG-001 | Filtros de setor e região retornam 0 no Chat | Não resolvido |
+| BUG-001 | Filtros de setor e região retornam 0 no Chat | Resolvido |
 
 Ver detalhes completos em [`docs/bugs-abertos.md`](docs/bugs-abertos.md).
 

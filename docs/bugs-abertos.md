@@ -4,7 +4,7 @@
 
 ## BUG-001 — Filtros de setor e região retornam 0 no Chat
 
-**Data:** Abril de 2026. **Status: não resolvido.**
+**Data:** Abril de 2026. **Status: resolvido.**
 
 **Sintoma:** O Chat retorna "Não foram encontrados projetos" para perguntas como "investimentos de comércio na Região Metropolitana de São Paulo", mesmo com dados confirmados na base. A aba Explorar funciona corretamente com os mesmos filtros. Ambos os filtros — setor e região — falham.
 
