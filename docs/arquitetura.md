@@ -4,7 +4,25 @@ Decisões e direções arquiteturais — implementadas e planejadas.
 
 ---
 
-## Backend para Nadia
+## Otimização de Tokens — Gemini Context Caching
+
+**Status: planejado**
+
+O `SYSTEM_INSTRUCTION` (metodologia PIESP, persona, regras) é enviado em cada chamada ao Gemini. É o maior consumidor de tokens por requisição e não muda entre perguntas.
+
+O Gemini tem suporte a **Context Caching**: partes fixas do contexto são cacheadas entre requisições e cobradas a uma fração do preço normal. O `SYSTEM_INSTRUCTION` é candidato perfeito — é grande, estático e reutilizado em toda sessão.
+
+**Como funciona:**
+```
+Hoje:    systemInstruction (tokens cheios) + pergunta → Gemini
+Com cache: systemInstruction (tokens cacheados, custo reduzido) + pergunta → Gemini
+```
+
+**Quando implementar:** quando o volume de uso crescer e o custo de tokens começar a importar. Não bloqueia nada na arquitetura atual — é uma otimização pontual na chamada da API em `useChat.ts` e nas outras views que chamam o Gemini diretamente.
+
+---
+
+
 
 **Status: planejado**
 
