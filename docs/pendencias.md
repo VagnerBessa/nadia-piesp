@@ -25,3 +25,28 @@ A chave fica no servidor, nunca no bundle. O frontend chama o backend, que chama
 
 Para uso interno com poucas pessoas de confiança: **Opção 1** resolve com zero código.
 Para deploy mais amplo ou formal: **Opção 3** é a correta — mas depende de ter o backend pronto.
+
+---
+
+## PEND-002 — Redução do delay de resposta no Chat Mobile
+
+**Status: pendente — três melhorias identificadas em 15/abr/2026**
+
+### 1. Zerar `thinkingBudget` (maior ganho, ~1-2s por resposta)
+
+Em `hooks/useChat.ts`, o modo "Completo" usa `thinkingBudget: 512`. O Gemini gasta tokens pensando antes de responder, adicionando latência. Para perguntas factuais de dados PIESP a perda de qualidade seria pequena.
+
+```ts
+// Atual
+{ thinkingConfig: { thinkingBudget: 512 } }
+// Proposta
+{ thinkingConfig: { thinkingBudget: 0 } }
+```
+
+### 2. Consolidar as duas bases em uma única tool call (~1-2s por resposta)
+
+Atualmente o modelo faz 2 round-trips REST: uma para `consultar_projetos_piesp` e outra para `consultar_anuncios_sem_valor`. Cada round-trip custa ~1-2s. Solução: criar uma tool `consultar_piesp_completo` que retorna as duas bases em uma única chamada.
+
+### 3. Reduzir bundle inicial de 4.4MB (~1-2s no primeiro carregamento)
+
+O chunk `Icons-*.js` tem 4.4MB por causa de MUI/Recharts puxados indiretamente, mesmo no branch mobile onde não são usados. Solução: auditar imports e remover dependências não utilizadas no branch mobile.
