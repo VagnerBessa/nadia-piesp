@@ -64,15 +64,22 @@ git push
 
 ---
 
- - Assistente de IA com Voz e Mapas 3D
+## 🌐 O Ecossistema Nadia — Visão Arquitetural
 
-Nadia é uma assistente de IA interativa que combina conversação por voz usando a API Gemini 2.5 Flash Native Audio com visualização de mapas 3D do Google Maps. O projeto oferece uma experiência imersiva para análise de dados econômicos, geolocalização e exploração urbana.
+Nadia não é apenas uma aplicação de navegador isolada. Ela é um ecossistema inteligente multi-canal da **Fundação Seade**, desenhado sob o princípio de que a inteligência artificial corporativa deve existir onde o dado é produzido e fluir organicamente:
 
-## ✨ Funcionalidades
+1. **Nadia Web (PIESP)**: Interface rica (este projeto primário). Foca em profundidade analítica, com dashboards generativos (Data Lab), modo de exploração espacial por Voz/Mapas 3D e function calling determinístico do Gemini 2.5. Não retém memória contextual (cada relatório começa puro).
+2. **Nadia API (MCP Servers)**: Os dados subjacentes da Fundação abstraídos em servidores baseados no _Model Context Protocol_. Isso significa que as informações de emprego, contas regionais ou infraestrutura não vivem presas à Nadia, mas podem ser consumidas por qualquer cliente aberto (como o Claude Desktop, scripts ou agentes de terceiros).
+3. **Nadia Mobile (Motor Hermes)** _(Em Roadmap)_: O acesso onipresente. Um agente autônomo projetado para canais de mensageria (Telegram/WhatsApp) que servirá de "cérebro persistente", conectando os múltiplos MCP servers (Economia, Trabalho, Demografia) para responder queries cruzadas, aprendendo com o contexto do analista.
 
-- **Conversação por Voz**: Interação natural com a IA usando o Gemini 2.5 Flash Native Audio API
-- **Mapas 3D Interativos**: Navegação por mapas 3D controlada por voz usando Google Maps JavaScript API
-- **Análise Econômica**: Visualização de dados econômicos com gráficos interativos
+---
+
+## ✨ Funcionalidades Core (Frontend)
+
+- **Conversação por Voz**: Interação fluida usando o Gemini 2.5 Flash Native Audio API
+- **Mapas 3D Interativos**: Navegação controlada por voz via Google Maps JavaScript API
+- **Agentes Analíticos Especializados**: O Chat suporta injeção de agentes de economia (Emprego, Comércio Exterior, Infraestrutura, etc.) coordenados de forma modular
+- **Análise Econômica (Data Lab)**: Visualização generativa de dados econômicos com gráficos em Recharts interagindo de forma granular com Recharts e Tailwind
 - **Interface Responsiva**: Design moderno com Material-UI e Tailwind CSS
 - **Esfera 3D Animada**: Visualização da Nadia com shaders personalizados usando Three.js
 
