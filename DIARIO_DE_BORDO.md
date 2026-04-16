@@ -36,3 +36,22 @@ A investigação revelou uma verdade fundamental sobre a dependência de APIs de
 
 4. **A diferença entre "eu sei" e "eu obedeço":** Este episódio reforçou a lição anterior (Helpful Bias). Quando nós, desenvolvedores, tentamos inovar com modelos instáveis (escolhemos o 2.5 experimental por ser mais capaz), estamos fazendo exatamente o que criticamos na IA: priorizando performance sobre previsibilidade. A escolha de um modelo deveria seguir a mesma regra que impomos à Nadia: *"Se não tem estabilidade comprovada, não use."*
 
+
+---
+
+### A Fricção de Vocabulário e o Risco de Alucinação (Semantic Translation)
+**Data:** 16 de abril de 2026
+
+Debatemos uma questão estrutural sobre como o Ecossistema Nadia traduz *queries* idiomáticas soltas dos cidadãos (ex: "faturamento do comércio") para o banco de dados determinístico (ex: cujo filtro paramétrico estrito exige a string `vendas_varejo`).
+
+A conclusão foi contundente: **dar ao LLM a liberdade de redigir a query de banco de dados do zero (Text-to-SQL) é o caminho perfeito para a alucinação fatal de dados governamentais**. As *Tools* devem ser intransponíveis, restando ao LLM atuar puramente como o tradutor semântico na porta de entrada da requisição.
+
+Sintetizamos que essa etapa de "Match Semântico" não reintroduz a alucinação, desde que aplique-se uma destas arquiteturas de entrada:
+
+1. **Enums Tipados com Tool Descriptions**: Embutir no System Prompt do LLM os sinônimos da tabela (ex: *"Use o parâmetro 'vendas_varejo' quando o solicitante pedir 'faturamento' ou 'receita'"*). É de fácil adoção para filtros pequenos e não requer infraestrutura.
+2. **Semantic Routing (Roteamento de Verossimilhança)**: Executar um passo autônomo com um modelo leve *apenas* para reescrever a intenção do usuário em linguagem de banco antes de repassar à Tool ("faturou" = "vendas"). Funciona excelentemente mas degrada a latência (prejudicando canais críticos como o de Voz).
+3. **Vetorização Dinâmica (RAG Lexical)**: Fazer um match vetorial da palavra do cidadão contra um dicionário de dados local antes sequer da IA começar a invocar as *Tools*. Trata-se do padrão ouro *Enterprise*, imaculado para dicionários de metadados enormes (ex: a árvore CBO de profissões ou Classificação CNAE).
+
+**A Recomendação Arquitetural do Módulo**
+A abordagem recomendada para a engenharia atual do Seade (Fases 1/2) é um modelo **Híbrido**.
+Aplica-se a **Alternativa 1 (Enums + Descriptions no JSON Schema da Tool)** de forma imediata para os filtros que já possuímos (como anos e macrossetores no Dashboard PIESP). Quando os MCP Servers avançarem para bases hiper-fragmentadas (como CAGED/PNAD), a **Alternativa 3 (RAG Lexical Dinâmico)** deverá obrigatoriamente ser construída, visto que injetar listas infinitas de sinônimos em Tools destruiria o Budget e a precisão do modelo Gemini.
