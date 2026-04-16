@@ -72,3 +72,25 @@ Essa fase é opcional e não bloqueia nenhuma das anteriores.
 ## Princípio que guia o roadmap
 
 Cada fase entrega valor independente. Fase 2 não depende de Fase 3 estar pronta. Fase 3 não depende de Supabase. O ecossistema cresce de forma incremental — sem grandes reescritas, sem quebrar o que funciona.
+
+---
+
+## 🚧 Backlog Técnico Prioritário: Engenharia de Tradução Lexical
+
+Para blindar o sistema governamental contra alucinações ("Type 2"), foi vetado o uso de abordagens "Text-to-SQL" ou modelos interativos soltos (Semantic Routing) em canais de voz devido à latência de gerar multiplos turnos. Como consequência, o banco exige chaves sintáticas exatas, gerando **Fricção de Vocabulário** do lado do cidadão (ex: dizer "lojista" ao invés de "CNAE 47").
+
+As seguintes pendências devem ser obrigatoriamente implementadas, divididas por complexidade:
+
+### [PENDÊNCIA] 1. Enums + Tool Descriptions (Curto Prazo / Fases 1 e 2)
+**Status:** ⬜ A Fazer
+A ser aplicado em dicionários pequenos (Setores PIESP, Macrorregiões).
+- **Como funciona:** Expandir o objeto de configuração (JSON Schema) de cada Tool enviada ao Gemini. Especificar estritamente o tipo de campo com uma matriz fechada `enum: ['valor_1', 'valor_2']` contendo as variáveis reais do banco de dados (isolando criatividade da IA).
+- **A Função do LLM:** Usa-se a chave booleana de descrição interna (`description`) instruindo a IA sobre qual palavra mapear. Ex: *"Description: Mapeie qualquer intenção do usuário contendo palavras como receita, faturamento ou lucros OBRIGATORIAMENTE para a string 'venda_varejo'."*
+- **Vantagem:** Latência zero no acionamento por Voz. Tudo é resolvido em *zero-shot* no *Prompting* de função primário.
+
+### [PENDÊNCIA] 3. RAG Lexical Dinâmico Embutido (Longo Prazo / Fases 3+)
+**Status:** ⬜ A Fazer
+A ser aplicado exclusivamente em dicionários hiper-granulares cujo limite estouraria a janela de contexto de um LLM convencional (Exemplos: milhares de árvores de CNAE em bases de CNPJ, CBO de salários).
+- **Como funciona:** O acerto semântico é removido completamente do ombro da Inteligência Artificial. O usuário pede *"Dados climáticos para terra da garoa"*. O canal envia para a sua infraestrutura interna. Lá dentro do *MCP Server* (onde está o DuckDB), aplica-se um passo autônomo e imediato de banco vetorial ou busca semântica em RAM contra um Dicionário de Dados do Seade (latência < 50ms) sem depender da internet.
+- **A Função Exata:** Ele detecta vetorialmente que "terra da garoa" = "São Paulo", substitui a _query string_ e a despacha validada para o LLM.
+- **Vantagem:** Precisão absoluta sem degradar latência ou onerar o custo financeiro (*budget tokens*) da IA com repasses contínuos de milhares de sinônimos.
