@@ -94,3 +94,21 @@ A ser aplicado exclusivamente em dicionários hiper-granulares cujo limite estou
 - **Como funciona:** O acerto semântico é removido completamente do ombro da Inteligência Artificial. O usuário pede *"Dados climáticos para terra da garoa"*. O canal envia para a sua infraestrutura interna. Lá dentro do *MCP Server* (onde está o DuckDB), aplica-se um passo autônomo e imediato de banco vetorial ou busca semântica em RAM contra um Dicionário de Dados do Seade (latência < 50ms) sem depender da internet.
 - **A Função Exata:** Ele detecta vetorialmente que "terra da garoa" = "São Paulo", substitui a _query string_ e a despacha validada para o LLM.
 - **Vantagem:** Precisão absoluta sem degradar latência ou onerar o custo financeiro (*budget tokens*) da IA com repasses contínuos de milhares de sinônimos.
+
+---
+
+## 🐛 Cauda Longa e Bugs Conhecidos
+
+As pendências rotineiras de manutenção e bugs em aberto que devem ser atacados antes do próximo deploy massivo em Produção.
+
+### PEND-001 — Proteção da API Key do Gemini no Deploy
+**Status: pendente — decidir antes do deploy**
+A chave do Gemini está em `config.ts`. No deploy, o Vite a embute no bundle JavaScript — qualquer pessoa pode extraí-la inspecionando o código.
+**Alternativas propostas:**
+*   **Opção 1 (Simples):** No Google AI Studio, restringir a chave para funcionar apenas no domínio de deploy (Adequado para fase de testes).
+*   **Opção 2 (Backend Proxy):** O frontend chama o backend, que chama o Gemini. (Adequado para adoção do MCP Centralizado Corporativo).
+
+### BUG-001 — Filtros de setor e região retornam 0 no Chat (Problema de Encoding Latin-1 vs UTF-8)
+**Status: Diagnóstico Concluído | Solução Pendente**
+O CSV local (`piesp_confirmados_com_valor.csv`) está em _Latin-1_ e o sistema Vite injeta como _UTF-8_. No chat, o Gemini gera os nomes em português impecável ("Região Metropolitana"), que esbarram com os nomes distorcidos importados da base (Ex: `"RA S\uFFFDo Paulo"`). Isso faz as Tools retornarem 0 projetos na busca cruzada.
+**Solução Definitiva Definida:** Executar pré-processamento via script node para converter a base CSV inteiramente para UTF-8 antes do Bundle do App. Não empilhar funções corretoras secundárias (workarounds).

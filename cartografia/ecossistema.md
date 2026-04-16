@@ -104,3 +104,22 @@ A evolução do armazenamento não afeta o Hermes. A interface MCP é o ponto fi
 | seade-trabalho-mcp | ⬜ A construir |
 | seade-indices-mcp | ⬜ A construir |
 | seade-demografia-mcp | ⬜ A construir |
+
+---
+
+## Projetos de Infraestrutura Associados
+
+### Backend Proxy para Nadia PIESP (Web)
+**Status: planejado**
+Nadia hoje é puramente frontend. Um backend mínimo (Firebase Function ou Cloud Run) resolverá três fragilidades de arquitetura simultaneamente:
+1. Proteger a API key do Gemini ocultando-a do bundle JavaScript.
+2. Eliminar a leitura isolada de CSV embutido, centralizando todas as consultas no MCP Server.
+3. Permitir chamadas REST nativas do browser para o ambiente MCP.
+
+### Deploy Direcional da Nadia Mobile
+**Status: projeto isolado (branch `mobile`)**
+Versão cirúrgica contendo apenas Chat e Voz (mobile-first). As rotas pesadas (Dashboards, Explorar, Empresas, Data Lab) são desativadas no build.
+O deploy acontece via Firebase Hosting com URLs ramificadas:
+- `nadia-piesp.web.app` → versão Desktop/Completa
+- `nadia-mobile.web.app` → Instância Mobile
+*Dica de Segurança Operacional:* Restringir a API Key no Google Studio exclusivamente para estes dois domínios elimina o risco severo de vazamentos em ambientes front-end.

@@ -895,3 +895,30 @@ Então o uso normal do bot deve ser:
 
 - mandar uma mensagem comum, por exemplo `Olá Nadia`
 - usar `/sethome` apenas se quiser marcar o chat como home channel
+
+---
+
+## Trade-offs e Soluções Técnicas Adotadas
+
+*Registro histórico de escolhas arquiteturais e raciocínios de engenharia.*
+
+### Por que Function Calling em vez de contexto longo para dados tabulares
+**Tentativa:** carregar o CSV inteiro na `systemInstruction` do Gemini.
+**O que aconteceu:** com 5.000 linhas de dados tabulares densos, o modelo alucinava. Perguntado sobre "principais investimentos em 2026", inventava valores. LLMs não agem como bancos de dados SQL — a atenção se dilui com volume tabular, o modelo interpola em vez de filtrar.
+**Decisão:** Function Calling explícito (via `piespDataService.ts`). O modelo chama a ferramenta, o JavaScript filtra deterministicamente, devolve JSON compacto. O modelo só interpreta e apresenta a síntese.
+
+### Por que `piespTools` e `searchTools` não podem ser combinados
+Não é uma preferência, é uma limitação técnica profunda da API Gemini. Function declarations (Tools) e a propriedade de `Google Search Grounding` são mutuamente exclusivas na mesma chamada do pipeline `generateContent`. Essa limitação afeta views compostas (como a aba `Empresas`).
+
+### Por que a skill de design do DataLab não passa pelo `skillDetector`
+As skills na pasta `skills/` são **lentes analíticas de domínio** — ativadas pelo NLP (ex: quando falamos de inteligência empresarial, ativa-se).
+No Oposto, a skill hierárquica `datalab_design.md` é **procedimental** — controla puramente o formato de saída mecânico (JSON estruturado com blocos de gráficos UI), independentemente da temática (Assunto XYZ). Portanto, é aplicada estaticamente via Prompt Injection.
+
+### Por que prompts de gráficos usam ordens estritas em vez de sugestões
+**Tentativa:** Usar o famigerado 'Helpful AI bias' com *"se julgar visualmente útil, insira um gráfico"*.
+**O que aconteceu:** O modelo otimiza para mínimo esforço tokenizado. Ele sempre gerava apenas 1 gráfico de barras genérico e ignorava a visualização dos dados inteiros.
+**Decisão:** Adotamos Ordens Estritas ditatoriais com limites mínimos absolutos ("gere no MÍNIMO 2 gráficos de frentes diferentes").
+
+### Defesa Dupla de Renderização (Prompt + Frontend Guardrails)
+O prompt orienta a modelo: "nunca gere mais de 5 fatias de pizza". No entanto, LLMs podem quebrar diretrizes devido a anomalias de temperatura. 
+Por causa disso, o nosso `capPieData` na UI engole e reagrupa magicamente qualquer variável que passar de 5 em uma sub-fatia "Outros", sem que o usuário sinta. O Prompt define a regra social, mas é o frontend que blinda matematicamente o sistema contra LLMs voláteis.
