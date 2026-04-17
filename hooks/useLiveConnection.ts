@@ -222,7 +222,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             ""
           );
             
-          finalSystemInstruction += `\n\n[INSTRUÇÃO DE ESTADO DE SESSÃO]\nA conversa foi pausada temporariamente pelo usuário há ${timeDesc} e agora foi retomada. O usuário já te conhece muito bem. Diga apenas algo neutro como "Estou aqui" ou responda diretamente a próxima pergunta sem introduções.`;
+          finalSystemInstruction += `\n\n[INSTRUÇÃO DE ESTADO DE SESSÃO]\nA conversa foi pausada temporariamente pelo usuário há ${timeDesc} e agora foi retomada. O usuário já te conhece muito bem e você lembra dele. Inicie essa nova sessão com uma retomada muito natural, calorosa e breve (Ex: "Oi de novo, como continuamos?", "Pronto, pode falar!", "Olá novamente, em que posso ajudar agora?"). Evite soar robótica.`;
         }
       }
 
