@@ -23,6 +23,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
+  const pendingDisconnectRef = useRef<boolean>(false);
   // FIX: Changed LiveSession to any as the type is not exported.
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -282,6 +283,17 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 const functionCalls = message.toolCall.functionCalls;
                 if (functionCalls && functionCalls.length > 0 && onToolCallRef.current) {
                     for (const call of functionCalls) {
+                        if (call.name === 'encerrar_sessao') {
+                           console.log('[Nadia] Usuário se despediu. Engatilhando desconexão...');
+                           pendingDisconnectRef.current = true;
+                           sessionPromiseRef.current!.then((session) => {
+                             session.sendToolResponse({
+                               functionResponses: [{ id: call.id, name: call.name, response: { result: "Despedida iniciada." } }]
+                             });
+                           });
+                           continue;
+                        }
+
                         try {
                             const result = await onToolCallRef.current(call);
                             sessionPromiseRef.current!.then((session) => {
@@ -316,7 +328,14 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 source.connect(analyserRef.current);
                 source.addEventListener('ended', () => {
                     audioSourcesRef.current.delete(source);
-                    if (audioSourcesRef.current.size === 0) setIsSpeaking(false);
+                    if (audioSourcesRef.current.size === 0) {
+                        setIsSpeaking(false);
+                        if (pendingDisconnectRef.current) {
+                            console.log('[Nadia] Áudio finalizado. Desconectando Sessão...');
+                            pendingDisconnectRef.current = false;
+                            setTimeout(stopConversation, 500);
+                        }
+                    }
                 });
 
                 source.start(nextStartTimeRef.current);
@@ -376,6 +395,14 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       setor: { type: Type.STRING, description: 'O setor econômico principal' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
                     }
+                  }
+                },
+                {
+                  name: 'encerrar_sessao',
+                  description: 'Usa esta ferramenta APENAS quando o usuário disser explicitamente que não precisa de mais nada ou se despedir ("Não, obrigado", "É só isso", "Tchau"). A ferramenta fechará a conexão de áudio após você dar o seu tchau.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {}
                   }
                 }
               ]
