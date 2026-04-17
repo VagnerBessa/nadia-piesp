@@ -211,18 +211,25 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
         const diffHours = diffMs / (1000 * 60 * 60);
         
         // Se ocorreu há menos de 24 horas, recarregamos a memória. Não existe limite mínimo (até um duplo clique instantâneo deve manter a memória).
+        // Se ocorreu há menos de 24 horas, recarregamos a memória. Não existe limite mínimo.
         if (diffHours < 24) {
           const diffMinutes = Math.round(diffMs / (1000 * 60));
           const timeDesc = diffHours >= 1 
             ? `${Math.round(diffHours)} hora(s)` 
             : `${diffMinutes} minuto(s)`;
             
-          finalSystemInstruction += `\n\n[INSTRUÇÃO DE ESTADO DE SESSÃO]\nA conversa foi pausada temporariamente pelo usuário há ${timeDesc} e agora foi retomada. NÃO se apresente novamente e nunca repita um texto de saudação inicial. Aja naturalmente e retome a conversa como se a pausa não tivesse ocorrido. Lembre-se, o usuário tem feito pausas intermitentes durante o dia.`;
+          // REMOVE a exigência de apresentação do prompt base para não haver conflito ("cognitive dissonance" do modelo)
+          finalSystemInstruction = finalSystemInstruction.replace(
+            /Apresente-se de forma amigável dizendo quem você é.*?depois da primeira fala\./gs,
+            ""
+          );
+            
+          finalSystemInstruction += `\n\n[INSTRUÇÃO DE ESTADO DE SESSÃO]\nA conversa foi pausada temporariamente pelo usuário há ${timeDesc} e agora foi retomada. O usuário já te conhece muito bem. Diga apenas algo neutro como "Estou aqui" ou responda diretamente a próxima pergunta sem introduções.`;
         }
       }
 
-      // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio" e "Resposta Abrupta"
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você acionar uma ferramenta de busca do PIESP, você DEVE dizer em voz alta uma frase preenchedora curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. ATENÇÃO MÁXIMA: Essa frase preparatória deve ter NO MÁXIMO UMA ÚNICA SENTENÇA (cerca de 5 a 10 palavras). É ESTRITAMENTE PROIBIDO responder partes da pergunta, fornecer conhecimento geral sobre o assunto ou explicar qualquer contexto antes de executar a busca. A emissão de áudio antes da busca tem o único propósito de pedir um momento de espera ao usuário. Após a ferramenta retornar os números reais, então aplique uma frase conectiva natural (ex: "Cruzando as informações...", "Aqui estão os dados...", etc) e dê a resposta analítica avançada e profunda.`;
+      // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio", "Resposta Abrupta" e TAMANHO
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você acionar uma ferramenta de busca do PIESP, você DEVE dizer em voz alta uma frase preenchedora curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. ATENÇÃO MÁXIMA: Essa frase preparatória deve ter NO MÁXIMO UMA ÚNICA SENTENÇA. É ESTRITAMENTE PROIBIDO responder partes da pergunta ou explicar contexto antes de executar a busca. Após a ferramenta retornar os números, aplique uma frase conectiva natural (ex: "Cruzando as informações...") e dê a resposta.\nREGRAS GERAIS DE VOZ: O canal de áudio não tolera discursos longos. As suas respostas finais analíticas DEVEM SER BASTANTE BREVES E DIRETAS (máximo de 2 parágrafos). Vá direto ao ponto matemático e insight principal. Se houver tom de voz alterado, mantenha o tom profissional idêntico antes e depois do uso da ferramenta.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
