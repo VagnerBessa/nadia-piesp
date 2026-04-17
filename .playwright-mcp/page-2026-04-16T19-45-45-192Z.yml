@@ -1,0 +1,32 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - button "Voltar para a página inicial" [ref=e7] [cursor=pointer]:
+        - img "Governo do Estado de São Paulo" [ref=e8]
+      - navigation "Navegação principal" [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - button "Home" [ref=e12] [cursor=pointer]
+          - listitem [ref=e13]:
+            - button "Chat" [ref=e14] [cursor=pointer]
+          - listitem [ref=e15]:
+            - button "Voz" [ref=e16] [cursor=pointer]
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - heading "Nadia" [level=1] [ref=e23]
+        - paragraph [ref=e25]:
+          - text: Núcleo de Análise de Dados
+          - text: e Inteligência Artificial
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - paragraph [ref=e34]: Assistente Experimental da Fundação Seade
+          - paragraph [ref=e35]: PIESP · Análise de Investimentos
+        - generic [ref=e36]:
+          - button "Conversar por Voz" [ref=e37] [cursor=pointer]:
+            - img [ref=e39]
+            - generic [ref=e47]: Conversar por Voz
+          - button "Abrir Chat de Texto" [ref=e48] [cursor=pointer]:
+            - img [ref=e49]
+            - generic [ref=e51]: Abrir Chat de Texto
+  - contentinfo [ref=e19]:
+    - img "Fundação Seade" [ref=e20]

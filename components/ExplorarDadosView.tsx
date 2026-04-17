@@ -195,8 +195,8 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
         <div className="flex-shrink-0 px-8 pt-10 pb-8 border-b border-slate-700/60 bg-gradient-to-b from-slate-900/80 to-transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
-              <div className="p-3.5 bg-rose-500/10 rounded-2xl ring-1 ring-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.15)] flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-rose-400">
+              <div className="p-3.5 bg-rose-500/10 rounded-2xl ring-1 ring-rose-500/30 shadow-[0_0_20px_rgba(244, 63, 94,0.15)] flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-rose-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                 </svg>
               </div>
@@ -219,7 +219,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
           <aside className="flex-shrink-0 lg:w-72 p-5 border-b lg:border-b-0 lg:border-r border-slate-700/50 flex flex-col gap-5">
             <div>
               <p className="text-xs text-slate-500 mb-4">
-                Selecione os filtros desejados e clique em <span className="text-rose-400 font-semibold">Gerar Relatório</span>.
+                Selecione os filtros desejados e clique em <span className="text-rose-500 font-semibold">Gerar Relatório</span>.
               </p>
 
               <div className="space-y-4">
@@ -272,7 +272,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
             {/* Preview count */}
             <div className="bg-slate-800/40 rounded-lg px-4 py-3 border border-slate-700/50">
               <p className="text-xs text-slate-400">Projetos encontrados</p>
-              <p className="text-2xl font-bold text-rose-400">{previewCount.toLocaleString('pt-BR')}</p>
+              <p className="text-2xl font-bold text-rose-500">{previewCount.toLocaleString('pt-BR')}</p>
             </div>
 
             <button
@@ -316,7 +316,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
             )}
 
             {error && (
-              <div className="bg-rose-900/20 border border-rose-700/50 rounded-lg p-4 text-rose-300 text-sm">
+              <div className="bg-rose-950/20 border border-rose-800/50 rounded-lg p-4 text-rose-400 text-sm">
                 {error}
               </div>
             )}
@@ -331,7 +331,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
                     </div>
                     <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                       <p className="text-xs text-slate-400">Valor total</p>
-                      <p className="text-xl font-bold text-rose-400">
+                      <p className="text-xl font-bold text-rose-500">
                         R$ {(resumoStats.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi
                       </p>
                     </div>

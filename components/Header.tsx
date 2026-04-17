@@ -1,36 +1,48 @@
 import React from 'react';
-import { ChatHeaderSphere } from './ChatHeaderSphere';
+
+type View = 'home' | 'voice' | 'chat';
 
 interface HeaderProps {
+  activeView: View;
   onNavigateHome?: () => void;
   onNavigateToChat?: () => void;
   onNavigateToVoice?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNavigateToVoice }) => {
+const Header: React.FC<HeaderProps> = ({ activeView, onNavigateHome, onNavigateToChat, onNavigateToVoice }) => {
+  // Ative state: solid white text + subtle frosted background pill
+  const activeClass = 'px-3.5 py-1.5 text-xs font-semibold text-white bg-white/[0.10] rounded-full transition-all duration-200';
+  // Inactive state: muted, becomes white on hover
+  const inactiveClass = 'px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-full transition-all duration-200';
+  // Voz: always accented in rose, brighter when active
+  const vozActiveClass  = 'px-3.5 py-1.5 text-xs font-semibold text-rose-300 bg-rose-500/[0.15] rounded-full transition-all duration-200';
+  const vozInactiveClass = 'px-3.5 py-1.5 text-xs font-medium text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/[0.10] rounded-full transition-all duration-200';
+
   return (
-    <header className="flex-shrink-0 w-full px-4 py-3">
+    <header className="flex-shrink-0 w-full px-4 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        {/* Logo */}
+
+        {/* SP Gov Brand — top left */}
         <button
           onClick={onNavigateHome}
-          className="flex items-center gap-2 group focus:outline-none flex-shrink-0"
+          className="flex items-center group focus:outline-none flex-shrink-0"
           aria-label="Voltar para a página inicial"
         >
-          <ChatHeaderSphere />
-          <div className="flex flex-col items-start">
-            <span className="font-bold text-white text-base tracking-tight group-hover:text-rose-400 transition-colors">Nadia</span>
-            <span className="text-[9px] text-slate-400 uppercase tracking-widest">AI Assistant</span>
-          </div>
+          <img
+            src="/images/logo-sp.png"
+            alt="Governo do Estado de São Paulo"
+            className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+          />
         </button>
 
-        {/* Navigation */}
-        <nav>
-          <ul className="flex items-center space-x-0.5 bg-slate-900/60 backdrop-blur-md rounded-full px-1.5 py-1 border border-white/5 shadow-xl">
+        {/* Navigation pill */}
+        <nav aria-label="Navegação principal">
+          <ul className="flex items-center space-x-0.5 bg-slate-900/50 backdrop-blur-xl rounded-full px-1.5 py-1 border border-white/[0.07] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
             <li>
               <button
                 onClick={onNavigateHome}
-                className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 active:bg-white/10 rounded-full transition-all"
+                aria-current={activeView === 'home' ? 'page' : undefined}
+                className={activeView === 'home' ? activeClass : inactiveClass}
               >
                 Home
               </button>
@@ -38,7 +50,8 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNav
             <li>
               <button
                 onClick={onNavigateToChat}
-                className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 active:bg-white/10 rounded-full transition-all"
+                aria-current={activeView === 'chat' ? 'page' : undefined}
+                className={activeView === 'chat' ? activeClass : inactiveClass}
               >
                 Chat
               </button>
@@ -46,7 +59,8 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToChat, onNav
             <li>
               <button
                 onClick={onNavigateToVoice}
-                className="px-3 py-1.5 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 active:bg-rose-500/20 rounded-full transition-all"
+                aria-current={activeView === 'voice' ? 'page' : undefined}
+                className={activeView === 'voice' ? vozActiveClass : vozInactiveClass}
               >
                 Voz
               </button>

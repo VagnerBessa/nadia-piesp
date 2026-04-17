@@ -506,8 +506,8 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         <div className="flex-shrink-0 px-8 pt-10 pb-8 border-b border-slate-700/60 bg-gradient-to-b from-slate-900/80 to-transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
-              <div className="p-3.5 bg-rose-500/10 rounded-2xl ring-1 ring-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.15)] flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-rose-400">
+              <div className="p-3.5 bg-rose-500/10 rounded-2xl ring-1 ring-rose-500/30 shadow-[0_0_20px_rgba(244, 63, 94,0.15)] flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7 text-rose-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
                 </svg>
               </div>
@@ -607,7 +607,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
           )}
 
           {error && (
-            <div className="max-w-2xl mx-auto bg-rose-900/20 border border-rose-700/50 rounded-lg p-4 text-rose-300 text-sm">
+            <div className="max-w-2xl mx-auto bg-rose-950/20 border border-rose-800/50 rounded-lg p-4 text-rose-400 text-sm">
               {error}
             </div>
           )}
@@ -680,7 +680,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                     {piespStats.totalMilhoes > 0 && (
                       <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                         <p className="text-xs text-slate-400">Valor total investido em SP</p>
-                        <p className="text-xl font-bold text-rose-400">
+                        <p className="text-xl font-bold text-rose-500">
                           {piespStats.totalMilhoes >= 1000
                             ? `R$ ${(piespStats.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi`
                             : `R$ ${piespStats.totalMilhoes.toFixed(0)} mi`}

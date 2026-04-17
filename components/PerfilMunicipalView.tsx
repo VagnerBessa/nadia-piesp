@@ -187,7 +187,7 @@ const PerfilMunicipalView: React.FC<PerfilMunicipalViewProps> = ({ onNavigateHom
                             <CircularProgress size={24} sx={{ color: '#f43f5e' }} />
                     ) : (
                         <SoundWaveIcon 
-                            className="w-6 h-6 text-rose-500" 
+                            className="w-6 h-6 text-rose-600" 
                             isListening={isListening} 
                             isSpeaking={isSpeaking}
                             audioLevel={audioLevel}

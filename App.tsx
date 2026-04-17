@@ -38,23 +38,24 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen bg-transparent text-white font-sans flex flex-col overflow-hidden">
+      {/* Header fixo no topo — fora do main, sempre visível */}
       <Header
+        activeView={view}
         onNavigateHome={handleNavigateHome}
         onNavigateToChat={handleNavigateToChat}
         onNavigateToVoice={handleNavigateToVoice}
       />
-      <main className="flex-grow relative overflow-hidden flex flex-col">
+      <main className="flex-grow overflow-hidden flex flex-col">
         <Suspense fallback={<ViewLoader />}>
           {renderView()}
         </Suspense>
       </main>
-      <footer className="flex-shrink-0 w-full py-1.5 px-4 text-center bg-slate-950/40 backdrop-blur-md border-t border-white/5 z-50">
-        <p className="text-[10px] sm:text-xs text-slate-500 font-medium tracking-wide">
-          A Nadia pode apresentar falhas. Para validação oficial, contate a{' '}
-          <a href="https://seade.gov.br" target="_blank" rel="noopener noreferrer" className="hover:text-rose-400 transition-colors underline decoration-slate-700/50">
-            Fundação Seade
-          </a>.
-        </p>
+      <footer className="flex-shrink-0 w-full py-5 px-6 z-50 flex items-center justify-center">
+        <img 
+          src="/images/logo-seade.png" 
+          alt="Fundação Seade" 
+          className="h-8 w-auto brightness-0 invert opacity-50 hover:opacity-70 transition-opacity duration-300"
+        />
       </footer>
     </div>
   );

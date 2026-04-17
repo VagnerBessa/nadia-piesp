@@ -194,8 +194,8 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
       {pickerOpen && (
         <div
           ref={pickerRef}
-          className={`xl:hidden absolute left-0 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl z-50 flex flex-col ${chatStarted ? 'bottom-full mb-2' : 'top-full mt-2'}`}
-          style={{ animation: 'dropdown-in 140ms ease-out forwards' }}
+          className="xl:hidden absolute bottom-full left-0 mb-3 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] z-50 flex flex-col"
+          style={{ animation: 'dropdown-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
         >
           {/* Opção fixa no topo */}
           <div className="flex-shrink-0">
@@ -206,7 +206,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
               <span className={`${activeAgent === null ? 'text-slate-200 font-medium' : 'text-slate-400'}`}>
                 Geral
               </span>
-              {activeAgent === null && <span className="text-rose-400"><Icons.Check /></span>}
+              {activeAgent === null && <span className="text-rose-500"><Icons.Check /></span>}
             </button>
             <div className="border-t border-slate-800 mx-3" />
           </div>
@@ -220,13 +220,13 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                 onClick={() => handleSelectAgent(agent)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-slate-800 transition-colors gap-3"
               >
-                <span className={`flex items-center gap-3 ${isActive ? 'text-rose-300' : 'text-slate-400'}`}>
-                  <span className={isActive ? 'text-rose-400' : 'text-slate-500'}>
+                <span className={`flex items-center gap-3 ${isActive ? 'text-rose-400' : 'text-slate-400'}`}>
+                  <span className={isActive ? 'text-rose-500' : 'text-slate-500'}>
                     {agent.icon}
                   </span>
                   <span className={isActive ? 'font-medium' : ''}>{agent.label}</span>
                 </span>
-                {isActive && <span className="text-rose-400 flex-shrink-0"><Icons.Check /></span>}
+                {isActive && <span className="text-rose-500 flex-shrink-0"><Icons.Check /></span>}
               </button>
             );
           })}
@@ -242,12 +242,12 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
         {/* Badge de agente ativo */}
         {activeAgent && (
           <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
-              <span className="text-rose-400">{activeAgent.icon}</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">
+              <span className="text-rose-500">{activeAgent.icon}</span>
               {activeAgent.label}
               <button
                 onClick={() => setActiveAgent(null)}
-                className="ml-0.5 text-rose-400/50 hover:text-rose-300 transition-colors"
+                className="ml-0.5 text-rose-500/50 hover:text-rose-400 transition-colors"
               >
                 <Icons.Close />
               </button>
@@ -283,7 +283,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
           <button
             onClick={handleSend}
             disabled={isLoading || !inputValue.trim()}
-            className="flex-shrink-0 p-1.5 rounded-full bg-rose-600 text-white disabled:bg-slate-700 disabled:cursor-not-allowed hover:bg-rose-500 transition-colors"
+            className="flex-shrink-0 p-1.5 rounded-full bg-rose-500 text-white disabled:bg-slate-700 disabled:cursor-not-allowed hover:bg-rose-400 transition-colors"
           >
             <SendIcon className="w-5 h-5" />
           </button>
@@ -296,7 +296,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
             onClick={() => setPickerOpen(p => !p)}
             className={`xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
               activeAgent
-                ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                 : pickerOpen
                   ? 'bg-slate-700 text-slate-200 border border-slate-600'
                   : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200 hover:border-slate-600'
@@ -355,34 +355,70 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
         {/* Chat column */}
         <div className="flex-1 flex flex-col min-w-0 max-w-3xl bg-transparent">
 
-          {/* Header */}
-          <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-slate-700/50">
-            <div className="flex items-center gap-4">
-              <ChatHeaderSphere />
-              <h1 className="text-xl font-bold text-slate-100">Nadia</h1>
-            </div>
-            <button
-              onClick={onNavigateHome}
-              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg"
-            >
-              <SwitchModeIcon className="h-5 w-5" />
-              <span className="hidden sm:inline text-sm font-medium leading-none">Voltar</span>
-            </button>
-          </header>
 
           {!chatStarted ? (
-            /* Estado inicial — input posicionado no terço superior */
-            <div className="flex-grow flex flex-col items-center px-4 pt-[12%]">
-              <p className="text-slate-500 text-sm mb-6 font-mono tracking-wide">
-                Como posso ajudar?
-              </p>
-              <div className="w-full max-w-2xl">
+            /* Estado inicial — Foco central e input na base */
+            <div className="flex-grow flex flex-col items-center px-6 pt-[8%] pb-8 overflow-y-auto">
+              
+              <div className="flex flex-col items-center text-center mb-10 animate-in fade-in zoom-in duration-1000">
+                {/* Marca Nadia — identidade visual consistente com as demais telas */}
+                <div className="flex flex-col items-center mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tighter leading-none mb-2">
+                    Nadia
+                  </h1>
+                  <div className="h-0.5 w-10 bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                </div>
+
+                <div className="relative mb-5">
+                  <div className="absolute inset-0 bg-rose-500/20 blur-3xl rounded-full" />
+                  <ChatHeaderSphere size={120} />
+                </div>
+                <h2 className="text-lg font-semibold text-white mb-2 tracking-tight">Como posso ajudar hoje?</h2>
+                <p className="text-sm text-slate-400 max-w-[280px] leading-relaxed">
+                  Explore os dados do PIESP com a Nadia e obtenha insights instantâneos.
+                </p>
+              </div>
+
+              {/* Action Chips: Preenchendo o vácuo com utilidade */}
+              <div className="w-full max-w-lg mb-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">Sugestões de Consulta</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {[
+                    "Mostre os investimentos confirmados no município de Campinas",
+                    "Há algum projeto de transição energética ou sustentabilidade anunciado?",
+                    "Quais investimentos em logística estão previstos na Baixada Santista?"
+                  ].map((sugestao) => (
+                    <button
+                      key={sugestao}
+                      onClick={() => {
+                        setInputValue(sugestao);
+                        // Pequeno delay para efeito visual antes de enviar
+                        setTimeout(() => handleSend(), 150);
+                      }}
+                      className="px-4 py-2 rounded-full bg-slate-800/40 border border-white/5 text-slate-300 text-xs font-medium hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-95"
+                    >
+                      {sugestao}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input fixo na base (ergonômico) */}
+              <div className="w-full max-w-2xl mt-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500">
                 {InputBox}
               </div>
             </div>
           ) : (
             /* Estado de chat — mensagens + input no rodapé */
             <>
+              {/* Mini marca Nadia — sempre visível no topo do chat ativo */}
+              <div className="flex-shrink-0 flex items-center gap-2.5 px-4 py-2 border-b border-white/[0.05]">
+                <ChatHeaderSphere size={28} />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-extrabold text-white tracking-tight leading-none">Nadia</span>
+                  <div className="h-0.5 w-5 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.5)]" />
+                </div>
+              </div>
               <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
                 {messages.map((msg, index) => (
                   <div
@@ -392,7 +428,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                     {msg.role === 'model' && <div className="flex-shrink-0"><ChatHeaderSphere /></div>}
                     <div className={`max-w-xl rounded-2xl px-4 py-3 ${
                       msg.role === 'user'
-                        ? 'bg-rose-600 text-white rounded-br-none'
+                        ? 'bg-rose-500 text-white rounded-br-none shadow-[0_4px_12px_rgba(244,63,94,0.2)]'
                         : 'bg-slate-700 text-slate-200 rounded-bl-none'
                     }`}>
                       <MarkdownRenderer content={msg.text} />
@@ -466,11 +502,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                   onClick={() => handleSelectAgent(isActive ? null : agent)}
                   className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-150 border ${
                     isActive
-                      ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                      ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
                       : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border-transparent'
                   }`}
                 >
-                  <span className={`flex-shrink-0 transition-colors ${isActive ? 'text-rose-400' : 'text-slate-600'}`}>
+                  <span className={`flex-shrink-0 transition-colors ${isActive ? 'text-rose-500' : 'text-slate-600'}`}>
                     {agent.icon}
                   </span>
                   <span className={`leading-snug ${isActive ? 'font-medium' : ''}`}>{agent.label}</span>

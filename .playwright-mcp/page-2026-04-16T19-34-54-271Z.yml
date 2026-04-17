@@ -1,0 +1,15 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - button "Voltar para a página inicial" [ref=e7] [cursor=pointer]:
+        - img "Governo do Estado de São Paulo" [ref=e8]
+      - navigation "Navegação principal" [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - button "Home" [ref=e12] [cursor=pointer]
+          - listitem [ref=e13]:
+            - button "Chat" [ref=e14] [cursor=pointer]
+          - listitem [ref=e15]:
+            - button "Voz" [ref=e16] [cursor=pointer]
+  - contentinfo [ref=e19]:
+    - img "Fundação Seade" [ref=e20]

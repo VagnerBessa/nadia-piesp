@@ -30,10 +30,13 @@
 </script>
 <style>
   body {
-    background-color: #042a3a;
-    background-image: radial-gradient(at 50% 0%, rgba(28, 106, 133, 0.4) 0%, transparent 50%);
+    /* Deep ocean teal — matching the reference design */
+    background-color: #0b2231;
+    background-image:
+      radial-gradient(ellipse 120% 80% at 50% 50%, #0d2b3e 0%, #081a27 60%, #05111a 100%),
+      radial-gradient(ellipse 70% 40% at 50% 0%, rgba(244, 63, 94, 0.10) 0%, transparent 65%);
     background-repeat: no-repeat;
-    background-size: 100vw 100vh;
+    background-size: 100% 100%;
     background-attachment: fixed;
     /* Respeita notch e home indicator do iOS */
     padding-top: env(safe-area-inset-top);
