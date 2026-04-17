@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
 import { NadiaSphere } from './NadiaSphere';
@@ -10,6 +10,7 @@ interface VoiceViewProps {
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
+  const [toolProcessing, setToolProcessing] = useState(false);
   const {
     isConnected,
     isSpeaking,
@@ -20,6 +21,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     stopConversation
   } = useLiveConnection({
     onToolCall: async (toolCall) => {
+      setToolProcessing(true); // Engatilha o indicativo visual de busca
       if (toolCall.name === 'consultar_projetos_piesp') {
         const { ano, municipio, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, termo_busca });
@@ -36,7 +38,14 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   });
 
-  const isListening = isConnected && !isSpeaking;
+  // Limpa o aviso de "buscando informações" instantaneamente quando a IA começar a responder o áudio
+  useEffect(() => {
+    if (isSpeaking || !isConnected) {
+      setToolProcessing(false);
+    }
+  }, [isSpeaking, isConnected]);
+
+  const isListening = isConnected && !isSpeaking && !toolProcessing;
 
   return (
     <div className="relative flex flex-col w-full h-full p-6 overflow-hidden">
@@ -79,10 +88,10 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           ) : (
             <div className="flex items-center gap-2">
               {isConnected && !isConnecting && (
-                <div className={`w-1.5 h-1.5 rounded-full ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${toolProcessing ? 'bg-cyan-400 animate-pulse' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
               )}
               <p className="text-slate-400 text-lg sm:text-xl font-medium tracking-tight">
-                {isConnecting ? "Conectando..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : "Pronta para conversar"}
+                {isConnecting ? "Conectando..." : toolProcessing ? "Buscando informações..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : "Pronta para conversar"}
               </p>
             </div>
           )}
