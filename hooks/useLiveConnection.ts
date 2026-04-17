@@ -87,10 +87,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
 
   const stopConversation = useCallback(async () => {
-    // Persistindo o Timestamp da última interação
-    if (isConnected) {
-      localStorage.setItem('nadia_last_interaction', Date.now().toString());
-    }
+    // Persistindo o Timestamp sem condicional (evita o bug de stale closure do React com isConnected false)
+    localStorage.setItem('nadia_last_interaction', Date.now().toString());
 
     setError(null);
     if (sessionPromiseRef.current) {
@@ -229,7 +227,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       }
 
       // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio", "Resposta Abrupta" e TAMANHO
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você acionar uma ferramenta de busca do PIESP, você DEVE dizer em voz alta uma frase preenchedora curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. ATENÇÃO MÁXIMA: Essa frase preparatória deve ter NO MÁXIMO UMA ÚNICA SENTENÇA. É ESTRITAMENTE PROIBIDO responder partes da pergunta ou explicar contexto antes de executar a busca. Após a ferramenta retornar os números, aplique uma frase conectiva natural (ex: "Cruzando as informações...") e dê a resposta.\nREGRAS GERAIS DE VOZ: O canal de áudio não tolera discursos longos. As suas respostas finais analíticas DEVEM SER BASTANTE BREVES E DIRETAS (máximo de 2 parágrafos). Vá direto ao ponto matemático e insight principal. Se houver tom de voz alterado, mantenha o tom profissional idêntico antes e depois do uso da ferramenta.`;
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa já te chamando pelo nome (Nadia), NUNCA se apresente de volta dizendo quem você é. Vá direto ao que ele perguntou.\nIMPORTANTE: Toda vez que você acionar uma ferramenta de busca do PIESP, você DEVE dizer em voz alta uma frase preenchedora curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. ATENÇÃO MÁXIMA: Essa frase preparatória deve ter NO MÁXIMO UMA ÚNICA SENTENÇA. É ESTRITAMENTE PROIBIDO responder partes da pergunta ou explicar contexto antes de executar a busca. Após a ferramenta retornar os números, aplique uma frase conectiva natural (ex: "Cruzando as informações...") e dê a resposta.\nREGRAS GERAIS DE VOZ: O canal de áudio não tolera discursos longos. As suas respostas finais analíticas DEVEM SER BASTANTE BREVES E DIRETAS (máximo de 2 parágrafos). Vá direto ao ponto matemático e insight principal. Se houver tom de voz alterado, mantenha o tom profissional idêntico antes e depois do uso da ferramenta.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
