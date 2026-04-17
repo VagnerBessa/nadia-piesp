@@ -90,6 +90,21 @@ npx vercel --prod --yes
 
 ---
 
+## Otimização de Voice UX e Igualdade Semântica — 17/abr/2026
+
+Implementação de paradigmas de VUI (Voice User Interface) para branch `nadia-mobile/0.2`:
+
+### 1. Refinamento Acústico e Multimodal
+- **Anti-Amnésia React**: Gravação do timestamp via `localStorage` para reconectar sessões e impedir que a IA se reapresente eternamente se a conexao falhar.
+- **Multimodal e Micro-Latência**: IA forçada a enviar um áudio minúsculo de delay e calar a boca temporariamente via Prompt-Lock; um `setTimeout(1500)` artificial executa o feedback ciano na tela ("Buscando informações...") garantindo alívio visual.
+- **Desocultamento Progressivo & Graceful Fallback**: A inteligência foi treinada a não "vomitar" projetos numericamente exaustivos. Entrega o valor macro seguido de pergunta-âncora. Em becos sem saída, sugere mudanças de escopo organicamente.
+
+### 2. Equalização Semântica (CNAE + Investidora)
+A busca na base **Sem Valor** era capenga se comparada à busca **Com Valor**.
+**Solução:** Todas as funções de indexação lexical em `piespDataService.ts` (Mobile) e `mcp-server/src/piespService.ts` (Servidor padrão do Chat) foram refatoradas para abraçar 100% da árvore `cnae` e, criticamente, mapear nomes descritos na coluna `investidora_s`. O sistema sabe o "nome verdadeiro da marca" através do parseamento `Empresa Alvo (Matriz Investidora)`.
+
+---
+
 ## Correção: Busca por Atividade Econômica (CNAE) — 14/abr/2026
 
 ### Problema
