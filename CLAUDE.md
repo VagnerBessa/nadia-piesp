@@ -26,42 +26,35 @@ Para detalhes, ver `docs/`.
 
 ---
 
-## Bugs Abertos
+## Documentação e Estratégia
 
-| ID | Descrição | Status |
+Para uma visão completa da evolução do projeto, consulte a pasta `cartografia/`:
+- **Ecosistema e Canais:** [`cartografia/ecossistema.md`](cartografia/ecossistema.md) (Abstração Web, Mobile e MCP)
+- **Roadmap e Backlog:** [`cartografia/roadmap.md`](cartografia/roadmap.md) (Inclui PEND-001 e BUG-001)
+- **Manual de Identidade Visual:** [`materiais/manual-identidade-visual-governo-sp.pdf`](materiais/manual-identidade-visual-governo-sp.pdf)
+
+---
+
+## Canais de Acesso e Branches
+
+O projeto Nadia opera em um modelo multi-branch para diferentes casos de uso:
+
+| Branch | Canal | Foco |
 |---|---|---|
-| BUG-001 | Filtros de setor e região retornam 0 no Chat | Resolvido |
+| `main` | **Nadia Ecosistema** | Versão Web Full (Desktop). Inclui Dashboards, Explorar, Perfil Municipal, Data Lab e E-mail. |
+| `nadia-mobile/0.1` | **Nadia Mobile** | Interface simplificada e otimizada para smartphones. Foca exclusivamente em **Chat** e **Voz**. |
 
-Ver detalhes completos em [`docs/bugs-abertos.md`](docs/bugs-abertos.md).
-
----
-
-## Pendências
-
-| ID | Descrição | Status |
-|---|---|---|
-| PEND-001 | Proteção da API key do Gemini | Decidir antes do deploy |
-
-Ver detalhes e alternativas em [`docs/pendencias.md`](docs/pendencias.md).
+**Branding Oficial:** A versão Mobile utiliza o novo sistema de cores "Deep Ocean" e os brasões oficiais do Governo do Estado de São Paulo e Fundação Seade.
 
 ---
 
-## Arquitetura
+## Arquitetura de Resiliência (Voz e Chat)
 
-Direções planejadas mas não implementadas:
-- Backend mínimo (proteger API key + centralizar dados)
-- MCP server como única fonte de verdade (eliminar duplicação `piespDataService` / `piespService`)
-- Nadia Mobile (branch `mobile` — Chat + Voz, mobile-first)
+Implementada para garantir alta disponibilidade mesmo sob falhas da API do Google Gemini.
 
-Ver [`docs/arquitetura.md`](docs/arquitetura.md).
-
----
-
-## Decisões Técnicas
-
-Raciocínio por trás das escolhas — becos sem saída já explorados e trade-offs conscientes.
-
-Ver [`docs/decisoes-tecnicas.md`](docs/decisoes-tecnicas.md).
+1. **Retry Automático (withRetry):** O sistema realiza até 2 tentativas automáticas com backoff exponencial (2s, 4s) em caso de erro 503 (servidores sobrecarregados).
+2. **Fallback OpenRouter:** Se o Gemini falhar persistentemente no Chat, o sistema commuta silenciosamente para o OpenRouter (usando `google/gemini-2.5-flash-preview`) para evitar interrupção do serviço.
+3. **Thinking Budget Otimizado:** O budget de pensamento foi ajustado para `512` tokens para reduzir a latência e o risco de timeouts.
 
 ---
 
