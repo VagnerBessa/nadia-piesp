@@ -265,6 +265,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
               }
 
+              // Se a IA está se despedindo, fechar o microfone prematuramente para evitar que ruído humano quebre o tchau
+              if (pendingDisconnectRef.current) return;
+
               const pcmBlob = createBlob(inputData);
               sessionPromiseRef.current!.then((session) => {
                 session.sendRealtimeInput({ media: pcmBlob });
@@ -284,11 +287,15 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 if (functionCalls && functionCalls.length > 0 && onToolCallRef.current) {
                     for (const call of functionCalls) {
                         if (call.name === 'encerrar_sessao') {
-                           console.log('[Nadia] Usuário se despediu. Engatilhando desconexão...');
+                           console.log('[Nadia] Usuário se despediu. Fechando mic e aguardando 4s para matar o socket...');
                            pendingDisconnectRef.current = true;
+                           
+                           // Agendando o assassinato da conexão em 4 segundos (tempo do Tchau terminar na caixa de som)
+                           setTimeout(stopConversation, 4000);
+
                            sessionPromiseRef.current!.then((session) => {
                              session.sendToolResponse({
-                               functionResponses: [{ id: call.id, name: call.name, response: { result: "Despedida iniciada." } }]
+                               functionResponses: [{ id: call.id, name: call.name, response: { result: "Conexão cortada fisicamente. É TERMINANTEMENTE PROIBIDO falar mais alguma coisa a partir de agora." } }]
                              });
                            });
                            continue;
@@ -330,11 +337,6 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     audioSourcesRef.current.delete(source);
                     if (audioSourcesRef.current.size === 0) {
                         setIsSpeaking(false);
-                        if (pendingDisconnectRef.current) {
-                            console.log('[Nadia] Áudio finalizado. Desconectando Sessão...');
-                            pendingDisconnectRef.current = false;
-                            setTimeout(stopConversation, 500);
-                        }
                     }
                 });
 
@@ -399,7 +401,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'encerrar_sessao',
-                  description: 'Usa esta ferramenta APENAS quando o usuário disser explicitamente que não precisa de mais nada ou se despedir ("Não, obrigado", "É só isso", "Tchau"). A ferramenta fechará a conexão de áudio após você dar o seu tchau.',
+                  description: 'Acione IMEDIATAMENTE quando o usuário disser que não precisa de mais nada ou se despedir ("Não, valeu", "É só isso", "Tchau"). Diga APENAS UMA ÚNICA FRASE curta de despedida (ex: "Até logo!") e chame essa ferramenta. NÃO fale mais nada.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {}
