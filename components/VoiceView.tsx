@@ -26,12 +26,15 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         const { ano, municipio, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, termo_busca });
         const resultados = consultarPiespData({ ano, municipio, termo_busca });
+        // Fôlego Artificial: Injeta um atraso programático para forçar a Nadia a ter um espaçamento temporal entre o Áudio Filler e a Resposta.
+        await new Promise(resolve => setTimeout(resolve, 1500));
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
         const { ano, municipio, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, termo_busca });
         const resultados = consultarAnunciosSemValor({ ano, municipio, termo_busca });
+        await new Promise(resolve => setTimeout(resolve, 1500));
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       return { error: 'Tool não reconhecido' };
