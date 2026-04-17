@@ -358,6 +358,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     properties: {
                       ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
                       municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+                      regiao: { type: Type.STRING, description: 'Uma região administrativa ou metropolitana inteira (ex: "sao paulo", "vale do paraiba")' },
+                      setor: { type: Type.STRING, description: 'O setor econômico principal (ex: Infraestrutura, Indústria, Serviços)' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
                     }
                   }
@@ -370,6 +372,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     properties: {
                       ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
                       municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+                      regiao: { type: Type.STRING, description: 'Uma região administrativa ou metropolitana' },
+                      setor: { type: Type.STRING, description: 'O setor econômico principal' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
                     }
                   }
