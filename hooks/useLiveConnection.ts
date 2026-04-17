@@ -401,7 +401,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'encerrar_sessao',
-                  description: 'Acione IMEDIATAMENTE quando o usuário disser que não precisa de mais nada ou se despedir ("Não, valeu", "É só isso", "Tchau"). Diga APENAS UMA ÚNICA FRASE curta de despedida (ex: "Até logo!") e chame essa ferramenta. NÃO fale mais nada.',
+                  description: 'Acione quando o usuário se despedir ou afirmar explicitamente que não precisa de mais nada ("Tchau", "Obrigado, é só isso"). Diga uma despedida natural, calorosa e com ritmo vocal pausado e tranquilo (ex: "Foi um prazer, até a próxima!"). Nunca acelere a sua voz, fale devagar. Após a sua fala, acione essa ferramenta para desligar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {}
