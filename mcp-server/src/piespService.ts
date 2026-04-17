@@ -106,6 +106,7 @@ export function consultarProjetos(filtro: FiltroPiesp) {
     const anoLinha = cols[1]?.trim();
     const municipioLinha = (cols[7]?.trim() || '').toLowerCase();
     const empresaLinha = cols[3] || 'Desconhecida';
+    const investidoraLinha = cols[4] || '';
     const setorLinha = cols[10] || 'Geral';
     const descricaoLinha = cols[9] || '';
 
@@ -113,12 +114,18 @@ export function consultarProjetos(filtro: FiltroPiesp) {
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) continue;
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      const txt = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      // Equalizado com frontend: incluindo CNAEs na varredura semântica do backend MCP
+      const cnaeLinha = (cols[11] || '') + ' ' + (cols[12] || '') + ' ' + (cols[13] || '');
+      const txt = (empresaLinha + ' ' + investidoraLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
       if (!txt.includes(tb)) continue;
     }
 
+    const empresaFinal = investidoraLinha && investidoraLinha.trim().toLowerCase() !== empresaLinha.trim().toLowerCase() 
+      ? `${empresaLinha} (${investidoraLinha})` 
+      : empresaLinha;
+
     resultados.push({
-      empresa: empresaLinha,
+      empresa: empresaFinal,
       municipio: cols[7] || 'Não informado',
       ano: anoLinha,
       setor: setorLinha,
@@ -146,6 +153,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     const anoLinha = cols[1]?.trim();
     const municipioLinha = (cols[5]?.trim() || '').toLowerCase();
     const empresaLinha = cols[3] || 'Desconhecida';
+    const investidoraLinha = cols[4] || '';
     const setorLinha = cols[8] || 'Geral';
     const descricaoLinha = cols[7] || '';
 
@@ -153,12 +161,18 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) continue;
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      const txt = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
+      // Equalizado: Busca por CNAEs e Investidora na base de Anúncios Sem Valor via MCP
+      const cnaeLinha = (cols[9] || '') + ' ' + (cols[10] || '') + ' ' + (cols[11] || '');
+      const txt = (empresaLinha + ' ' + investidoraLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
       if (!txt.includes(tb)) continue;
     }
 
+    const empresaFinal = investidoraLinha && investidoraLinha.trim().toLowerCase() !== empresaLinha.trim().toLowerCase() 
+      ? `${empresaLinha} (${investidoraLinha})` 
+      : empresaLinha;
+
     resultados.push({
-      empresa: empresaLinha,
+      empresa: empresaFinal,
       municipio: cols[5] || 'Não informado',
       ano: anoLinha,
       setor: setorLinha,

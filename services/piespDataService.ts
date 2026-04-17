@@ -208,6 +208,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     const municipioLinha = colunas[7]?.trim()?.toLowerCase() || '';
     const regiaoLinha = colunas[8]?.trim()?.toLowerCase() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
+    const investidoraLinha = colunas[4] || '';
     const setorLinha = canonicalSetor(colunas[10] || '') || colunas[10] || 'Geral';
     const descricaoLinha = colunas[9] || '';
 
@@ -231,17 +232,21 @@ export function consultarPiespData(filtro: FiltroPiesp) {
 
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      // busca semântica livre em vários campos textuais, incluindo CNAE (atividade econômica)
+      // busca semântica livre em vários campos textuais, incluindo Investidora e CNAEs
       const cnaeLinha = (colunas[11] || '') + ' ' + (colunas[12] || '') + ' ' + (colunas[13] || '');
-      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
+      const textToSearch = (empresaLinha + ' ' + investidoraLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
         match = false;
       }
     }
 
     if (match) {
+      const empresaFinal = investidoraLinha && investidoraLinha.trim().toLowerCase() !== empresaLinha.trim().toLowerCase() 
+        ? `${empresaLinha} (${investidoraLinha})` 
+        : empresaLinha;
+
       resultados.push({
-        empresa: empresaLinha,
+        empresa: empresaFinal,
         municipio: colunas[7] || 'Não informado',
         regiao: colunas[8] || 'Não informada',
         ano: anoLinha,
@@ -519,6 +524,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     const municipioLinha = colunas[5]?.trim()?.toLowerCase() || '';
     const regiaoLinha = colunas[6]?.trim()?.toLowerCase() || '';
     const empresaLinha = colunas[3] || 'Desconhecida';
+    const investidoraLinha = colunas[4] || '';
     const setorLinha = colunas[8] || 'Geral';
     const descricaoLinha = colunas[7] || '';
 
@@ -542,17 +548,21 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
 
     if (filtro.termo_busca) {
       const tb = filtro.termo_busca.toLowerCase();
-      // busca semântica livre, incluindo CNAE (atividade econômica)
+      // busca semântica livre equalizada: Investidora, Descrição e CNAEs
       const cnaeLinha = (colunas[9] || '') + ' ' + (colunas[10] || '') + ' ' + (colunas[11] || '');
-      const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
+      const textToSearch = (empresaLinha + ' ' + investidoraLinha + ' ' + setorLinha + ' ' + descricaoLinha + ' ' + cnaeLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
         match = false;
       }
     }
 
     if (match) {
+      const empresaFinal = investidoraLinha && investidoraLinha.trim().toLowerCase() !== empresaLinha.trim().toLowerCase() 
+        ? `${empresaLinha} (${investidoraLinha})` 
+        : empresaLinha;
+
       resultados.push({
-        empresa: empresaLinha,
+        empresa: empresaFinal,
         municipio: colunas[5] || 'Não informado',
         regiao: colunas[6] || 'Não informada',
         ano: anoLinha,
