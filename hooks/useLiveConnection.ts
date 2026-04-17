@@ -87,6 +87,11 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
 
   const stopConversation = useCallback(async () => {
+    // Persistindo o Timestamp da última interação
+    if (isConnected) {
+      localStorage.setItem('nadia_last_interaction', Date.now().toString());
+    }
+
     setError(null);
     if (sessionPromiseRef.current) {
       try {
@@ -196,9 +201,28 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
       animationFrameIdRef.current = requestAnimationFrame(analysisLoop);
 
+      let finalSystemInstruction = systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+
+      // Modificador de Anti-Amnésia: Cálculo do tempo desde a última conexão
+      const lastInteractionStr = localStorage.getItem('nadia_last_interaction');
+      if (lastInteractionStr) {
+        const lastInteraction = parseInt(lastInteractionStr, 10);
+        const diffMs = Date.now() - lastInteraction;
+        const diffHours = diffMs / (1000 * 60 * 60);
+        
+        // Se ocorreu há menos de 24 horas, recarregamos a memória (ignorando reconexões caídas < 5s)
+        if (diffHours < 24 && diffMs > 5000) {
+          const diffMinutes = Math.round(diffMs / (1000 * 60));
+          const timeDesc = diffHours >= 1 
+            ? `${Math.round(diffHours)} hora(s)` 
+            : `${diffMinutes} minuto(s)`;
+            
+          finalSystemInstruction += `\n\n[INSTRUÇÃO DE ESTADO DE SESSÃO]\nA conversa foi pausada temporariamente pelo usuário há ${timeDesc} e agora foi retomada. NÃO se apresente novamente e nunca repita um texto de saudação inicial. Aja naturalmente e retome a conversa como se a pausa não tivesse ocorrido. Lembre-se, o usuário tem feito pausas intermitentes durante o dia.`;
+        }
+      }
+
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
-        // Using the latest Gemini 2.5 Flash Native Audio model (December 2025)
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
@@ -214,25 +238,20 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             let totalPackets = 0;
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               totalPackets++;
-
-              // Log every 100 packets to show we're processing
               if (totalPackets % 100 === 0) {
                 console.log('[Nadia] Processing audio packets... total:', totalPackets);
               }
 
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-
-              // Calculate RMS to detect if there's actual audio input
               let sumSquares = 0;
               for (let i = 0; i < inputData.length; i++) {
                 sumSquares += inputData[i] * inputData[i];
               }
               const rms = Math.sqrt(sumSquares / inputData.length);
 
-              // Log only if there's significant audio input
               if (rms > 0.01) {
                 audioPacketCount++;
-                if (audioPacketCount % 50 === 0) { // Log every 50 packets with audio
+                if (audioPacketCount % 50 === 0) { 
                   console.log('[Nadia] Audio detected - RMS:', rms.toFixed(4), 'packet:', audioPacketCount);
                 }
               }
@@ -249,53 +268,23 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
           },
           onmessage: async (message: LiveServerMessage) => {
             console.log('[Nadia] Received message from API:', message);
-            console.log('[Nadia] Message details:', {
-              hasServerContent: !!message.serverContent,
-              hasModelTurn: !!message.serverContent?.modelTurn,
-              hasParts: !!message.serverContent?.modelTurn?.parts,
-              partsLength: message.serverContent?.modelTurn?.parts?.length || 0,
-              hasToolCall: !!message.toolCall,
-              hasSetupComplete: !!(message as any).setupComplete,
-              hasTurnComplete: !!(message as any).turnComplete
-            });
+            if ((message as any).setupComplete) return;
 
-            // Check if this is just a setup complete message
-            if ((message as any).setupComplete) {
-              console.log('[Nadia] Setup complete message received');
-              return; // Don't close connection on setup
-            }
-
-            console.log('[Nadia] Message type:', message.serverContent?.modelTurn ? 'modelTurn' : message.toolCall ? 'toolCall' : 'other');
-             // Handle Function Calls (Tool Use)
              if (message.toolCall) {
-                console.log('[Nadia] Tool call detected');
                 const functionCalls = message.toolCall.functionCalls;
                 if (functionCalls && functionCalls.length > 0 && onToolCallRef.current) {
-                    // Execute tool logic
                     for (const call of functionCalls) {
                         try {
-                            console.log("Calling tool:", call.name, call.args);
                             const result = await onToolCallRef.current(call);
-                            
-                            // Send response back to model
                             sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
-                                    functionResponses: [{
-                                        id: call.id,
-                                        name: call.name,
-                                        response: { result: result }
-                                    }]
+                                    functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
                                 });
                             });
                         } catch (err) {
-                            console.error("Tool execution failed:", err);
                              sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
-                                    functionResponses: [{
-                                        id: call.id,
-                                        name: call.name,
-                                        response: { error: "Failed to execute tool" }
-                                    }]
+                                    functionResponses: [{ id: call.id, name: call.name, response: { error: "Failed to execute tool" } }]
                                 });
                             });
                         }
@@ -303,38 +292,23 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
              }
 
-
-             // Handle Audio Output
              const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
              if (base64EncodedAudioString && outputAudioContextRef.current && analyserRef.current) {
-                console.log('[Nadia] Received audio response from API');
                 setIsSpeaking(true);
                 const currentOutputContext = outputAudioContextRef.current;
-
-                // iOS pode suspender o contexto novamente em background — garantir retomada
                 if (currentOutputContext.state === 'suspended') {
                   await currentOutputContext.resume();
                 }
 
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, currentOutputContext.currentTime);
-
-                const audioBuffer = await decodeAudioData(
-                    decode(base64EncodedAudioString),
-                    currentOutputContext,
-                    OUTPUT_SAMPLE_RATE,
-                    1,
-                );
+                const audioBuffer = await decodeAudioData(decode(base64EncodedAudioString), currentOutputContext, OUTPUT_SAMPLE_RATE, 1);
 
                 const source = currentOutputContext.createBufferSource();
                 source.buffer = audioBuffer;
-                // Connect source to analyser, and analyser to destination
                 source.connect(analyserRef.current);
-                
                 source.addEventListener('ended', () => {
                     audioSourcesRef.current.delete(source);
-                    if (audioSourcesRef.current.size === 0) {
-                        setIsSpeaking(false);
-                    }
+                    if (audioSourcesRef.current.size === 0) setIsSpeaking(false);
                 });
 
                 source.start(nextStartTimeRef.current);
@@ -353,33 +327,17 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
              }
           },
           onerror: (e: ErrorEvent) => {
-            console.error("[Nadia] Session error:", e);
-            console.error("[Nadia] Error details:", JSON.stringify(e, null, 2));
             setError(`Falha na conexão com a API: ${e.message || 'Erro desconhecido'}`);
             stopConversation();
           },
           onclose: (e: CloseEvent) => {
-            console.log("[Nadia] Session closed:", e.code, e.reason);
-            console.log("[Nadia] Close was initiated by:", e.wasClean ? 'clean shutdown' : 'unexpected');
-
-            // Only show error if it wasn't a normal user-initiated closure
-            if (e.code !== 1000 && isConnected) {
-              console.error("[Nadia] Abnormal close code:", e.code, "reason:", e.reason);
-              setError(`Conexão fechada inesperadamente: ${e.reason || 'Código ' + e.code}`);
-            }
-
-            // Don't call stopConversation if already stopped
-            if (isConnected) {
-              stopConversation();
-            }
+            if (e.code !== 1000 && isConnected) setError(`Conexão fechada inesperadamente: ${e.reason || 'Código ' + e.code}`);
+            if (isConnected) stopConversation();
           },
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            // Usando Kore com o modelo nativo 2.5 para sotaque brasileiro correto
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-          },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
           tools: tools || [
             { googleSearch: {} },
             {
@@ -411,9 +369,10 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
               ]
             }
           ],
-          systemInstruction: systemInstruction || DEFAULT_SYSTEM_INSTRUCTION,
+          systemInstruction: finalSystemInstruction,
         },
       });
+
     } catch (e: any) {
       console.error("[Nadia] Failed to start conversation:", e);
       console.error("[Nadia] Error name:", e.name);
