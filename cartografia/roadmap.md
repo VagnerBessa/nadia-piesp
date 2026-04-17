@@ -97,6 +97,28 @@ A ser aplicado exclusivamente em dicionários hiper-granulares cujo limite estou
 
 ---
 
+## 🗣️ Backlog de UX/Voice (Interação Humano-Computador)
+
+Para garantir que a Nadia sustente a "ilusão de inteligência" e fluidez em interações de alto nível (com autoridades e em reuniões executivas), a arquitetura de voz passará pelas seguintes implementações estruturais:
+
+### [UX-VOICE] 1. Gestão de Estado de Sessão (Amnésia do Microfone)
+- **Desafio:** Evitar que a Nadia "se apresente" repetidamente se o microfone for desligado e religado (quebra de WebSocket/sessão).
+- **Ação:** O Frontend (`useLiveConnection.ts`) deverá rastrear o tempo desde a última interação. Se houver reconexão rápida, injeta injeta silenciosamente o contexto histórico e apenda um comando no System Prompt: *"Sessão retomada — continue sem se apresentar novamente"*.
+
+### [UX-VOICE] 2. Modo Push-to-Talk (Mitigação de Ruído Externo)
+- **Desafio:** A detecção de voz contínua (VAD) capta conversas paralelas em salas de reunião lotadas, causando respostas caóticas e perda de foco da IA.
+- **Ação:** Implementação arquitetural de um "Modo Walkie-Talkie". O áudio cru para o servidor só trafega enquanto o usuário/autoridade segura um botão de gatilho na tela (ou via atalho físico).
+
+### [UX-VOICE] 3. Feedback Custo-Cognitivo (Latência de Tool Calling)
+- **Desafio:** Consultar dados tabulares densos via MCP ou API pode levar alguns segundos. Durante esse período, o Voice-Bot fica absolutamente mudo, sugerindo queda de conexão.
+- **Ação:** Configuração de *Filler Words* Injetadas e/ou Feedback Acústico. O modelo receberá instruções para declarar verbalmente que está consultando os dados (*"Vou procurar isso para você, só um instante..."*) ou o React disparará efeitos sonoros mecânicos enquanto aguarda o JSON de resposta da function call.
+
+### [UX-VOICE] 4. Mecanismo de Barge-in Preciso (Interrupção)
+- **Desafio:** Garantir que autoridades possam atravessar a fala da Nadia para corrigir rumos sem que ela enlouqueça o log de memória.
+- **Ação:** Consolidar e refinar o tratamento do evento `serverContent.interrupted` nativo da Gemini Live API. Quando acionado, o AudioContext será decepado imediatamente pelo frontend, mas o Buffer de histórico capturará a intenção original interrompida, permitindo que a IA retome o raciocínio ou mude agressivamente de assunto com fluidez natural humana.
+
+---
+
 ## 🐛 Cauda Longa e Bugs Conhecidos
 
 As pendências rotineiras de manutenção e bugs em aberto que devem ser atacados antes do próximo deploy massivo em Produção.
