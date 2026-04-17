@@ -221,6 +221,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
         }
       }
 
+      // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio"
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você decidir acionar uma ferramenta/tool para procurar dados (ex: consultar banco do PIESP), você está estritamente PROIBIDA de acionar a ferramenta em silêncio. Você DEVE primeiro dizer em áudio uma frase natural e curta (ex: "Certo, vou consultar o banco de dados", "Só um instante, estou puxando esses valores", "Deixe-me verificar no painel...") para que o usuário saiba que você iniciou o processamento. Somente após emitir essa frase verbal, dispare a ferramenta.`;
+
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
@@ -344,7 +347,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
               functionDeclarations: [
                 {
                   name: 'consultar_projetos_piesp',
-                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro.',
+                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro. INSTRUÇÃO VITAL: Diga "Vou pesquisar esses investimentos para você..." ANTES de invocar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
@@ -356,7 +359,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*, APENAS QUANDO e SE o usuário demonstrar interesse nesses anúncios sem cifra.',
+                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*, APENAS QUANDO e SE o usuário demonstrar interesse nesses anúncios sem cifra. INSTRUÇÃO VITAL: Diga "Um momento, vou procurar..." ANTES de invocar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
