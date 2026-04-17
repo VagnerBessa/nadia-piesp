@@ -6,17 +6,24 @@ import { DitheringShader } from './DitheringShader';
  * It uses the DitheringShader to provide a subtle, dynamic visual
  * indicating that Nadia is 'present' in the chat view.
  */
-export const ChatHeaderSphere: React.FC = () => {
+interface ChatHeaderSphereProps {
+  size?: number;
+}
+
+export const ChatHeaderSphere: React.FC<ChatHeaderSphereProps> = ({ size = 32 }) => {
   return (
     // The wrapper ensures the shader is clipped into a circle.
-    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-slate-900">
+    <div 
+      className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-slate-900 border border-white/5"
+      style={{ width: size, height: size }}
+    >
       <DitheringShader
-        width={32}
-        height={32}
+        width={size}
+        height={size}
         shape="sphere"
         speed={0.2} // A slow speed for a subtle idle animation
-        colorFront="#F43F5E" // tailwind rose-500
-        colorBack="#0f172a" // tailwind slate-900, to match the background
+        colorFront="#F43F5E" // rose-500
+        colorBack="#020617" // slate-950
         pxSize={1}
         type="random"
         pulseLevel={0}

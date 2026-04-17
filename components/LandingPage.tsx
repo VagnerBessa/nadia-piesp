@@ -9,48 +9,67 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigateToChat }) => {
   return (
-    <div className="flex flex-col items-center justify-between w-full h-full px-6 py-8 overflow-y-auto">
+    <div className="flex flex-col w-full h-full px-6 py-6 md:py-10">
 
-      {/* Esfera — size="small" garante shader e container proporcionais */}
-      <div className="flex-shrink-0 mt-2">
-        <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} size="small" />
-      </div>
-
-      {/* Conteúdo central */}
-      <div className="flex flex-col items-center text-center flex-grow justify-center gap-4 py-6 max-w-sm w-full">
-        <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight leading-tight">
+      {/* Seção Superior: Nome e Identidade */}
+      <div className="flex flex-col items-center text-center mt-0 sm:mt-2 animate-in fade-in slide-in-from-top-4 duration-700">
+        <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tighter leading-none mb-2">
           Nadia
         </h1>
-        <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-          Núcleo de Análise de Dados e Inteligência Artificial — Projeto experimental da Fundação Seade
+        <div className="h-1 w-12 bg-rose-500 rounded-full mb-3 shadow-[0_0_12px_rgba(244,63,94,0.5)]" />
+        <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-500 font-bold">
+          Núcleo de Análise de Dados <br/>e Inteligência Artificial
         </p>
+      </div>
 
-        <p className="text-xs text-slate-500 mt-2">Selecione o modo de interação:</p>
-
-        <div className="flex flex-col w-full gap-3 mt-1">
-          <button
-            onClick={onNavigateToVoice}
-            className="flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl bg-slate-800/70 hover:bg-slate-700/90 active:scale-95 border border-slate-700 text-slate-200 transition-all duration-200 focus:outline-none backdrop-blur-sm shadow-lg text-base font-medium"
-          >
-            <SoundWaveIcon className="h-5 w-5 text-rose-400" />
-            <span>Conversar por Voz</span>
-          </button>
-          <button
-            onClick={onNavigateToChat}
-            className="flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl bg-slate-800/70 hover:bg-slate-700/90 active:scale-95 border border-slate-700 text-slate-200 transition-all duration-200 focus:outline-none backdrop-blur-sm shadow-lg text-base font-medium"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span>Abrir Chat</span>
-          </button>
+      {/* Seção Central: A Esfera (Estrela da Tela) */}
+      <div className="flex-grow flex items-center justify-center py-4 my-2">
+        <div className="relative group">
+          {/* Brilho de fundo para profundidade */}
+          <div className="absolute inset-0 bg-rose-500/15 blur-[80px] rounded-full group-hover:bg-rose-500/20 transition-all duration-700" />
+          <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} size="medium" />
         </div>
       </div>
 
-      {/* Footer fixo no fundo — não sobrepõe conteúdo */}
-      <div className="flex-shrink-0 flex flex-col items-center gap-1 pb-2">
-        <p className="font-semibold text-white text-sm">Fundação Seade</p>
-        <p className="text-xs text-slate-400 text-center">Laboratório de IA · CCDEP</p>
+      {/* Seção Inferior: Controles Ergonomicamente Posicionados (Bottom Sheet Style) */}
+      <div className="flex-shrink-0 w-full max-w-sm mx-auto bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] border border-white/5 p-6 mb-2 shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+        
+        <div className="space-y-4">
+          <div className="text-center">
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium">
+              Assistente Experimental da Fundação Seade
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">
+              PIESP · Análise de Investimentos
+            </p>
+          </div>
+
+          <div className="flex flex-col w-full gap-3 pt-2">
+            <button
+              onClick={onNavigateToVoice}
+              className="group relative flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl bg-slate-800/50 hover:bg-rose-500/10 active:scale-95 border border-white/5 hover:border-rose-500/30 text-slate-200 transition-all duration-300 focus:outline-none shadow-lg overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/5 to-rose-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              <SoundWaveIcon className="h-5 w-5 text-rose-500 group-hover:scale-110 transition-transform" />
+              <span className="text-base font-semibold">Conversar por Voz</span>
+            </button>
+            
+            <button
+              onClick={onNavigateToChat}
+              className="group flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl bg-white/[0.03] hover:bg-sky-500/10 active:scale-95 border border-white/5 hover:border-sky-500/30 text-slate-300 transition-all duration-300 focus:outline-none text-base font-medium"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-sky-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>Abrir Chat de Texto</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Divisor sutil no final do bottom sheet */}
+        <div className="mt-6 pt-2 border-t border-white/[0.03] flex flex-col items-center">
+          <div className="w-1 h-1 bg-rose-500/20 rounded-full" />
+        </div>
       </div>
 
     </div>

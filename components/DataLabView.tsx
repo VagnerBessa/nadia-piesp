@@ -336,8 +336,8 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
                     title={isListening ? 'Parar gravação' : 'Falar com a Nadia'}
                     className={`absolute right-3 bottom-3 p-1.5 rounded-full transition-all ${
                       isListening
-                        ? 'text-rose-400 bg-rose-500/20 animate-pulse'
-                        : 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10'
+                        ? 'text-rose-500 bg-rose-500/20 animate-pulse'
+                        : 'text-slate-400 hover:text-rose-500 hover:bg-rose-500/10'
                     } disabled:opacity-40`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
@@ -407,7 +407,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
 
             {/* Erro */}
             {error && !isLoading && (
-              <div className="bg-rose-900/20 border border-rose-700/50 rounded-xl p-4 text-rose-300 text-sm max-w-xl mx-auto">
+              <div className="bg-rose-950/20 border border-rose-800/50 rounded-xl p-4 text-rose-400 text-sm max-w-xl mx-auto">
                 {error}
               </div>
             )}

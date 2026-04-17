@@ -39,72 +39,91 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   const isListening = isConnected && !isSpeaking;
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full h-full p-4 sm:p-6">
-      {/* Back button */}
-      <button
-        onClick={onNavigateHome}
-        className="absolute top-6 right-6 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg"
-        aria-label="Voltar à tela inicial"
-        title="Voltar à tela inicial"
-      >
-        <SwitchModeIcon className="h-5 w-5" />
-        <span className="hidden sm:inline text-sm font-medium leading-none">Voltar</span>
-      </button>
+    <div className="relative flex flex-col w-full h-full p-6 overflow-hidden">
 
-      {/* Main content area with simplified single-column layout */}
-      <main className="flex flex-col items-center justify-center gap-6 w-full max-w-6xl mx-auto">
-        
-        {/* Title */}
-        <h2 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
+      {/* Título Superior */}
+      <div className="flex-shrink-0 flex flex-col items-center mt-4 sm:mt-10 animate-in fade-in slide-in-from-top-4 duration-700">
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tighter">
           Nadia
         </h2>
-        
-        {/* Nadia Sphere */}
-        <div className="flex-shrink-0">
+        <div className="h-0.5 w-8 bg-rose-500/50 rounded-full mt-1" />
+      </div>
+
+      {/* Área Central: Imersão Total na Esfera */}
+      <div className="flex-grow flex items-center justify-center py-8">
+        <div className="relative">
+          {/* Efeito de Bloom/Glow pulsante */}
+          <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${
+            isSpeaking ? 'bg-rose-500/20' : isListening ? 'bg-rose-500/10' : 'bg-transparent'
+          }`} />
+          
           <NadiaSphere
-            size="medium"
+            size="large"
             isListening={isListening}
             isSpeaking={isSpeaking}
             isConnecting={isConnecting}
             audioLevel={audioLevel}
           />
         </div>
+      </div>
 
-        {/* Action Button and Status */}
-        <div className="mt-4 flex flex-col items-center gap-4">
-            <button
-              onClick={isConnected ? stopConversation : startConversation}
-              disabled={isConnecting}
-              className={`
-                flex items-center justify-center w-20 h-20 rounded-full transition-all duration-300 ease-in-out
-                focus:outline-none focus:ring-4 focus:ring-rose-500/50
-                disabled:opacity-50 disabled:cursor-not-allowed
-                bg-slate-800/60 hover:bg-slate-800/90 flex-shrink-0
-              `}
-              aria-label={isConnected ? 'Parar conversa' : 'Iniciar conversa'}
-            >
-              {isConnecting ? (
-                <div className="w-10 h-10 border-4 border-t-transparent border-slate-400 rounded-full animate-spin"></div>
-              ) : (
-                <SoundWaveIcon
-                  className="w-12 h-12 text-rose-500"
-                  isListening={isListening}
-                  isSpeaking={isSpeaking}
-                  audioLevel={audioLevel}
-                />
+      {/* Controles Inferiores (Bottom Zone) */}
+      <div className="flex-shrink-0 flex flex-col items-center gap-6 pb-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+        
+        {/* Status Text with fixed height to prevent layout shift */}
+        <div className="h-10 flex items-center justify-center">
+          {error ? (
+            <p className="px-4 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm font-medium">
+              {error}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              {isConnected && !isConnecting && (
+                <div className={`w-1.5 h-1.5 rounded-full ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
               )}
-            </button>
-            <div className="h-8 flex items-center justify-center">
-              {error ? (
-                <p className="text-red-400">{error}</p>
-              ) : (
-                <p className="text-slate-400 text-lg transition-opacity duration-300">
-                  {isConnecting ? "Conectando..." : isSpeaking ? "Falando..." : isListening ? "Ouvindo..." : "Pressione para falar"}
-                </p>
-              )}
+              <p className="text-slate-400 text-lg sm:text-xl font-medium tracking-tight">
+                {isConnecting ? "Conectando..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : "Pronta para conversar"}
+              </p>
             </div>
+          )}
         </div>
-      </main>
+
+        {/* Big Mic Button - Centro Ergonômico */}
+        <button
+          onClick={isConnected ? stopConversation : startConversation}
+          disabled={isConnecting}
+          className={`
+            relative flex items-center justify-center w-24 h-24 rounded-full transition-all duration-500 ease-elastic
+            focus:outline-none focus:ring-4 focus:ring-rose-500/20
+            disabled:opacity-50 disabled:cursor-not-allowed
+            ${isConnected && !isConnecting 
+              ? 'bg-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.4)] scale-110' 
+              : 'bg-slate-800 border border-white/5 shadow-xl hover:bg-slate-700'}
+            active:scale-90
+          `}
+          aria-label={isConnected ? 'Parar conversa' : 'Iniciar conversa'}
+        >
+          {isConnecting ? (
+            <div className="w-10 h-10 border-[3px] border-t-transparent border-white rounded-full animate-spin" />
+          ) : (
+            <SoundWaveIcon
+              className={`w-14 h-14 transition-colors duration-300 ${isConnected ? 'text-white' : 'text-rose-500'}`}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              audioLevel={audioLevel}
+            />
+          )}
+
+          {/* Anéis de pulso decorativos quando ativo */}
+          {isConnected && isListening && (
+            <div className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping opacity-20" />
+          )}
+        </button>
+
+        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+          {isConnected ? "Toque para encerrar" : "Toque para iniciar"}
+        </p>
+      </div>
     </div>
   );
 };

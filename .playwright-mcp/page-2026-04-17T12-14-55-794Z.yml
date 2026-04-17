@@ -1,0 +1,45 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - button "Voltar para a página inicial" [ref=e7] [cursor=pointer]:
+        - img "Governo do Estado de São Paulo" [ref=e8]
+      - navigation "Navegação principal" [ref=e9]:
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - button "Home" [ref=e12] [cursor=pointer]
+          - listitem [ref=e13]:
+            - button "Chat" [active] [ref=e14] [cursor=pointer]
+          - listitem [ref=e15]:
+            - button "Voz" [ref=e16] [cursor=pointer]
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - heading "Nadia" [level=1] [ref=e59]
+        - heading "Como posso ajudar hoje?" [level=2] [ref=e65]
+        - paragraph [ref=e66]: Explore os dados do PIESP com a Nadia e obtenha insights instantâneos.
+      - generic [ref=e67]:
+        - paragraph [ref=e68]: Sugestões de Consulta
+        - generic [ref=e69]:
+          - button "Investimentos SP 2024" [ref=e70] [cursor=pointer]
+          - button "Novas Indústrias em Campinas" [ref=e71] [cursor=pointer]
+          - button "Projetos de Infraestrutura" [ref=e72] [cursor=pointer]
+          - button "Cadeias Produtivas 2023" [ref=e73] [cursor=pointer]
+          - button "Logística na Baixada" [ref=e74] [cursor=pointer]
+          - button "Dados da Agropecuária" [ref=e75] [cursor=pointer]
+      - generic [ref=e78]:
+        - generic [ref=e79]:
+          - textbox "Digite sua mensagem..." [ref=e80]
+          - button [ref=e81] [cursor=pointer]:
+            - img [ref=e82]
+          - button [disabled] [ref=e90]:
+            - img [ref=e91]
+        - generic [ref=e93]:
+          - button "Agentes" [ref=e94] [cursor=pointer]:
+            - img [ref=e95]
+            - generic [ref=e97]: Agentes
+          - generic [ref=e98]:
+            - generic [ref=e99]: "Modo:"
+            - generic [ref=e100]:
+              - button "Rápido" [ref=e101] [cursor=pointer]
+              - button "Completo" [ref=e102] [cursor=pointer]
+  - contentinfo [ref=e19]:
+    - img "Fundação Seade" [ref=e20]

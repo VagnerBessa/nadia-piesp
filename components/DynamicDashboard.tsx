@@ -36,7 +36,7 @@ const TrendIcon: React.FC<{ tendencia?: 'up' | 'down' | 'neutral' }> = ({ tenden
   if (!tendencia || tendencia === 'neutral') return null;
   const isUp = tendencia === 'up';
   return (
-    <span className={`text-xs font-bold ml-1 ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+    <span className={`text-xs font-bold ml-1 ${isUp ? 'text-emerald-400' : 'text-rose-500'}`}>
       {isUp ? '↑' : '↓'}
     </span>
   );
