@@ -221,8 +221,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
         }
       }
 
-      // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio"
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você decidir acionar uma ferramenta/tool para procurar dados (ex: consultar banco do PIESP), você está estritamente PROIBIDA de acionar a ferramenta em silêncio. Você DEVE primeiro dizer em áudio uma frase natural e curta (ex: "Certo, vou consultar o banco de dados", "Só um instante, estou puxando esses valores", "Deixe-me verificar no painel...") para que o usuário saiba que você iniciou o processamento. Somente após emitir essa frase verbal, dispare a ferramenta.`;
+      // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio" e "Resposta Abrupta"
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você acionar uma ferramenta de dados longo, você DEVE dizer em voz alta uma frase curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. E quando a ferramenta finalmente lhe devolver os dados, NUNCA inicie a leitura da resposta abruptamente. Você DEVE sempre falar uma frase natural de retorno e conexão (ex: "Pronto, encontrei aqui...", "Voltando com os dados...", "Já estou com as informações na tela, eis o que achei...") antes de apresentar os resultados matemáticos finais ao usuário. Aja com extrema fluidez humana.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
