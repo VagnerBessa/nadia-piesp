@@ -210,8 +210,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
         const diffMs = Date.now() - lastInteraction;
         const diffHours = diffMs / (1000 * 60 * 60);
         
-        // Se ocorreu há menos de 24 horas, recarregamos a memória (ignorando reconexões caídas < 5s)
-        if (diffHours < 24 && diffMs > 5000) {
+        // Se ocorreu há menos de 24 horas, recarregamos a memória. Não existe limite mínimo (até um duplo clique instantâneo deve manter a memória).
+        if (diffHours < 24) {
           const diffMinutes = Math.round(diffMs / (1000 * 60));
           const timeDesc = diffHours >= 1 
             ? `${Math.round(diffHours)} hora(s)` 
@@ -222,7 +222,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       }
 
       // Adicionando a Diretriz de UX/Voice para mitigação de "Abismo de Silêncio" e "Resposta Abrupta"
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você acionar uma ferramenta de dados longo, você DEVE dizer em voz alta uma frase curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. E quando a ferramenta finalmente lhe devolver os dados, NUNCA inicie a leitura da resposta abruptamente. Você DEVE sempre falar uma frase natural de retorno e conexão (ex: "Pronto, encontrei aqui...", "Voltando com os dados...", "Já estou com as informações na tela, eis o que achei...") antes de apresentar os resultados matemáticos finais ao usuário. Aja com extrema fluidez humana.`;
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nIMPORTANTE: Toda vez que você acionar uma ferramenta de dados longo, você DEVE dizer em voz alta uma frase curta (ex: "Certo, vou consultar o banco de dados", "Só um instante...") ANTES de disparar a ferramenta. E quando a ferramenta finalmente lhe devolver os dados, NUNCA inicie a leitura da resposta abruptamente. Você DEVE sempre falar uma frase natural de retorno e conexão (ex: "Pronto, cruzei os números...", "Voltando com os dados...", "Já processei as informações da base, eis o que achei...") antes de apresentar os resultados matemáticos finais ao usuário. Evite usar palavras visuais como 'na tela' ou 'estou vendo'. Aja com extrema fluidez sonora e humana.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
