@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Nadia — Mockup Push-to-Talk</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background-color: #0b2231;
+      background-image:
+        radial-gradient(ellipse 120% 80% at 50% 50%, #0d2b3e 0%, #081a27 60%, #05111a 100%),
+        radial-gradient(ellipse 70% 40% at 50% 0%, rgba(244, 63, 94, 0.10) 0%, transparent 65%);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      background-attachment: fixed;
+      color: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── HEADER ── */
+    header {
+      flex-shrink: 0;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-sp {
+      width: 60px;
+      height: 32px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(12px);
+      border-radius: 999px;
+      padding: 4px 6px;
+      border: 1px solid rgba(255,255,255,0.07);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    nav button {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    nav button.active-nav {
+      color: #fda4af;
+      background: rgba(244, 63, 94, 0.15);
+      font-weight: 600;
+    }
+
+    /* ── MAIN ── */
+    main {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 24px;
+      overflow: hidden;
+    }
+
+    /* Title */
+    .title-area {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 16px;
+      animation: fadeInDown 0.7s ease both;
+    }
+
+    .title-area h2 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: white;
+    }
+
+    .title-bar {
+      width: 32px; height: 2px;
+      background: rgba(244, 63, 94, 0.5);
+      border-radius: 999px;
+      margin-top: 4px;
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 999px;
+      padding: 4px;
+      animation: fadeIn 0.7s 0.2s ease both;
+    }
+
+    .mode-btn {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.25s;
+      letter-spacing: 0.02em;
+    }
+
+    .mode-btn.off {
+      background: transparent;
+      color: #64748b;
+    }
+
+    .mode-btn.on {
+      background: rgba(15, 23, 42, 0.8);
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .mode-btn.ptt-active-btn {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .mode-icon {
+      font-size: 10px;
+      margin-right: 4px;
+    }
+
+    /* Sphere area */
+    .sphere-area {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .sphere-glow {
+      position: absolute;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      filter: blur(80px);
+      transition: all 1s ease;
+      background: rgba(244, 63, 94, 0.05);
+    }
+
+    .sphere-glow.listening { background: rgba(244, 63, 94, 0.15); }
+    .sphere-glow.speaking  { background: rgba(244, 63, 94, 0.25); }
+
+    /* Animated sphere (CSS simulation) */
+    .sphere {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      position: relative;
+      background: radial-gradient(circle at 35% 35%,
+        rgba(244, 63, 94, 0.35) 0%,
+        rgba(14, 40, 62, 0.9) 55%,
+        rgba(8, 26, 39, 0.95) 100%);
+      box-shadow:
+        inset 0 0 40px rgba(244,63,94,0.1),
+        0 0 60px rgba(244,63,94,0.08),
+        0 20px 60px rgba(0,0,0,0.5);
+      transition: all 0.6s ease;
+      overflow: hidden;
+    }
+
+    .sphere::before {
+      content: '';
+      position: absolute;
+      top: 12%; left: 18%;
+      width: 35%; height: 25%;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      filter: blur(6px);
+    }
+
+    /* Wave rings inside sphere */
+    .sphere-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(244, 63, 94, 0.2);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation: ring-pulse 3s ease-in-out infinite;
+    }
+    .sphere-ring:nth-child(2) { width: 50%; height: 50%; animation-delay: 0s; }
+    .sphere-ring:nth-child(3) { width: 70%; height: 70%; animation-delay: 0.5s; }
+    .sphere-ring:nth-child(4) { width: 90%; height: 90%; animation-delay: 1s; }
+
+    .sphere.listening .sphere-ring {
+      border-color: rgba(244, 63, 94, 0.5);
+      animation: ring-pulse-fast 1.2s ease-in-out infinite;
+    }
+
+    .sphere.speaking .sphere-ring {
+      border-color: rgba(244, 63, 94, 0.6);
+      animation: ring-pulse-fast 0.8s ease-in-out infinite;
+    }
+
+    /* ── BOTTOM CONTROLS ── */
+    .bottom-zone {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding-bottom: 24px;
+      animation: fadeInUp 0.7s 0.15s ease both;
+    }
+
+    /* Status row */
+    .status-row {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      transition: all 0.3s;
+    }
+
+    .status-pill.error {
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.2);
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #64748b;
+      transition: all 0.3s;
+    }
+
+    .status-dot.listening { background: #f43f5e; animation: dot-blink 1s ease-in-out infinite; }
+    .status-dot.speaking  { background: #64748b; }
+
+    .status-text {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: #94a3b8;
+      transition: all 0.3s;
+    }
+
+    /* PTT hint */
+    .ptt-hint {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: rgba(244, 63, 94, 0.6);
+      text-transform: uppercase;
+      transition: all 0.3s;
+      height: 16px;
+    }
+
+    /* Main button */
+    .main-btn {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      background: #1e293b;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    .main-btn:focus { outline: none; }
+
+    .main-btn.connected {
+      background: #f43f5e;
+      box-shadow: 0 0 40px rgba(244, 63, 94, 0.4), 0 8px 32px rgba(0,0,0,0.4);
+      transform: scale(1.1);
+    }
+
+    .main-btn.ptt-holding {
+      background: #f43f5e;
+      box-shadow: 0 0 60px rgba(244, 63, 94, 0.7), 0 8px 32px rgba(0,0,0,0.4);
+      transform: scale(1.2);
+    }
+
+    /* Ping rings */
+    .ping-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid #f43f5e;
+      opacity: 0;
+    }
+
+    .main-btn.connected .ping-ring {
+      animation: ping 2s ease-in-out infinite;
+    }
+
+    .main-btn.ptt-holding .ping-ring {
+      animation: ping-fast 0.8s ease-in-out infinite;
+    }
+
+    /* Icon inside button */
+    .btn-icon {
+      width: 56px; height: 56px;
+      transition: all 0.3s;
+      color: white;
+    }
+
+    .btn-icon.idle { color: #f43f5e; }
+
+    /* Hint text below button */
+    .hint-text {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: #475569;
+      text-transform: uppercase;
+      transition: all 0.3s;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      flex-shrink: 0;
+      padding: 12px 24px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .seade-logo {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.2);
+      text-transform: uppercase;
+    }
+
+    /* ── LABEL ANNOTATION (design explanation) ── */
+    .annotation-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(8, 26, 39, 0.97);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .annotation-bar span {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot-legend {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInDown  { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInUp    { from { opacity: 0; transform: translateY(12px); }  to { opacity: 1; transform: translateY(0); } }
+
+    @keyframes ring-pulse {
+      0%, 100% { opacity: 0.2; transform: translate(-50%,-50%) scale(1); }
+      50%       { opacity: 0.5; transform: translate(-50%,-50%) scale(1.05); }
+    }
+
+    @keyframes ring-pulse-fast {
+      0%, 100% { opacity: 0.3; transform: translate(-50%,-50%) scale(1); }
+      50%       { opacity: 0.8; transform: translate(-50%,-50%) scale(1.08); }
+    }
+
+    @keyframes ping {
+      0%   { transform: scale(1);    opacity: 0.3; }
+      80%  { transform: scale(1.6);  opacity: 0; }
+      100% { transform: scale(1.6);  opacity: 0; }
+    }
+
+    @keyframes ping-fast {
+      0%   { transform: scale(1);    opacity: 0.5; }
+      70%  { transform: scale(1.5);  opacity: 0; }
+      100% { transform: scale(1.5);  opacity: 0; }
+    }
+
+    @keyframes dot-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── STATE LABELS (top-right badges for mockup) ── */
+    .state-badge {
+      position: fixed;
+      top: 12px; right: 12px;
+      background: rgba(8,26,39,0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 10px;
+      color: #64748b;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .state-badge strong {
+      color: #f43f5e;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- STATE INDICATOR (mockup only) -->
+  <div class="state-badge">
+    Estado: <strong id="state-label">IDLE</strong>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-sp">GOV SP</div>
+    <nav>
+      <ul>
+        <li><button class="active-nav" style="color:#94a3b8;background:rgba(255,255,255,0.06)">Home</button></li>
+        <li><button>Chat</button></li>
+        <li><button class="active-nav">Voz</button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- Title -->
+    <div class="title-area">
+      <h2>Nadia</h2>
+      <div class="title-bar"></div>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn on" id="btn-continuo" onclick="setMode('continuo')">
+        <span class="mode-icon">◎</span> Contínuo
+      </button>
+      <button class="mode-btn off" id="btn-reuniao" onclick="setMode('reuniao')">
+        <span class="mode-icon">👥</span> Reunião (PTT)
+      </button>
+    </div>
+
+    <!-- Sphere -->
+    <div class="sphere-area">
+      <div class="sphere-glow" id="sphere-glow"></div>
+      <div class="sphere" id="sphere">
+        <div class="sphere-ring"></div>
+        <div class="sphere-ring"></div>
+        <div class="sphere-ring"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- BOTTOM ZONE -->
+  <div class="bottom-zone">
+
+    <!-- Status -->
+    <div class="status-row">
+      <div class="status-pill" id="status-pill">
+        <div class="status-dot" id="status-dot"></div>
+        <p class="status-text" id="status-text">Pronta para conversar</p>
+      </div>
+    </div>
+
+    <!-- PTT hint (only visible in PTT mode, when connected) -->
+    <div class="ptt-hint" id="ptt-hint"></div>
+
+    <!-- Main button -->
+    <button
+      class="main-btn"
+      id="main-btn"
+      onmousedown="onPressStart(event)"
+      onmouseup="onPressEnd(event)"
+      onmouseleave="onPressEnd(event)"
+      ontouchstart="onPressStart(event)"
+      ontouchend="onPressEnd(event)"
+    >
+      <div class="ping-ring"></div>
+      <!-- Mic icon (idle) -->
+      <svg id="icon-mic" class="btn-icon idle" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="20" y="8" width="16" height="26" rx="8"/>
+        <path d="M12 28c0 8.837 7.163 16 16 16s16-7.163 16-16"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+        <line x1="20" y1="52" x2="36" y2="52"/>
+      </svg>
+      <!-- Stop icon (connected, continuous) -->
+      <svg id="icon-stop" class="btn-icon" viewBox="0 0 56 56" fill="currentColor" style="display:none">
+        <rect x="16" y="16" width="24" height="24" rx="4"/>
+      </svg>
+      <!-- Hand icon (PTT connected) -->
+      <svg id="icon-hand" class="btn-icon" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+        <path d="M28 10v22M22 14v18M16 18v14M34 14v18M40 18v14"/>
+        <path d="M16 32c0 8 4 14 12 14s12-6 12-14"/>
+      </svg>
+      <!-- Wave icon (PTT holding) -->
+      <svg id="icon-wave" class="btn-icon" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:none">
+        <path d="M10 28 Q14 16, 18 28 Q22 40, 26 28 Q30 16, 34 28 Q38 40, 42 28 Q46 16, 50 28" />
+      </svg>
+    </button>
+
+    <p class="hint-text" id="hint-text">Toque para iniciar</p>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="seade-logo">Fundação Seade</span>
+  </footer>
+
+  <script>
+    // ── State machine ──
+    // States: 'idle' | 'connecting' | 'connected' | 'ptt-holding' | 'speaking'
+    let appState  = 'idle';
+    let pttMode   = false;
+    let holdTimer = null;
+    const HOLD_MS = 300;
+
+    // ── DOM refs ──
+    const mainBtn    = document.getElementById('main-btn');
+    const sphere     = document.getElementById('sphere');
+    const sphereGlow = document.getElementById('sphere-glow');
+    const statusDot  = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const hintText   = document.getElementById('hint-text');
+    const pttHint    = document.getElementById('ptt-hint');
+    const stateLabel = document.getElementById('state-label');
+    const iconMic    = document.getElementById('icon-mic');
+    const iconStop   = document.getElementById('icon-stop');
+    const iconHand   = document.getElementById('icon-hand');
+    const iconWave   = document.getElementById('icon-wave');
+
+    function setMode(mode) {
+      pttMode = (mode === 'reuniao');
+      document.getElementById('btn-continuo').className = 'mode-btn ' + (pttMode ? 'off' : 'on');
+      document.getElementById('btn-reuniao').className  = 'mode-btn ' + (pttMode ? 'ptt-active-btn' : 'off');
+
+      if (appState !== 'idle') {
+        // Reconnect to apply new mode
+        setState('idle');
+        setTimeout(() => simulateConnect(), 400);
+      }
+      render();
+    }
+
+    function simulateConnect() {
+      setState('connecting');
+      setTimeout(() => setState('connected'), 1200);
+    }
+
+    function setState(s) {
+      appState = s;
+      render();
+    }
+
+    function render() {
+      stateLabel.textContent = appState.toUpperCase();
+
+      // Reset classes
+      mainBtn.className = 'main-btn';
+      sphere.className  = 'sphere';
+      sphereGlow.className = 'sphere-glow';
+      statusDot.className  = 'status-dot';
+      [iconMic, iconStop, iconHand, iconWave].forEach(i => i.style.display = 'none');
+
+      pttHint.textContent = '';
+
+      switch (appState) {
+
+        case 'idle':
+          iconMic.style.display = 'block';
+          iconMic.style.color   = '#f43f5e';
+          statusText.textContent = 'Pronta para conversar';
+          hintText.textContent   = pttMode ? 'Toque para conectar' : 'Toque para iniciar';
+          break;
+
+        case 'connecting':
+          iconMic.style.display = 'block';
+          iconMic.style.color   = 'white';
+          mainBtn.classList.add('connected');
+          statusText.textContent = 'Conectando...';
+          hintText.textContent   = '';
+          sphere.classList.add('listening');
+          sphereGlow.classList.add('listening');
+          break;
+
+        case 'connected':
+          mainBtn.classList.add('connected');
+          sphere.classList.add('listening');
+          sphereGlow.classList.add('listening');
+          statusDot.classList.add('listening');
+
+          if (pttMode) {
+            iconHand.style.display = 'block';
+            statusText.textContent = 'Segure para falar';
+            hintText.textContent   = 'Segure • Solte para enviar';
+            pttHint.textContent    = '— MODO REUNIÃO ATIVO —';
+          } else {
+            iconStop.style.display = 'block';
+            statusText.textContent = 'Ouvindo você...';
+            hintText.textContent   = 'Toque para encerrar';
+          }
+          break;
+
+        case 'ptt-holding':
+          mainBtn.classList.add('ptt-holding');
+          sphere.classList.add('listening');
+          sphereGlow.classList.add('listening');
+          statusDot.classList.add('listening');
+          iconWave.style.display = 'block';
+          statusText.textContent = 'Ouvindo...';
+          hintText.textContent   = 'Solte quando terminar';
+          pttHint.textContent    = '— GRAVANDO —';
+          break;
+
+        case 'speaking':
+          mainBtn.classList.add('connected');
+          sphere.classList.add('speaking');
+          sphereGlow.classList.add('speaking');
+          iconStop.style.display = 'block';
+          statusText.textContent = 'Nadia falando...';
+          hintText.textContent   = 'Toque para encerrar';
+          pttHint.textContent    = pttMode ? '— AGUARDE —' : '';
+          break;
+      }
+    }
+
+    // ── Button interaction ──
+    function onPressStart(e) {
+      e.preventDefault();
+
+      if (appState === 'idle') {
+        // Modo contínuo ou PTT: conectar
+        simulateConnect();
+        return;
+      }
+
+      if (appState === 'speaking' && !pttMode) {
+        // Barge-in: interrompe
+        setState('connected');
+        return;
+      }
+
+      if (pttMode && (appState === 'connected')) {
+        holdTimer = setTimeout(() => {
+          setState('ptt-holding');
+        }, HOLD_MS);
+        return;
+      }
+
+      if (pttMode && appState === 'ptt-holding') return;
+
+      if (!pttMode && appState === 'connected') {
+        // Disconnect
+        setState('idle');
+        return;
+      }
+    }
+
+    function onPressEnd(e) {
+      e.preventDefault();
+
+      clearTimeout(holdTimer);
+
+      if (appState === 'ptt-holding') {
+        // Simulate Nadia processing then speaking
+        setState('connected');
+        setTimeout(() => {
+          setState('speaking');
+          setTimeout(() => setState('connected'), 3000);
+        }, 600);
+        return;
+      }
+
+      // Tap rápido em PTT mode + connected = desconectar
+      if (pttMode && appState === 'connected') {
+        // Não faz nada — hold é necessário
+      }
+    }
+
+    // Initial render
+    render();
+  </script>
+
+</body>
+</html>
