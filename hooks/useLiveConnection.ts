@@ -39,6 +39,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const analysisDataArrayRef = useRef<Float32Array | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasClearedForTurnRef = useRef<boolean>(false);
 
   // Ref for tool callback to access latest state/props
   const onToolCallRef = useRef(onToolCall);
@@ -347,9 +348,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
              const parts = message.serverContent?.modelTurn?.parts;
              if (parts) {
-               // Se não há áudio tocando e não estamos sob debounce, consideramos o início de um novo turno da IA
-               if (!isSpeaking && !isSpeakingTimeoutRef.current) {
+               if (!hasClearedForTurnRef.current) {
                  setCurrentTranscript('');
+                 hasClearedForTurnRef.current = true;
                }
                for (const part of parts) {
                  if (part.text) {
@@ -386,6 +387,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                         isSpeakingTimeoutRef.current = setTimeout(() => {
                            setIsSpeaking(false);
                            isSpeakingTimeoutRef.current = null;
+                           hasClearedForTurnRef.current = false;
                         }, 2500);
                     }
                 });
@@ -419,7 +421,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
           },
         },
         config: {
-          responseModalities: [Modality.AUDIO],
+          responseModalities: [Modality.AUDIO, Modality.TEXT],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
           tools: tools || [
             { googleSearch: {} },
