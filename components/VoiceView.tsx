@@ -73,7 +73,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       <div className="flex-grow relative w-full flex flex-col justify-center items-center overflow-visible mt-8">
         
         {/* Container das Legendas */}
-        <div className={`absolute top-0 w-full px-4 sm:px-8 max-w-3xl transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`absolute top-0 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
            <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight text-left">
              {currentTranscript}
              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
@@ -82,7 +82,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
 
         {/* Container animado da Esfera */}
         <div 
-          className={`absolute transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
+          className={`absolute z-20 transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
             ${hasSpokenOnce 
               ? 'top-0 right-0 translate-x-0 translate-y-0 scale-[0.25] origin-top-right opacity-80' 
               : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
