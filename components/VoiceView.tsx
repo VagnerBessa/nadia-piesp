@@ -71,10 +71,10 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
 
         {/* Container animado da Esfera */}
         <div 
-          className={`relative transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
+          className={`absolute transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
             ${isSpeaking 
-              ? 'scale-[0.3] -translate-y-[32vh] translate-x-[32vw] opacity-90' 
-              : 'scale-100 translate-y-0 translate-x-0 opacity-100'
+              ? 'top-4 right-4 translate-x-0 translate-y-0 scale-[0.3] origin-top-right opacity-90' 
+              : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
             }
           `}
         >
