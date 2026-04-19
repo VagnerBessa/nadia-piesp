@@ -421,7 +421,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
           },
         },
         config: {
-          responseModalities: [Modality.AUDIO, Modality.TEXT],
+          responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
           tools: tools || [
             { googleSearch: {} },
