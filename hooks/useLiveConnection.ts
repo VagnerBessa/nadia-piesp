@@ -347,16 +347,15 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
              }
 
              if (message.serverContent?.turnComplete) {
-                // Quando o turno completo termina, liberamos a flag para o próximo turno poder limpar o texto antigo.
-                hasClearedForTurnRef.current = false;
+                // Ao invés de apagar, apenas pulamos linha para o próximo bloco de fala
+                setCurrentTranscript(prev => {
+                  if (prev.endsWith('\n\n')) return prev;
+                  return prev + '\n\n';
+                });
              }
 
              // CAPTURA A TRANSCRIÇÃO OFICIAL DO ÁUDIO DA IA
              if (message.serverContent?.outputTranscription?.text) {
-               if (!hasClearedForTurnRef.current) {
-                 setCurrentTranscript('');
-                 hasClearedForTurnRef.current = true;
-               }
                setCurrentTranscript(prev => prev + message.serverContent!.outputTranscription!.text);
              }
 
