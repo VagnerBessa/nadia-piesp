@@ -99,6 +99,13 @@ Implementação de paradigmas de VUI (Voice User Interface) para branch `nadia-m
 - **Multimodal e Micro-Latência**: IA forçada a enviar um áudio minúsculo de delay e calar a boca temporariamente via Prompt-Lock; um `setTimeout(1500)` artificial executa o feedback ciano na tela ("Buscando informações...") garantindo alívio visual.
 - **Desocultamento Progressivo & Graceful Fallback**: A inteligência foi treinada a não "vomitar" projetos numericamente exaustivos. Entrega o valor macro seguido de pergunta-âncora. Em becos sem saída, sugere mudanças de escopo organicamente.
 
+### 3. Handshake de Encerramento e Prosódia (Autonomous Disconnect)
+A IA foi programada para assumir o controle do hardware nas despedidas ("Tchau", "É só isso").
+- **Corte de Hook**: A API engatilha *stopConversation* após um delay militar de 4s, travando micro-ouvintes.
+- **Prosódia Modelada**: A instrução força a IA a modular a voz em baixa velocidade (ritmo calmante e menos robótico) para realizar a despedida.
+- **Anti-Alucinação**: Uma trava de segurança impede que o LLM engate outro raciocínio por baixo dos panos após invocar o fechamento.
+
+
 ### 2. Equalização Semântica (CNAE + Investidora)
 A busca na base **Sem Valor** era capenga se comparada à busca **Com Valor**.
 **Solução:** Todas as funções de indexação lexical em `piespDataService.ts` (Mobile) e `mcp-server/src/piespService.ts` (Servidor padrão do Chat) foram refatoradas para abraçar 100% da árvore `cnae` e, criticamente, mapear nomes descritos na coluna `investidora_s`. O sistema sabe o "nome verdadeiro da marca" através do parseamento `Empresa Alvo (Matriz Investidora)`.
