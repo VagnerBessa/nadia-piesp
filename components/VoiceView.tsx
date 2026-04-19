@@ -30,15 +30,12 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, setor, termo_busca });
         const resultados = consultarPiespData({ ano, municipio, regiao, setor, termo_busca });
-        // Fôlego Artificial: Injeta um atraso programático para forçar a Nadia a ter um espaçamento temporal entre o Áudio Filler e a Resposta.
-        await new Promise(resolve => setTimeout(resolve, 1500));
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
         const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, setor, termo_busca });
         const resultados = consultarAnunciosSemValor({ ano, municipio, regiao, setor, termo_busca });
-        await new Promise(resolve => setTimeout(resolve, 1500));
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       return { error: 'Tool não reconhecido' };
@@ -46,33 +43,43 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   });
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  const transcriptTextRef = useRef<HTMLSpanElement>(null);
 
   // Identifica a primeira fala da IA e lida com o auto-scroll
   useEffect(() => {
     if (currentTranscript.length > 0) {
       setHasSpokenOnce(true);
     }
-    // Auto-scroll suave para o final
-    if (transcriptContainerRef.current) {
-      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
-    }
-  }, [displayedTranscript]); // Depende do displayedTranscript agora para rolar na medida que digita
+  }, [currentTranscript]);
 
-  // Efeito Typerwriter Leve e Desacoplado do Áudio
+  // Efeito Typerwriter Leve (DOM Direto - Zero custo de CPU para não engasgar áudio)
   useEffect(() => {
+    if (!transcriptTextRef.current) return;
+    
+    // Se o texto for limpo, limpa no DOM imediatamente
     if (!currentTranscript) {
-      setDisplayedTranscript('');
+      transcriptTextRef.current.textContent = '';
       return;
     }
-    if (displayedTranscript.length < currentTranscript.length) {
-      const timeoutId = setTimeout(() => {
-        // Revela 2 caracteres a cada 30ms (aproximadamente 66 chars/s)
-        const nextLength = Math.min(displayedTranscript.length + 2, currentTranscript.length);
-        setDisplayedTranscript(currentTranscript.substring(0, nextLength));
-      }, 30);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [currentTranscript, displayedTranscript]);
+
+    const intervalId = setInterval(() => {
+      if (transcriptTextRef.current) {
+        const currentLen = transcriptTextRef.current.textContent?.length || 0;
+        if (currentLen < currentTranscript.length) {
+          // Revela 3 caracteres a cada 30ms (100 chars/s). Leve e natural.
+          const nextLength = Math.min(currentLen + 3, currentTranscript.length);
+          transcriptTextRef.current.textContent = currentTranscript.substring(0, nextLength);
+          
+          // Auto-scroll durante a digitação
+          if (transcriptContainerRef.current) {
+            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+          }
+        }
+      }
+    }, 30);
+
+    return () => clearInterval(intervalId);
+  }, [currentTranscript]);
 
   // Limpa o aviso de "buscando informações" instantaneamente quando a IA começar a responder o áudio
   useEffect(() => {
@@ -103,7 +110,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
         >
            <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight text-left whitespace-pre-wrap pb-16">
-             {displayedTranscript}
+             <span ref={transcriptTextRef}></span>
              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
            </p>
         </div>
