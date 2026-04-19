@@ -37,6 +37,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const analyserRef = useRef<AnalyserNode | null>(null);
   const analysisDataArrayRef = useRef<Float32Array | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
+  const isSpeakingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ref for tool callback to access latest state/props
   const onToolCallRef = useRef(onToolCall);
@@ -345,6 +346,12 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
              const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
              if (base64EncodedAudioString && outputAudioContextRef.current && analyserRef.current) {
+                // Cancela o timeout de fim de fala se existir, para evitar piscar o estado
+                if (isSpeakingTimeoutRef.current) {
+                  clearTimeout(isSpeakingTimeoutRef.current);
+                  isSpeakingTimeoutRef.current = null;
+                }
+                
                 setIsSpeaking(true);
                 const currentOutputContext = outputAudioContextRef.current;
                 if (currentOutputContext.state === 'suspended') {
@@ -360,7 +367,12 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 source.addEventListener('ended', () => {
                     audioSourcesRef.current.delete(source);
                     if (audioSourcesRef.current.size === 0) {
-                        setIsSpeaking(false);
+                        // Aplica um debounce de 800ms antes de declarar que a fala realmente terminou.
+                        // Isso previne que a animação da interface volte ao tamanho normal entre chunks de áudio.
+                        isSpeakingTimeoutRef.current = setTimeout(() => {
+                           setIsSpeaking(false);
+                           isSpeakingTimeoutRef.current = null;
+                        }, 800);
                     }
                 });
 
@@ -376,6 +388,10 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
                 audioSourcesRef.current.clear();
                 nextStartTimeRef.current = 0;
+                if (isSpeakingTimeoutRef.current) {
+                  clearTimeout(isSpeakingTimeoutRef.current);
+                  isSpeakingTimeoutRef.current = null;
+                }
                 setIsSpeaking(false);
              }
           },
