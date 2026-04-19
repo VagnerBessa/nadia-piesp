@@ -351,20 +351,18 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 hasClearedForTurnRef.current = false;
              }
 
-             const parts = message.serverContent?.modelTurn?.parts;
-             if (parts) {
+             // CAPTURA A TRANSCRIÇÃO OFICIAL DO ÁUDIO DA IA
+             if (message.serverContent?.outputTranscription?.text) {
                if (!hasClearedForTurnRef.current) {
                  setCurrentTranscript('');
                  hasClearedForTurnRef.current = true;
                }
-               for (const part of parts) {
-                 if (part.text) {
-                   setCurrentTranscript(prev => prev + part.text);
-                 }
-               }
+               setCurrentTranscript(prev => prev + message.serverContent!.outputTranscription!.text);
              }
 
-             const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+             // Ignoramos message.serverContent?.modelTurn?.parts para texto, pois isso contém o RACIOCÍNIO INTERNO (inglês) do modelo gemini-2.0-flash-exp!
+             // Pegamos apenas o áudio dele:
+             const base64EncodedAudioString = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
              if (base64EncodedAudioString && outputAudioContextRef.current && analyserRef.current) {
                 // Cancela o timeout de fim de fala se existir, para evitar piscar o estado
                 if (isSpeakingTimeoutRef.current) {
@@ -426,6 +424,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
         },
         config: {
           responseModalities: [Modality.AUDIO],
+          outputAudioTranscription: { },
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
           tools: tools || [
             { googleSearch: {} },
