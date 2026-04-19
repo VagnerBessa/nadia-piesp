@@ -62,11 +62,25 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       </div>
 
       {/* Área Central: Imersão Total na Esfera */}
-      <div className="flex-grow flex items-center justify-center py-8">
-        <div className="relative">
+      <div className="flex-grow relative w-full flex flex-col justify-center items-center overflow-visible">
+        
+        {/* Placeholder invisível para preparar o espaço das legendas no futuro */}
+        <div className={`absolute top-0 w-full px-6 transition-all duration-[1000ms] ${isSpeaking ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+           {/* Aqui entrará o Transcript dinâmico na próxima etapa */}
+        </div>
+
+        {/* Container animado da Esfera */}
+        <div 
+          className={`relative transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
+            ${isSpeaking 
+              ? 'scale-[0.4] translate-y-[28vh] opacity-90' 
+              : 'scale-100 translate-y-0 opacity-100'
+            }
+          `}
+        >
           {/* Efeito de Bloom/Glow pulsante */}
           <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${
-            isSpeaking ? 'bg-rose-500/20' : isListening ? 'bg-rose-500/10' : 'bg-transparent'
+            isSpeaking ? 'bg-rose-500/30' : isListening ? 'bg-rose-500/10' : 'bg-transparent'
           }`} />
           
           <NadiaSphere
