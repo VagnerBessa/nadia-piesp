@@ -239,6 +239,23 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             setIsConnecting(false);
             setIsConnected(true);
             
+            // UX Hack: Gatilho inicial invisível.
+            // O Gemini Live espera o usuário falar primeiro para iniciar a geração.
+            // Ao enviar um 'Oi' de texto silencioso imediatamente após a conexão abrir,
+            // forçamos a Nadia a se apresentar de imediato sem latência perceptível.
+            sessionPromiseRef.current?.then((session) => {
+               try {
+                 session.send({
+                   clientContent: {
+                     turns: [{ role: 'user', parts: [{ text: 'Oi' }] }],
+                     turnComplete: true
+                   }
+                 });
+               } catch(err) {
+                 console.error('[Nadia] Erro ao enviar trigger inicial:', err);
+               }
+            });
+
             const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
             const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
