@@ -303,11 +303,18 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
                         try {
                             const result = await onToolCallRef.current(call);
-                            sessionPromiseRef.current!.then((session) => {
-                                session.sendToolResponse({
-                                    functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
+                            
+                            // UX Hack: Atraso artificial de 2.5s para não "engolir" a frase de transição.
+                            // Como a ferramenta local executa em milissegundos, se devolvermos a resposta 
+                            // imediatamente, o Gemini interrompe a frase "Vou pesquisar..." no meio para 
+                            // começar a falar os resultados. O atraso garante que a fala termine.
+                            setTimeout(() => {
+                                sessionPromiseRef.current?.then((session) => {
+                                    session.sendToolResponse({
+                                        functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
+                                    });
                                 });
-                            });
+                            }, 2500);
                         } catch (err) {
                              sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
