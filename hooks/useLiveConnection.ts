@@ -346,6 +346,11 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
              }
 
+             if (message.serverContent?.turnComplete) {
+                // Quando o turno completo termina, liberamos a flag para o próximo turno poder limpar o texto antigo.
+                hasClearedForTurnRef.current = false;
+             }
+
              const parts = message.serverContent?.modelTurn?.parts;
              if (parts) {
                if (!hasClearedForTurnRef.current) {
@@ -387,7 +392,6 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                         isSpeakingTimeoutRef.current = setTimeout(() => {
                            setIsSpeaking(false);
                            isSpeakingTimeoutRef.current = null;
-                           hasClearedForTurnRef.current = false;
                         }, 2500);
                     }
                 });
