@@ -12,6 +12,7 @@ interface VoiceViewProps {
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   const [toolProcessing, setToolProcessing] = useState(false);
   const [hasSpokenOnce, setHasSpokenOnce] = useState(false);
+  const [displayedTranscript, setDisplayedTranscript] = useState('');
   
   const {
     isConnected,
@@ -46,17 +47,32 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
+  // Identifica a primeira fala da IA e lida com o auto-scroll
   useEffect(() => {
-    if (isSpeaking) setHasSpokenOnce(true);
-    if (!isConnected) setHasSpokenOnce(false);
-  }, [isSpeaking, isConnected]);
-
-  // Auto-scroll para manter a legenda visível enquanto flui
-  useEffect(() => {
+    if (currentTranscript.length > 0) {
+      setHasSpokenOnce(true);
+    }
+    // Auto-scroll suave para o final
     if (transcriptContainerRef.current) {
       transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
     }
-  }, [currentTranscript]);
+  }, [displayedTranscript]); // Depende do displayedTranscript agora para rolar na medida que digita
+
+  // Efeito Typerwriter Leve e Desacoplado do Áudio
+  useEffect(() => {
+    if (!currentTranscript) {
+      setDisplayedTranscript('');
+      return;
+    }
+    if (displayedTranscript.length < currentTranscript.length) {
+      const timeoutId = setTimeout(() => {
+        // Revela 2 caracteres a cada 30ms (aproximadamente 66 chars/s)
+        const nextLength = Math.min(displayedTranscript.length + 2, currentTranscript.length);
+        setDisplayedTranscript(currentTranscript.substring(0, nextLength));
+      }, 30);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentTranscript, displayedTranscript]);
 
   // Limpa o aviso de "buscando informações" instantaneamente quando a IA começar a responder o áudio
   useEffect(() => {
@@ -87,7 +103,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
         >
            <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight text-left whitespace-pre-wrap pb-16">
-             {currentTranscript}
+             {displayedTranscript}
              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
            </p>
         </div>

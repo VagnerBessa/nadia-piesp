@@ -142,6 +142,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
     console.log('[Nadia] Starting conversation...');
     setError(null);
     setIsConnecting(true);
+    setCurrentTranscript('');
 
     // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
