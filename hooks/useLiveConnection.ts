@@ -8,7 +8,7 @@ import { GEMINI_API_KEY } from '../config';
 // Audio settings
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
-const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096;
+const SCRIPT_PROCESSOR_BUFFER_SIZE = 2048;
 
 export interface UseLiveConnectionOptions {
   systemInstruction?: string;
@@ -232,7 +232,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        model: 'gemini-3.1-flash-live-preview',
         callbacks: {
           onopen: () => {
             console.log('[Nadia] Connected to Gemini API successfully');
