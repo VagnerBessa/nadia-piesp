@@ -232,7 +232,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
-        model: 'gemini-3.1-flash-live-preview',
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
             console.log('[Nadia] Connected to Gemini API successfully');
