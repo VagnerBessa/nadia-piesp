@@ -380,8 +380,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
                       municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
                       regiao: { type: Type.STRING, description: 'Uma região administrativa ou metropolitana inteira (ex: "sao paulo", "vale do paraiba")' },
-                      setor: { type: Type.STRING, description: 'O setor econômico principal (ex: Infraestrutura, Indústria, Serviços)' },
-                      termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
+                      setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
+                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
                   }
                 },
@@ -394,8 +394,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
                       municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
                       regiao: { type: Type.STRING, description: 'Uma região administrativa ou metropolitana' },
-                      setor: { type: Type.STRING, description: 'O setor econômico principal' },
-                      termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
+                      setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Para atividades específicas (saúde, educação, farmácia etc.) use termo_busca.' },
+                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia" etc.' }
                     }
                   }
                 },
