@@ -90,6 +90,24 @@ npx vercel --prod --yes
 
 ---
 
+## Otimização de Voice UX (Fase 2) — 19/abr/2026
+
+Aprimoramentos de latência percebida e comportamento humano na interface de voz da Nadia (`nadia-mobile/0.2`).
+
+### 1. UX Hack: Retardo do Tool Response (Anti-Self-Interrupt)
+**Problema:** A Live API sofre de auto-interrupção se ferramentas locais forem demasiadamente rápidas. O modelo começava a dizer "Vou buscar os dados...", disparava a tool que terminava em milissegundos, recebia a resposta via `sendToolResponse` e, imediatamente, começava a falar a resposta em si, "engolindo" a frase filler.
+**Solução:** No retorno das ferramentas em `useLiveConnection.ts`, foi injetado um `setTimeout` artificial de **2500ms** na devolução da promise para o `session.sendToolResponse`. Isso garante o tempo exato para o motor TTS (Text-to-Speech) finalizar a frase filler sem engasgos, conferindo extrema fluidez.
+
+### 2. Regra de Continuidade (Memória Conversacional)
+**Problema:** Ao realizar um drill-down investigativo (ex: "E quais as empresas disso?"), a Nadia repetia roboticamente o cabeçalho financeiro global respondido na frase anterior.
+**Solução:** Inserida a instrução "Memória Conversacional (Não seja redundante)" no core do sistema (`prompts.ts` e `useLiveConnection.ts`). A IA é instruída a NÃO repetir valores macro já ditos e pular direto para os detalhes, com uma **exceção explícita** para o caso de o usuário verbalizar o pedido de repetição.
+
+### 3. Blindagem Semântica nas Tools de Voz (Correção CNAE)
+**Problema:** Apesar da solução "CNAE" de 14/abr, a UI de Voz continuava inventando macro-setores errados (ex: `setor: "saúde"`) causando um *empty set* e travando as buscas.
+**Solução:** O prompt de descrição dos parâmetros `setor` e `termo_busca` em `useLiveConnection.ts` foi substituído pela mesma malha de ferro do `useChat.ts` (uma *hard-instruction* na declaração das Function Calls), obrigando o LLM a mapear demandas de subsetores para o campo `termo_busca` em branco.
+
+---
+
 ## Otimização de Voice UX e Igualdade Semântica — 17/abr/2026
 
 Implementação de paradigmas de VUI (Voice User Interface) para branch `nadia-mobile/0.2`:
