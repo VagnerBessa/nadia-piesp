@@ -20,6 +20,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
@@ -344,6 +345,19 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
              }
 
+             const parts = message.serverContent?.modelTurn?.parts;
+             if (parts) {
+               // Se não há áudio tocando e não estamos sob debounce, consideramos o início de um novo turno da IA
+               if (!isSpeaking && !isSpeakingTimeoutRef.current) {
+                 setCurrentTranscript('');
+               }
+               for (const part of parts) {
+                 if (part.text) {
+                   setCurrentTranscript(prev => prev + part.text);
+                 }
+               }
+             }
+
              const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
              if (base64EncodedAudioString && outputAudioContextRef.current && analyserRef.current) {
                 // Cancela o timeout de fim de fala se existir, para evitar piscar o estado
@@ -481,5 +495,5 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
     }
   }, [stopConversation, cleanup, analysisLoop, systemInstruction, tools]);
 
-  return { isConnected, isSpeaking, isConnecting, error, audioLevel, startConversation, stopConversation };
+  return { isConnected, isSpeaking, isConnecting, error, audioLevel, currentTranscript, startConversation, stopConversation };
 };
