@@ -44,10 +44,19 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   });
 
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isSpeaking) setHasSpokenOnce(true);
     if (!isConnected) setHasSpokenOnce(false);
   }, [isSpeaking, isConnected]);
+
+  // Auto-scroll para manter a legenda visível enquanto flui
+  useEffect(() => {
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
+  }, [currentTranscript]);
 
   // Limpa o aviso de "buscando informações" instantaneamente quando a IA começar a responder o áudio
   useEffect(() => {
@@ -73,8 +82,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       <div className="flex-grow relative w-full flex flex-col justify-center items-center overflow-visible mt-8">
         
         {/* Container das Legendas */}
-        <div className={`absolute top-0 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-           <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight text-left">
+        <div 
+          ref={transcriptContainerRef}
+          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+        >
+           <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight text-left pb-16">
              {currentTranscript}
              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
            </p>
