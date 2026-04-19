@@ -135,6 +135,33 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             return newLevel < 0.01 ? 0 : newLevel;
         });
     }
+
+    // --- TYPEWRITER EFFECT: Sincroniza a exibição do texto com a fila de áudio ---
+    const unrevealedChars = transcriptRef.current.length - revealedCharsRef.current;
+    if (unrevealedChars > 0) {
+      const now = performance.now();
+      let msPerChar = 30; // Velocidade padrão (rápida) se não tivermos informações de áudio
+      
+      if (outputAudioContextRef.current && nextStartTimeRef.current > 0) {
+         const audioQueueRemaining = Math.max(0, nextStartTimeRef.current - outputAudioContextRef.current.currentTime);
+         if (audioQueueRemaining > 0) {
+            // Calcula a velocidade para terminar o texto exatamente quando o áudio terminar
+            msPerChar = (audioQueueRemaining * 1000) / unrevealedChars;
+            // Limita a velocidade entre 15ms (super rápido) e 80ms (lento mas legível)
+            msPerChar = Math.max(15, Math.min(msPerChar, 80)); 
+         }
+      }
+
+      if (now - lastTypewriterTimeRef.current > msPerChar) {
+         // Calcula quantos caracteres devemos revelar neste frame
+         const charsToReveal = Math.max(1, Math.floor((now - lastTypewriterTimeRef.current) / msPerChar));
+         revealedCharsRef.current = Math.min(transcriptRef.current.length, revealedCharsRef.current + charsToReveal);
+         setCurrentTranscript(transcriptRef.current.substring(0, revealedCharsRef.current));
+         lastTypewriterTimeRef.current = now;
+      }
+    }
+    // ---------------------------------------------------------------------------------
+
     animationFrameIdRef.current = requestAnimationFrame(analysisLoop);
   }, []);
 
