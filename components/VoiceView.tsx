@@ -62,6 +62,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       return;
     }
 
+    // Auto-scroll fora do loop de alta frequência para evitar Layout Thrashing (congelamento de CPU)
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
+
     const intervalId = setInterval(() => {
       if (transcriptTextRef.current) {
         const currentLen = transcriptTextRef.current.textContent?.length || 0;
@@ -69,11 +74,6 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           // Revela 3 caracteres a cada 30ms (100 chars/s). Leve e natural.
           const nextLength = Math.min(currentLen + 3, currentTranscript.length);
           transcriptTextRef.current.textContent = currentTranscript.substring(0, nextLength);
-          
-          // Auto-scroll durante a digitação
-          if (transcriptContainerRef.current) {
-            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
-          }
         }
       }
     }, 30);

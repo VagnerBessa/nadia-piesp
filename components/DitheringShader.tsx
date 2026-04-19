@@ -309,6 +309,16 @@ export const DitheringShader: React.FC<DitheringShaderProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number | null>(null);
   const timeRef = useRef<number>(0);
+  
+  // Usar refs para valores que atualizam a 60fps para evitar recompilação de Shader no WebGL
+  const pulseRef = useRef(pulseLevel);
+  const speedRef = useRef(speed);
+  const awakeningRef = useRef(awakeningProgress);
+
+  // Sincroniza props com refs sem engatilhar recompilação WebGL
+  useEffect(() => { pulseRef.current = pulseLevel; }, [pulseLevel]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+  useEffect(() => { awakeningRef.current = awakeningProgress; }, [awakeningProgress]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -381,7 +391,7 @@ export const DitheringShader: React.FC<DitheringShaderProps> = ({
     const awakeningLocation = gl.getUniformLocation(program, 'u_awakening_progress');
 
     const render = (time: number) => {
-      timeRef.current += 0.01 * speed; // Adjust speed multiplier as needed
+      timeRef.current += 0.01 * speedRef.current; // Lendo do Ref
       
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
       gl.useProgram(program);
@@ -414,8 +424,10 @@ export const DitheringShader: React.FC<DitheringShaderProps> = ({
 
       gl.uniform1f(typeLocation, typeVal);
       gl.uniform1f(pxSizeLocation, pxSize);
-      gl.uniform1f(pulseLocation, pulseLevel);
-      gl.uniform1f(awakeningLocation, awakeningProgress);
+      
+      // Lendo do Ref (60fps seguro)
+      gl.uniform1f(pulseLocation, pulseRef.current);
+      gl.uniform1f(awakeningLocation, awakeningRef.current);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -428,7 +440,7 @@ export const DitheringShader: React.FC<DitheringShaderProps> = ({
       if (requestRef.current !== null) cancelAnimationFrame(requestRef.current);
       gl.deleteProgram(program);
     };
-  }, [width, height, shape, speed, colorFront, colorBack, pxSize, type, pulseLevel, awakeningProgress]);
+  }, [width, height, shape, colorFront, colorBack, pxSize, type]);
 
   return <canvas ref={canvasRef} width={width} height={height} className="block" />;
 };
