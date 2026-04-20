@@ -1,110 +1,219 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
-import { SwitchModeIcon } from './Icons';
 
 interface VoiceViewProps {
   onNavigateHome: () => void;
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
+  const [toolProcessing, setToolProcessing] = useState(false);
+  const [hasSpokenOnce, setHasSpokenOnce] = useState(false);
+
   const {
     isConnected,
     isSpeaking,
     isConnecting,
-    audioLevel,
     error,
+    audioLevel,
+    currentTranscript,
     startConversation,
     stopConversation
   } = useLiveConnection({
     onToolCall: async (toolCall) => {
+      setToolProcessing(true);
       if (toolCall.name === 'consultar_projetos_piesp') {
-        const { ano, municipio, termo_busca } = toolCall.args;
-        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, termo_busca });
-        const resultados = consultarPiespData({ ano, municipio, termo_busca });
+        const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
+        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, setor, termo_busca });
+        const resultados = consultarPiespData({ ano, municipio, regiao, setor, termo_busca });
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
-        const { ano, municipio, termo_busca } = toolCall.args;
-        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, termo_busca });
-        const resultados = consultarAnunciosSemValor({ ano, municipio, termo_busca });
+        const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
+        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, setor, termo_busca });
+        const resultados = consultarAnunciosSemValor({ ano, municipio, regiao, setor, termo_busca });
         return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
       }
       return { error: 'Tool não reconhecido' };
     }
   });
 
-  const isListening = isConnected && !isSpeaking;
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  const transcriptTextRef = useRef<HTMLSpanElement>(null);
+
+  // Deriva turnos completos e turno ativo do currentTranscript.
+  // useLiveConnection appenda '\n\n' no turnComplete — isso é o separador natural de turnos.
+  const segments = currentTranscript.split('\n\n').filter(s => s.trim());
+  const isLastTurnComplete = currentTranscript.endsWith('\n\n');
+  const completedTurns = isLastTurnComplete ? segments : segments.slice(0, -1);
+  const activeTurnText = isLastTurnComplete ? '' : (segments[segments.length - 1] || '');
+
+  useEffect(() => {
+    if (currentTranscript.length > 0) {
+      setHasSpokenOnce(true);
+    }
+  }, [currentTranscript]);
+
+  // Typewriter via DOM direto — opera APENAS no turno ativo, sem React overhead.
+  // Turnos completos são texto estático (React gerencia, sem custo de animação).
+  useEffect(() => {
+    if (!transcriptTextRef.current) return;
+
+    if (!activeTurnText) {
+      transcriptTextRef.current.textContent = '';
+      return;
+    }
+
+    // Auto-scroll fora do loop de alta frequência para evitar Layout Thrashing
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
+
+    const intervalId = setInterval(() => {
+      if (transcriptTextRef.current) {
+        const currentLen = transcriptTextRef.current.textContent?.length || 0;
+        if (currentLen < activeTurnText.length) {
+          const nextLength = Math.min(currentLen + 3, activeTurnText.length);
+          transcriptTextRef.current.textContent = activeTurnText.substring(0, nextLength);
+        }
+      }
+    }, 30);
+
+    return () => clearInterval(intervalId);
+  }, [activeTurnText]);
+
+  useEffect(() => {
+    if (isSpeaking || !isConnected) {
+      setToolProcessing(false);
+    }
+  }, [isSpeaking, isConnected]);
+
+  const isListening = isConnected && !isSpeaking && !toolProcessing;
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full h-full p-4 sm:p-6">
-      {/* Back button */}
-      <button
-        onClick={onNavigateHome}
-        className="absolute top-6 right-6 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg"
-        aria-label="Voltar à tela inicial"
-        title="Voltar à tela inicial"
-      >
-        <SwitchModeIcon className="h-5 w-5" />
-        <span className="hidden sm:inline text-sm font-medium leading-none">Voltar</span>
-      </button>
+    <div className="relative flex flex-col w-full h-full p-6 overflow-hidden">
 
-      {/* Main content area with simplified single-column layout */}
-      <main className="flex flex-col items-center justify-center gap-6 w-full max-w-6xl mx-auto">
-        
-        {/* Title */}
-        <h2 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
+      {/* Título Superior */}
+      <div className="flex-shrink-0 flex flex-col items-center mt-4 sm:mt-10 animate-in fade-in slide-in-from-top-4 duration-700">
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tighter">
           Nadia
         </h2>
-        
-        {/* Nadia Sphere */}
-        <div className="flex-shrink-0">
+        <div className="h-0.5 w-8 bg-rose-500/50 rounded-full mt-1" />
+      </div>
+
+      {/* Área Central: Esfera + Histórico de Turnos */}
+      <div className="flex-grow relative w-full flex flex-col justify-center items-center overflow-visible mt-8">
+
+        {/* Container de Transcrição — turnos empilhados com scroll */}
+        <div
+          ref={transcriptContainerRef}
+          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+        >
+          {/* Turnos completos — estáticos, levemente esmaecidos para indicar que são histórico */}
+          {completedTurns.map((turn, i) => (
+            <div key={i} className="mb-5 pb-5 border-b border-white/5">
+              <div className="text-[10px] font-bold text-rose-400/40 uppercase tracking-widest mb-1.5">
+                Nadia
+              </div>
+              <p className="text-xl sm:text-2xl font-medium text-white/50 leading-relaxed tracking-tight whitespace-pre-wrap">
+                {turn}
+              </p>
+            </div>
+          ))}
+
+          {/* Turno ativo — typewriter via ref, texto em destaque total */}
+          <div className="pb-16">
+            {activeTurnText && (
+              <div className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1.5">
+                Nadia
+              </div>
+            )}
+            <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight whitespace-pre-wrap">
+              <span ref={transcriptTextRef}></span>
+              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
+            </p>
+          </div>
+        </div>
+
+        {/* Esfera — migra para canto superior direito na primeira fala */}
+        <div
+          className={`absolute z-20 transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
+            ${hasSpokenOnce
+              ? 'top-0 right-0 translate-x-0 translate-y-0 scale-[0.25] origin-top-right opacity-80'
+              : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
+            }
+          `}
+        >
+          <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${
+            isSpeaking ? 'bg-rose-500/30' : isListening ? 'bg-rose-500/10' : 'bg-transparent'
+          }`} />
+
           <NadiaSphere
-            size="medium"
+            size="large"
             isListening={isListening}
             isSpeaking={isSpeaking}
             isConnecting={isConnecting}
             audioLevel={audioLevel}
           />
         </div>
+      </div>
 
-        {/* Action Button and Status */}
-        <div className="mt-4 flex flex-col items-center gap-4">
-            <button
-              onClick={isConnected ? stopConversation : startConversation}
-              disabled={isConnecting}
-              className={`
-                flex items-center justify-center w-20 h-20 rounded-full transition-all duration-300 ease-in-out
-                focus:outline-none focus:ring-4 focus:ring-rose-500/50
-                disabled:opacity-50 disabled:cursor-not-allowed
-                bg-slate-800/60 hover:bg-slate-800/90 flex-shrink-0
-              `}
-              aria-label={isConnected ? 'Parar conversa' : 'Iniciar conversa'}
-            >
-              {isConnecting ? (
-                <div className="w-10 h-10 border-4 border-t-transparent border-slate-400 rounded-full animate-spin"></div>
-              ) : (
-                <SoundWaveIcon
-                  className="w-12 h-12 text-rose-500"
-                  isListening={isListening}
-                  isSpeaking={isSpeaking}
-                  audioLevel={audioLevel}
-                />
+      {/* Controles Inferiores */}
+      <div className="flex-shrink-0 flex flex-col items-center gap-6 pb-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+
+        <div className="h-10 flex items-center justify-center">
+          {error ? (
+            <p className="px-4 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm font-medium">
+              {error}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              {isConnected && !isConnecting && (
+                <div className={`w-1.5 h-1.5 rounded-full ${toolProcessing ? 'bg-cyan-400 animate-pulse' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
               )}
-            </button>
-            <div className="h-8 flex items-center justify-center">
-              {error ? (
-                <p className="text-red-400">{error}</p>
-              ) : (
-                <p className="text-slate-400 text-lg transition-opacity duration-300">
-                  {isConnecting ? "Conectando..." : isSpeaking ? "Falando..." : isListening ? "Ouvindo..." : "Pressione para falar"}
-                </p>
-              )}
+              <p className="text-slate-400 text-lg sm:text-xl font-medium tracking-tight">
+                {isConnecting ? "Conectando..." : toolProcessing ? "Buscando informações..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : "Pronta para conversar"}
+              </p>
             </div>
+          )}
         </div>
-      </main>
+
+        <button
+          onClick={isConnected ? stopConversation : startConversation}
+          disabled={isConnecting}
+          className={`
+            relative flex items-center justify-center w-24 h-24 rounded-full transition-all duration-500 ease-elastic
+            focus:outline-none focus:ring-4 focus:ring-rose-500/20
+            disabled:opacity-50 disabled:cursor-not-allowed
+            ${isConnected && !isConnecting
+              ? 'bg-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.4)] scale-110'
+              : 'bg-slate-800 border border-white/5 shadow-xl hover:bg-slate-700'}
+            active:scale-90
+          `}
+          aria-label={isConnected ? 'Parar conversa' : 'Iniciar conversa'}
+        >
+          {isConnecting ? (
+            <div className="w-10 h-10 border-[3px] border-t-transparent border-white rounded-full animate-spin" />
+          ) : (
+            <SoundWaveIcon
+              className={`w-14 h-14 transition-colors duration-300 ${isConnected ? 'text-white' : 'text-rose-500'}`}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              audioLevel={audioLevel}
+            />
+          )}
+
+          {isConnected && isListening && (
+            <div className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping opacity-20" />
+          )}
+        </button>
+
+        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+          {isConnected ? "Toque para encerrar" : "Toque para iniciar"}
+        </p>
+      </div>
     </div>
   );
 };
