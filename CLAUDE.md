@@ -90,6 +90,23 @@ npx vercel --prod --yes
 
 ---
 
+## Correções de Estabilidade — 20/abr/2026
+
+Dois bugs identificados em revisão de código da `nadia-mobile/0.2` e corrigidos cirurgicamente, sem alterar nenhum comportamento funcional existente.
+
+### 1. Stale Closure no `onclose` (`useLiveConnection.ts`)
+**Problema:** O callback `onclose` capturava `isConnected` como `false` permanentemente (valor do momento da criação do closure), fazendo com que a mensagem de erro de desconexão inesperada nunca fosse exibida ao usuário.
+**Solução:** Adicionado `isConnectedRef` sincronizado via `useEffect`. O `onclose` agora lê `isConnectedRef.current`, que sempre reflete o valor real do estado.
+**Regra:** Todo callback de WebSocket/EventListener criado dentro de `startConversation` deve usar refs, não state diretamente.
+
+### 2. Console.log em Produção no Loop de Áudio
+**Problema:** O `onaudioprocess` logava a cada 100 pacotes e a cada 50 pacotes com áudio — poluindo o console em sessões reais.
+**Solução:** Removidos os contadores `totalPackets`/`audioPacketCount` e seus `console.log`. Zero impacto funcional.
+
+**Não alterado intencionalmente:** o `setTimeout(2500)` no `sendToolResponse` (documentado como correção ao bug de auto-interrupção da frase filler).
+
+---
+
 ## Otimização de Voice UX (Fase 2) — 19/abr/2026
 
 Aprimoramentos de latência percebida e comportamento humano na interface de voz da Nadia (`nadia-mobile/0.2`).
