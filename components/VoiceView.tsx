@@ -93,9 +93,8 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           const nextLength = Math.min(currentLen + 1, activeTurnText.length);
           transcriptTextRef.current.textContent = activeTurnText.substring(0, nextLength);
           
-          // Auto-scroll durante a digitação de forma cadenciada (evita Layout Thrashing extremo)
-          // Atualiza a cada 5 caracteres (aprox 300ms) ou no final do texto
-          if ((nextLength % 5 === 0 || nextLength === activeTurnText.length) && transcriptContainerRef.current) {
+          // Auto-scroll durante a digitação
+          if (transcriptContainerRef.current) {
             transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
           }
         }
@@ -150,7 +149,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         {/* Container de Transcrição — turnos empilhados com scroll */}
         <div
           ref={transcriptContainerRef}
-          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce && !isImmersive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto transition-all duration-[1000ms] ${hasSpokenOnce && !isImmersive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
         >
           {/* Turnos completos — estáticos, levemente esmaecidos para indicar que são histórico */}
           {completedTurns.map((turn, i) => (
