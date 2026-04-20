@@ -94,6 +94,26 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   }, [isSpeaking, isConnected]);
 
   const isListening = isConnected && !isSpeaking && !toolProcessing;
+  const hasTranscript = currentTranscript.trim().length > 0;
+
+  const handleDownload = () => {
+    const date = new Date().toLocaleDateString('pt-BR');
+    const text = segments
+      .map((turn, i) => `[Turno ${i + 1}]\n${turn}`)
+      .join('\n\n');
+    const blob = new Blob(
+      [`Nadia — Conversa em ${date}\n${'─'.repeat(36)}\n\n${text}`],
+      { type: 'text/plain;charset=utf-8' }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nadia-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="relative flex flex-col w-full h-full p-6 overflow-hidden">
@@ -217,6 +237,22 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           {isConnected ? "Toque para encerrar" : "Toque para iniciar"}
         </p>
       </div>
+
+      {/* Botão de download — canto inferior esquerdo, aparece discretamente após encerrar sessão */}
+      <button
+        onClick={handleDownload}
+        aria-label="Baixar transcrição da conversa"
+        className={`absolute bottom-6 left-6 flex items-center gap-1.5 transition-all duration-500 ${
+          !isConnected && hasTranscript
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-1 pointer-events-none'
+        } text-slate-500 hover:text-slate-300`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        <span className="text-[10px] uppercase tracking-widest font-bold">Salvar</span>
+      </button>
     </div>
   );
 };
