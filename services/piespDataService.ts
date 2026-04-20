@@ -263,11 +263,14 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     const limpaValor = (v: string) => parseFloat(v.replace(/\./g, '').replace(',', '.'));
     return limpaValor(b.valor_milhoes_reais) - limpaValor(a.valor_milhoes_reais);
   });
-  // Retorna todos os resultados ordenados por valor (maiores primeiro)
-  // Se houver muitos, o top 10 é enviado ao modelo + total real para contexto
-  const total = resultados.length;
+  const limpaValorTotal = (v: string) => parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0;
+  const totalMilhoes = resultados.reduce((acc, p) => acc + limpaValorTotal(p.valor_milhoes_reais), 0);
 
-  return { total, projetos: resultados.slice(0, 10) };
+  return {
+    total_projetos: resultados.length,
+    valor_total_milhoes: Math.round(totalMilhoes * 10) / 10,
+    projetos: resultados.slice(0, 10)
+  };
 }
 
 export interface FiltroRelatorio {
