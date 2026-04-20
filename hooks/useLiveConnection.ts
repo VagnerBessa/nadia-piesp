@@ -24,6 +24,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
+  const isConnectedRef = useRef(false);
   const pendingDisconnectRef = useRef<boolean>(false);
   // FIX: Changed LiveSession to any as the type is not exported.
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
@@ -40,6 +41,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasClearedForTurnRef = useRef<boolean>(false);
+
+  useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
 
   // Ref for tool callback to access latest state/props
   const onToolCallRef = useRef(onToolCall);
@@ -264,27 +267,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
 
-            let audioPacketCount = 0;
-            let totalPackets = 0;
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
-              totalPackets++;
-              if (totalPackets % 100 === 0) {
-                console.log('[Nadia] Processing audio packets... total:', totalPackets);
-              }
-
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-              let sumSquares = 0;
-              for (let i = 0; i < inputData.length; i++) {
-                sumSquares += inputData[i] * inputData[i];
-              }
-              const rms = Math.sqrt(sumSquares / inputData.length);
-
-              if (rms > 0.01) {
-                audioPacketCount++;
-                if (audioPacketCount % 50 === 0) { 
-                  console.log('[Nadia] Audio detected - RMS:', rms.toFixed(4), 'packet:', audioPacketCount);
-                }
-              }
 
               // Se a IA está se despedindo, fechar o microfone prematuramente para evitar que ruído humano quebre o tchau
               if (pendingDisconnectRef.current) return;
@@ -418,8 +402,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             stopConversation();
           },
           onclose: (e: CloseEvent) => {
-            if (e.code !== 1000 && isConnected) setError(`Conexão fechada inesperadamente: ${e.reason || 'Código ' + e.code}`);
-            if (isConnected) stopConversation();
+            if (e.code !== 1000 && isConnectedRef.current) setError(`Conexão fechada inesperadamente: ${e.reason || 'Código ' + e.code}`);
+            if (isConnectedRef.current) stopConversation();
           },
         },
         config: {
