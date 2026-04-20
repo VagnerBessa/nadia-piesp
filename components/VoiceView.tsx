@@ -29,13 +29,13 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, setor, termo_busca });
         const resultados = consultarPiespData({ ano, municipio, regiao, setor, termo_busca });
-        return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+        return { sucesso: true, total_projetos: resultados.total_projetos, valor_total_milhoes: resultados.valor_total_milhoes, projetos: resultados.projetos };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
         const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, setor, termo_busca });
         const resultados = consultarAnunciosSemValor({ ano, municipio, regiao, setor, termo_busca });
-        return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+        return { sucesso: true, total_projetos: resultados.total, projetos: resultados.projetos };
       }
       return { error: 'Tool não reconhecido' };
     }
