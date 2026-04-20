@@ -42,7 +42,8 @@ O projeto Nadia opera em um modelo multi-branch para diferentes casos de uso:
 | Branch | Canal | Foco |
 |---|---|---|
 | `main` | **Nadia Ecosistema** | Versão Web Full (Desktop). Inclui Dashboards, Explorar, Perfil Municipal, Data Lab e E-mail. |
-| `nadia-mobile/0.1` | **Nadia Mobile** | Interface simplificada e otimizada para smartphones. Foca exclusivamente em **Chat** e **Voz**. |
+| `nadia-mobile/0.1` | **Nadia Mobile v1** | Interface simplificada e otimizada para smartphones. Foca exclusivamente em **Chat** e **Voz**. |
+| `nadia-mobile/0.2` | **Nadia Mobile v2** | Evolução da v1: correções de estabilidade de WebSocket, histórico de turnos na transcrição e calibração de sincronização voz/texto. |
 
 **Branding Oficial:** A versão Mobile utiliza o novo sistema de cores "Deep Ocean" e os brasões oficiais do Governo do Estado de São Paulo e Fundação Seade.
 
@@ -915,3 +916,82 @@ No Oposto, a skill hierárquica `datalab_design.md` é **procedimental** — con
 ### Defesa Dupla de Renderização (Prompt + Frontend Guardrails)
 O prompt orienta a modelo: "nunca gere mais de 5 fatias de pizza". No entanto, LLMs podem quebrar diretrizes devido a anomalias de temperatura. 
 Por causa disso, o nosso `capPieData` na UI engole e reagrupa magicamente qualquer variável que passar de 5 em uma sub-fatia "Outros", sem que o usuário sinta. O Prompt define a regra social, mas é o frontend que blinda matematicamente o sistema contra LLMs voláteis.
+
+---
+
+## Melhorias de Voz (Voice UX) — Nadia Mobile 0.2 — 20/abr/2026
+
+### Histórico de Turnos na Transcrição (`VoiceView.tsx`)
+
+**Problema:** A transcrição era um único bloco de texto crescente. Conforme a conversa evoluía, todo o histórico ficava amontoado sem distinção visual entre respostas diferentes da Nadia.
+
+**Solução implementada:** Turnos separados visualmente. `useLiveConnection.ts` já separava turnos com `\n\n` ao receber `turnComplete` — esse separador foi aproveitado como fonte de verdade.
+
+**Arquitetura (zero mudança no hook):**
+```ts
+const segments = currentTranscript.split('\n\n').filter(s => s.trim());
+const isLastTurnComplete = currentTranscript.endsWith('\n\n');
+const completedTurns = isLastTurnComplete ? segments : segments.slice(0, -1);
+const activeTurnText = isLastTurnComplete ? '' : (segments[segments.length - 1] || '');
+```
+
+- `completedTurns` → bloco estático por turno, `text-white/50`, com divisória `border-white/5`
+- `activeTurnText` → alimenta o typewriter via ref DOM direto (mesma técnica anterior)
+- Turnos antigos **ficam visíveis e sobem** conforme a conversa cresce (scroll automático)
+- **Sem impacto na sincronização áudio/texto** — o typewriter do turno ativo usa exatamente o mesmo mecanismo de antes
+
+**Comportamento visual:**
+- Esfera migra para o canto superior direito na primeira fala (comportamento preservado)
+- Label "Nadia" aparece acima de cada turno: rose-400 no turno ativo, rose-400/40 nos completos
+- Turno ativo: `text-white/90` — turnos anteriores: `text-white/50`
+
+---
+
+### Calibração do Typewriter para Sincronização Voz/Texto
+
+**Diagnóstico:** A taxa anterior do typewriter era de **3 chars a cada 30ms = 100 chars/segundo**, aproximadamente 6–8x mais rápida que a fala humana em português (~12–15 chars/segundo). O texto era revelado completamente em menos de 1 segundo enquanto o áudio da Nadia durava 8–10 segundos — o efeito era puramente cosmético, sem qualquer valor de sincronização.
+
+**Causa raiz da percepção de dessincronização:**
+O problema tem duas camadas:
+1. **Upstream (Google):** a Gemini Live API envia áudio e transcrição como dois WebSocket streams independentes, sem garantia de alinhamento frame-a-frame. Insolúvel no cliente.
+2. **Cliente:** a taxa do typewriter estava tão acima da taxa de fala que o texto completava muito antes do áudio — o usuário lia a resposta antes de ouvi-la, criando sensação de descasamento.
+
+**Solução aplicada:** Reduzida para **1 char a cada 65ms ≈ 15 chars/segundo** — alinhada com a taxa real de fala.
+
+```ts
+// Antes: 3 chars / 30ms = 100 chars/s (cosmético, não sincrônico)
+// Depois: 1 char / 65ms ≈ 15 chars/s (acompanha o áudio)
+const intervalId = setInterval(() => {
+  const nextLength = Math.min(currentLen + 1, activeTurnText.length);
+  transcriptTextRef.current.textContent = activeTurnText.substring(0, nextLength);
+}, 65);
+```
+
+**Trade-off:** Se a transcrição chegar com atraso da API, o texto também atrasará mais perceptivelmente. Esse é o trade-off correto — texto que acompanha o áudio em vez de corrê-lo na frente.
+
+**Referência de taxa de fala em português:** ~150 palavras/minuto × ~5 chars/palavra = 750 chars/min = **12,5 chars/segundo**.
+
+---
+
+### Correções de Estabilidade do WebSocket (`useLiveConnection.ts`) — 20/abr/2026
+
+Duas correções aplicadas à `nadia-mobile/0.2` e propagadas para `claude/review-nadia-mobile-NQtPI`:
+
+**Fix 1 — Stale closure no callback `onclose`:**
+O callback `onclose` capturava `isConnected` no momento de criação do closure (sempre `false`). Em desconexões inesperadas, a condição `if (e.code !== 1000 && isConnected)` nunca disparava — erros reais eram silenciados.
+
+Solução: mirror via ref atualizado por `useEffect`:
+```ts
+const isConnectedRef = useRef(false);
+useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+// onclose usa isConnectedRef.current em vez de isConnected
+```
+
+**Fix 2 — Console.log no loop de áudio (hot path):**
+`totalPackets` e `audioPacketCount` com `console.log` estavam dentro do `onaudioprocess` — callback disparado 125x/segundo (buffer 2048 a 16kHz). Gerava ~125 logs/segundo, consumindo CPU e potencialmente causando engasgos no áudio.
+
+Solução: remoção completa das variáveis e logs. O handler ficou com apenas o essencial.
+
+**Nota:** O atraso artificial de 2500ms no envio do `toolResponse` (para não "engolir" a frase preenchedora "Vou buscar...") **NÃO foi alterado** — é um hack de UX intencional documentado.
+
+**Buffer size:** Mantido em `2048` (mudado de `4096` em sessão anterior) — reduz latência de entrada de 256ms para 128ms. Não reverter sem motivo.

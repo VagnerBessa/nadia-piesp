@@ -71,15 +71,18 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
     }
 
+    // 1 char / 65ms ≈ 15 chars/s — calibrado para acompanhar a taxa real de fala em português.
+    // A versão anterior (3 chars/30ms = 100 chars/s) era 6-8x mais rápida que o áudio,
+    // revelando o texto completo em <1s enquanto a Nadia ainda falava por 8-10s.
     const intervalId = setInterval(() => {
       if (transcriptTextRef.current) {
         const currentLen = transcriptTextRef.current.textContent?.length || 0;
         if (currentLen < activeTurnText.length) {
-          const nextLength = Math.min(currentLen + 3, activeTurnText.length);
+          const nextLength = Math.min(currentLen + 1, activeTurnText.length);
           transcriptTextRef.current.textContent = activeTurnText.substring(0, nextLength);
         }
       }
-    }, 30);
+    }, 65);
 
     return () => clearInterval(intervalId);
   }, [activeTurnText]);
