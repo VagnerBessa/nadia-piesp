@@ -46,6 +46,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   });
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const transcriptTextRef = useRef<HTMLSpanElement>(null);
 
   // Deriva turnos completos e turno ativo do currentTranscript.
@@ -78,9 +79,13 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       return;
     }
 
-    // Auto-scroll fora do loop de alta frequência para evitar Layout Thrashing
-    if (transcriptContainerRef.current) {
-      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    // Auto-scroll fora do loop de alta frequência de forma inteligente
+    if (transcriptContainerRef.current && scrollAnchorRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = transcriptContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      if (isNearBottom) {
+        scrollAnchorRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }
     }
 
     // 1 char / 65ms ≈ 15 chars/s — calibrado para acompanhar a taxa real de fala em português.
@@ -93,9 +98,13 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           const nextLength = Math.min(currentLen + 1, activeTurnText.length);
           transcriptTextRef.current.textContent = activeTurnText.substring(0, nextLength);
           
-          // Auto-scroll durante a digitação
-          if (transcriptContainerRef.current) {
-            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+          // Auto-scroll durante a digitação usando o âncora de forma inteligente
+          if (scrollAnchorRef.current && transcriptContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = transcriptContainerRef.current;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+            if (isNearBottom) {
+              scrollAnchorRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+            }
           }
         }
       }
@@ -174,6 +183,8 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
               <span ref={transcriptTextRef}></span>
               {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
             </p>
+            {/* Elemento âncora invisível para forçar a rolagem correta */}
+            <div ref={scrollAnchorRef} className="h-4 w-full" />
           </div>
         </div>
 
