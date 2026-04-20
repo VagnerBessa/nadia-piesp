@@ -995,3 +995,32 @@ Solução: remoção completa das variáveis e logs. O handler ficou com apenas 
 **Nota:** O atraso artificial de 2500ms no envio do `toolResponse` (para não "engolir" a frase preenchedora "Vou buscar...") **NÃO foi alterado** — é um hack de UX intencional documentado.
 
 **Buffer size:** Mantido em `2048` (mudado de `4096` em sessão anterior) — reduz latência de entrada de 256ms para 128ms. Não reverter sem motivo.
+
+---
+
+### Download de Transcrição (`VoiceView.tsx`) — 20/abr/2026
+
+**Contexto:** Conversas por voz na Nadia não persistem — ao encerrar a sessão, o `currentTranscript` é apagado ao iniciar uma nova. Usuários analistas precisam de um "recibo" da conversa para documentar dados (valores de investimento, empresas, municípios) obtidos durante a interação.
+
+**Solução:** Botão "Salvar" discreto, sem backend. Gera um `.txt` formatado diretamente no browser via `Blob` + `URL.createObjectURL`.
+
+**Posicionamento:** `absolute bottom-6 left-6` — canto inferior esquerdo do container raiz. Escolhido para não conflitar com:
+- Esfera (`top-0 right-0` quando ativa)
+- Botão de mic (fundo centro)
+- Transcrição (`pr-28` afasta do canto direito)
+
+**Comportamento visual:** sempre montado no DOM (para ter transição suave), mas com `opacity-0 pointer-events-none` durante sessão ativa. Aparece com fade + `translate-y` ao encerrar, some ao iniciar nova sessão. Tipografia idêntica ao label "Toque para iniciar" (`text-[10px] uppercase tracking-widest font-bold text-slate-500`).
+
+**Formato do arquivo gerado:** `nadia-AAAA-MM-DD.txt`
+```
+Nadia — Conversa em 20/04/2026
+────────────────────────────────────
+
+[Turno 1]
+Em 2024, o ABC paulista registrou...
+
+[Turno 2]
+As principais empresas são...
+```
+
+**Decisão de design:** auto-save server-side foi descartado — exigiria backend e decisão institucional da Seade sobre armazenamento e privacidade de dados governamentais. O download manual preserva privacidade por padrão e dá ao usuário controle sobre o que guardar.
