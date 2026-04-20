@@ -11,6 +11,7 @@ interface VoiceViewProps {
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   const [toolProcessing, setToolProcessing] = useState(false);
   const [hasSpokenOnce, setHasSpokenOnce] = useState(false);
+  const [isImmersive, setIsImmersive] = useState(false);
 
   const {
     isConnected,
@@ -132,7 +133,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         {/* Container de Transcrição — turnos empilhados com scroll */}
         <div
           ref={transcriptContainerRef}
-          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto scroll-smooth transition-all duration-[1000ms] ${hasSpokenOnce && !isImmersive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
         >
           {/* Turnos completos — estáticos, levemente esmaecidos para indicar que são histórico */}
           {completedTurns.map((turn, i) => (
@@ -160,13 +161,15 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           </div>
         </div>
 
-        {/* Esfera — migra para canto superior direito na primeira fala */}
+        {/* Esfera — toque alterna entre modo imersivo (grande) e modo transcrição (pequena no canto) */}
         <div
+          onClick={() => { if (hasSpokenOnce) setIsImmersive(prev => !prev); }}
           className={`absolute z-20 transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
-            ${hasSpokenOnce
+            ${hasSpokenOnce && !isImmersive
               ? 'top-0 right-0 translate-x-0 translate-y-0 scale-[0.25] origin-top-right opacity-80'
               : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
             }
+            ${hasSpokenOnce ? 'cursor-pointer' : ''}
           `}
         >
           <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${
