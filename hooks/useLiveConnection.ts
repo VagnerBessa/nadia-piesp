@@ -146,6 +146,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
     setError(null);
     setIsConnecting(true);
     setCurrentTranscript('');
+    pendingDisconnectRef.current = false;
 
     // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {

@@ -37,6 +37,10 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         const resultados = consultarAnunciosSemValor({ ano, municipio, regiao, setor, termo_busca });
         return { sucesso: true, total_projetos: resultados.total, projetos: resultados.projetos };
       }
+      if (toolCall.name === 'encerrar_sessao') {
+        console.log("🛠️ Tool Executado: Encerrar sessão");
+        return { sucesso: true };
+      }
       return { error: 'Tool não reconhecido' };
     }
   });
@@ -56,6 +60,13 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       setHasSpokenOnce(true);
     }
   }, [currentTranscript]);
+
+  // Quando desconecta, volta ao modo imersivo para a esfera centralizar sem sobrepor o texto
+  useEffect(() => {
+    if (!isConnected && hasSpokenOnce) {
+      setIsImmersive(true);
+    }
+  }, [isConnected, hasSpokenOnce]);
 
   // Typewriter via DOM direto — opera APENAS no turno ativo, sem React overhead.
   // Turnos completos são texto estático (React gerencia, sem custo de animação).
@@ -81,6 +92,12 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         if (currentLen < activeTurnText.length) {
           const nextLength = Math.min(currentLen + 1, activeTurnText.length);
           transcriptTextRef.current.textContent = activeTurnText.substring(0, nextLength);
+          
+          // Auto-scroll durante a digitação de forma cadenciada (evita Layout Thrashing extremo)
+          // Atualiza a cada 5 caracteres (aprox 300ms) ou no final do texto
+          if ((nextLength % 5 === 0 || nextLength === activeTurnText.length) && transcriptContainerRef.current) {
+            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+          }
         }
       }
     }, 65);
@@ -165,7 +182,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         <div
           onClick={() => { if (hasSpokenOnce) setIsImmersive(prev => !prev); }}
           className={`absolute z-20 transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
-            ${hasSpokenOnce && !isImmersive
+            ${hasSpokenOnce && isConnected && !isImmersive
               ? 'top-0 right-0 translate-x-0 translate-y-0 scale-[0.25] origin-top-right opacity-80'
               : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
             }
