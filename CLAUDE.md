@@ -287,8 +287,39 @@ Ver detalhes completos em [`docs/bugs-abertos.md`](docs/bugs-abertos.md).
 | ID | Descrição | Status |
 |---|---|---|
 | PEND-001 | Proteção da API key do Gemini | Decidir antes do deploy |
+| PEND-002 | Cherry-pick das melhorias de voz de `nadia-mobile/0.2` para `main` | Pendente |
 
 Ver detalhes e alternativas em [`docs/pendencias.md`](docs/pendencias.md).
+
+### PEND-002: Sincronizar Voice UX entre `nadia-mobile/0.2` e `main`
+
+**Contexto:** A branch `nadia-mobile/0.2` acumulou 20+ commits de melhorias de voz (Half-Duplex, prompt engineering, auto-scroll, cleanup visual) que não existem no `main`. O assistente de voz é o mesmo componente em ambos os apps, portanto devem compartilhar as mesmas funcionalidades.
+
+**Por que NÃO fazer merge direto:**
+- O merge arrastaria **271 arquivos** (`.agent/skills/`, screenshots, `.playwright-mcp/`, imagens de branding) irrelevantes para o `main`.
+- `Header.tsx`, `LandingPage.tsx` e `App.tsx` têm navegação **mobile-only** (3 abas) que quebraria o layout do app completo (8+ abas).
+
+**Estratégia recomendada — Cherry-pick seletivo:**
+
+| Arquivo | Ação | Risco |
+|---|---|---|
+| `hooks/useLiveConnection.ts` | Cherry-pick integral | 🟢 Zero conflito (intocado no main) |
+| `components/VoiceView.tsx` | Cherry-pick integral | 🟢 Zero conflito (intocado no main) |
+| `utils/prompts.ts` | Cherry-pick integral | 🟢 Zero conflito (intocado no main) |
+| `services/piespDataService.ts` | Cherry-pick integral | 🟢 Melhoria de CNAE/região, sem conflito |
+| `hooks/useChat.ts` | Revisão manual | 🟡 Contexto de UI diferente |
+| `components/ChatView.tsx` | Revisão manual | 🟡 Melhorias úteis mas layout diferente |
+| `Header.tsx`, `LandingPage.tsx`, `App.tsx` | **Ignorar** | 🔴 Navegação incompatível |
+
+**Melhorias de voz que serão portadas:**
+1. Half-Duplex mic mute (anti echo cancellation)
+2. Prompt engineering: filler suave + trava de progressive disclosure
+3. Auto-scroll iOS Safari (`scrollTop` em vez de `scrollIntoView`)
+4. Limpeza instantânea de transcrição ao desconectar
+5. Botão "Salvar Conversa" no fluxo flex
+6. Ocultação de status text pós-sessão
+
+**Tempo estimado:** ~15-20 minutos.
 
 ---
 
