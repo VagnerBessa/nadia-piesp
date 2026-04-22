@@ -372,11 +372,12 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 source.addEventListener('ended', () => {
                     audioSourcesRef.current.delete(source);
                     if (audioSourcesRef.current.size === 0) {
-                        // Aplica um debounce de 2500ms antes de declarar que a fala realmente terminou.
-                        // Isso previne que a animação da interface volte ao tamanho normal entre chunks de áudio ou respirações da IA.
+                        // Desmuta o mic INSTANTANEAMENTE para que o usuário possa responder
+                        isSpeakingRef.current = false;
+
+                        // Aplica um debounce visual de 2500ms antes de recolher a animação da UI
                         isSpeakingTimeoutRef.current = setTimeout(() => {
                            setIsSpeaking(false);
-                           isSpeakingRef.current = false;
                            isSpeakingTimeoutRef.current = null;
                         }, 2500);
                     }
