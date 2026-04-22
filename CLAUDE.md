@@ -105,6 +105,13 @@ Dois bugs identificados em revisão de código da `nadia-mobile/0.2` e corrigido
 
 **Não alterado intencionalmente:** o `setTimeout(2500)` no `sendToolResponse` (documentado como correção ao bug de auto-interrupção da frase filler).
 
+### 3. Fricção de DOM, WebKit e Estabilidade Visual de Voz (UX)
+**Problema:** O scroll matemático da transcrição (`scrollTop`) conflitava agressivamente com o motor WebKit do iOS, gerando saltos e travando o pipeline da Live API. Além disso, no encerramento da conversa, a Esfera gigante sobrepunha o texto gerado e o botão "Salvar" não possuía boa visibilidade.
+**Solução:** 
+- A rolagem forçada foi substituída por um elemento **âncora invisível (`scrollIntoView`)**. Um algoritmo de *Smart Scroll* foi criado para pausar o auto-scroll automaticamente se o usuário rolar para cima para consultar o histórico.
+- O bug visual de "tampão" da Esfera foi resolvido dissociando o CSS do estado de rede (`isConnected`); a posição agora respeita estritamente o `isImmersive`, permitindo a leitura pós-chamada com um clique. O botão "Salvar" foi promovido a um botão em pílula centralizado.
+**Regra Crítica (Vercel):** Nunca diagnostique sessões interativas (WebSockets/Live API) na URL de produção durante Pair Programming. A latência de propagação de cache da Vercel e Edge Networks corrompe o diagnóstico, fazendo o dev pensar que o código atual quebrou. Homologação de Voice UX deve **sempre** ocorrer via IP na rede local.
+
 ---
 
 ## Otimização de Voice UX (Fase 2) — 19/abr/2026

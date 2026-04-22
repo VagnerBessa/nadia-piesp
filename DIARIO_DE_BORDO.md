@@ -36,3 +36,21 @@ A investigação revelou uma verdade fundamental sobre a dependência de APIs de
 
 4. **A diferença entre "eu sei" e "eu obedeço":** Este episódio reforçou a lição anterior (Helpful Bias). Quando nós, desenvolvedores, tentamos inovar com modelos instáveis (escolhemos o 2.5 experimental por ser mais capaz), estamos fazendo exatamente o que criticamos na IA: priorizando performance sobre previsibilidade. A escolha de um modelo deveria seguir a mesma regra que impomos à Nadia: *"Se não tem estabilidade comprovada, não use."*
 
+---
+
+### A Fricção entre DOM, WebKit e Servidores de Deploy (Estabilização da UX)
+**Data:** 20 de abril de 2026
+
+Hoje enfrentamos a última milha da experiência do usuário (UX) na interface móvel da Nadia: a sensação tátil de fluidez. A inteligência artificial por trás já era robusta, mas a "casca" — a forma como a tela respondia aos toques e atualizava o texto — estava falhando, afetando gravemente a percepção de qualidade do sistema.
+
+Esta sessão técnica nos trouxe os seguintes aprendizados sobre desenvolvimento Front-end para IA:
+
+1. **A Ilusão do Controle Total do DOM (Scroll vs WebKit):** Tentamos controlar a rolagem da transcrição matemática e forçosamente atualizando o `scrollTop` a cada chunk de texto recebido. O motor do navegador Safari (iOS) odiou isso. O choque entre a renderização contínua do React e a engine do WebKit causava engasgos, onde a tela "pulava" e a Nadia parava de falar. 
+   - *A solução:* Abraçar o natural. Removemos o cálculo forçado e colocamos uma simples "âncora" invisível (`div ref={scrollAnchorRef}`) no final da tela, dizendo ao navegador apenas: *"por favor, role suavemente até aqui quando puder"*. Deixamos o navegador fazer o trabalho dele em vez de microgerenciá-lo.
+
+2. **O "Smart Scroll" e a Ergonomia Cognitiva:** Percebemos que forçar a rolagem contínua para baixo impedia o usuário de voltar e ler o que a Nadia disse antes (o texto o puxava de volta). Tivemos que implementar um "Smart Scroll" (Rolagem Inteligente): o sistema agora detecta se o usuário rolou para cima. Se sim, ele entende *"estou lendo, não me atrapalhe"*, e só volta a rolar automaticamente se o usuário retornar ao fim da página. A IA deve respeitar o ritmo de leitura do humano.
+
+3. **Gargalos de Infraestrutura (A Ilusão da Vercel):** Boa parte da nossa frustração veio de testar no ambiente de produção (Vercel). Realizamos dezenas de correções arquiteturais perfeitas (como o reset de estado do microfone e o posicionamento da esfera), mas a versão online parecia não refletir o código. 
+   - *A lição:* A Vercel (e CDNs modernas) utilizam camadas agressivas de cache e "edge functions" que podem ter atrasos imperceptíveis em projetos tradicionais, mas que destroem a agilidade em sessões intensivas de Pair Programming e Debugging. Sistemas com conexões assíncronas complexas (WebSockets/Live API) e dependência de estados visuais intrincados devem **sempre** ser homologados estritamente na rede local (como fizemos acessando via IP `192.168.15.14` e porta `3000` / `3001` no Mac e no celular) antes de confiar na nuvem.
+
+4. **A "Camada do Tampão" e as Transições de Estado:** O bug visual que fazia a Esfera da Nadia cobrir o texto como um tampão no desktop após a desconexão revelou a complexidade de gerenciar múltiplos estados booleanos em React (`isImmersive`, `isConnected`, `hasSpokenOnce`). Descobrimos que não basta desligar o áudio; é preciso coreografar a saída visual da IA. Uma sessão não termina quando o socket fecha, mas sim quando a interface volta elegantemente ao seu estado de repouso, respeitando o desejo do usuário de consultar o histórico gerado.
