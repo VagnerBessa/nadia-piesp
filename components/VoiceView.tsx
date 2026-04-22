@@ -62,10 +62,14 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   }, [currentTranscript]);
 
-  // Quando desconecta, volta ao modo imersivo (esfera centralizada) e esconde texto
+  // Quando desconecta, volta ao modo imersivo (esfera centralizada) e limpa texto do DOM instantaneamente
   useEffect(() => {
     if (!isConnected && hasSpokenOnce) {
       setIsImmersive(true);
+      // Limpa o texto do typewriter imediatamente para não vazar atrás da esfera
+      if (transcriptTextRef.current) {
+        transcriptTextRef.current.textContent = '';
+      }
     }
   }, [isConnected, hasSpokenOnce]);
 
@@ -158,7 +162,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         {/* Container de Transcrição — turnos empilhados com scroll */}
         <div
           ref={transcriptContainerRef}
-          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto transition-all duration-[1000ms] ${isConnected && !isImmersive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto ${isConnected && !isImmersive ? 'opacity-100 translate-y-0 transition-all duration-[1000ms]' : 'opacity-0 translate-y-4 pointer-events-none transition-all duration-200'}`}
         >
           {/* Turnos completos — estáticos, levemente esmaecidos para indicar que são histórico */}
           {completedTurns.map((turn, i) => (
