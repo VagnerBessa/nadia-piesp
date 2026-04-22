@@ -9,7 +9,6 @@ interface VoiceViewProps {
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
-  const [toolProcessing, setToolProcessing] = useState(false);
   const [hasSpokenOnce, setHasSpokenOnce] = useState(false);
   const [isImmersive, setIsImmersive] = useState(false);
 
@@ -20,11 +19,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     error,
     audioLevel,
     currentTranscript,
+    toolProcessing,
     startConversation,
     stopConversation
   } = useLiveConnection({
     onToolCall: async (toolCall) => {
-      setToolProcessing(true);
       if (toolCall.name === 'consultar_projetos_piesp') {
         const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
         console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, setor, termo_busca });
@@ -116,12 +115,6 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
 
     return () => clearInterval(intervalId);
   }, [activeTurnText]);
-
-  useEffect(() => {
-    if (isSpeaking || !isConnected) {
-      setToolProcessing(false);
-    }
-  }, [isSpeaking, isConnected]);
 
   const isListening = isConnected && !isSpeaking && !toolProcessing;
   const hasTranscript = currentTranscript.trim().length > 0;

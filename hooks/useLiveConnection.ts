@@ -21,6 +21,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const isSpeakingRef = useRef<boolean>(false);
+  const [toolProcessing, setToolProcessing] = useState(false);
+  const toolProcessingRef = useRef<boolean>(false);
   const [currentTranscript, setCurrentTranscript] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -272,8 +274,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
 
-              // Se a IA está se despedindo ou FALANDO, fechar o microfone prematuramente para evitar que ruído/eco corte a IA (desativa barge-in)
-              if (pendingDisconnectRef.current || isSpeakingRef.current) return;
+              // Se a IA está se despedindo, FALANDO ou PROCESSANDO FERRAMENTA, fechar o microfone para evitar que ruído/eco corte a IA ou confunda o Gemini
+              if (pendingDisconnectRef.current || isSpeakingRef.current || toolProcessingRef.current) return;
 
               const pcmBlob = createBlob(inputData);
               sessionPromiseRef.current!.then((session) => {
@@ -309,6 +311,10 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                         }
 
                         try {
+                            // Muta o mic durante o processamento da ferramenta
+                            toolProcessingRef.current = true;
+                            setToolProcessing(true);
+
                             const result = await onToolCallRef.current(call);
                             
                             // UX Hack: Atraso artificial de 2.5s para não "engolir" a frase de transição.
@@ -358,6 +364,11 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 
                 setIsSpeaking(true);
                 isSpeakingRef.current = true;
+                // Desmuta ferramenta: a IA começou a falar a resposta
+                if (toolProcessingRef.current) {
+                  toolProcessingRef.current = false;
+                  setToolProcessing(false);
+                }
                 const currentOutputContext = outputAudioContextRef.current;
                 if (currentOutputContext.state === 'suspended') {
                   await currentOutputContext.resume();
@@ -490,5 +501,5 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
     }
   }, [stopConversation, cleanup, analysisLoop, systemInstruction, tools]);
 
-  return { isConnected, isSpeaking, isConnecting, error, audioLevel, currentTranscript, startConversation, stopConversation };
+  return { isConnected, isSpeaking, isConnecting, error, audioLevel, currentTranscript, toolProcessing, startConversation, stopConversation };
 };
