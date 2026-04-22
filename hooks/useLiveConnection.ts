@@ -20,6 +20,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const isSpeakingRef = useRef<boolean>(false);
   const [currentTranscript, setCurrentTranscript] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -236,7 +237,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       }
 
       // Adicionando a Diretriz de UX/Voice com Trava Psicológica, Desocultamento Progressivo e Graceful Fallback Flexível
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa te chamando pelo nome (Nadia), NUNCA se apresente dizendo quem você é. Vá direto ao assunto.\nIMPORTANTE SOBRE FERRAMENTAS: Se você precisar consultar a base de dados do PIESP, você DEVE dizer em voz alta uma frase preenchedora MUITO CURTA (ex: "Um instante", "Vou buscar os dados para você..."). \nPROIBIÇÃO ABSOLUTA: Durante essa primeira fala antes da ferramenta, é TERMINANTEMENTE PROIBIDO começar a responder a pergunta do usuário ou despejar conhecimento genérico. O primeiro áudio serve EXCLUSIVAMENTE como uma confirmação de espera. Somente APÓS a ferramenta devolver os dados, faça uma nova fala OBRIGATORIAMENTE iniciando com uma transição natural (Ex: "Depois de pesquisar os dados na base...") entregando a resposta.\nREGRAS DE EXPOSIÇÃO PROGRESSIVA (CRÍTICO): Ao retornar dados da base, NUNCA vomite uma lista de projetos. Dê APENAS o resumo Macro (Total de Bilhões/Milhões e a tendência geral). Finalize SEMPRE com uma pergunta suave para ancorar a navegação do usuário (Ex: "Encontrei X bilhões. Deseja que eu detalhe as principais empresas envolvidas?"). ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE. É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala. Espere o usuário responder "Sim".\nREGRA DE CONTINUIDADE (MEMÓRIA CONVERSACIONAL): Quando o usuário pedir para detalhar uma informação que você acabou de dar, NÃO repita o valor macro. Entre direto nos detalhes solicitados (Ex: "Claro! As principais empresas são...").\nTRATAMENTO DE NULOS (GRACEFUL FALLBACK): Se a pesquisa retornar zerada, sugira uma alternativa. Se o usuário aceitar com um "Sim", aja imediatamente (dispare a ferramenta) sem hesitar. NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.`;
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa te chamando pelo nome (Nadia), NUNCA se apresente dizendo quem você é. Vá direto ao assunto.\nIMPORTANTE SOBRE FERRAMENTAS: Se você precisar consultar a base de dados do PIESP, você OBRIGATORIAMENTE deve avisar o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CURTA (ex: "Um instante", "Vou buscar os dados..."). Fale apenas essa frase curta e acione a ferramenta.\nREGRAS DE EXPOSIÇÃO PROGRESSIVA (CRÍTICO): Ao retornar dados da base, NUNCA vomite uma lista de projetos. Dê APENAS o resumo Macro (Total de Bilhões/Milhões e a tendência geral). Finalize SEMPRE com uma pergunta suave para ancorar a navegação do usuário (Ex: "Encontrei X bilhões. Deseja que eu detalhe as principais empresas envolvidas?"). ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE. É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala. Espere o usuário responder "Sim".\nREGRA DE CONTINUIDADE (MEMÓRIA CONVERSACIONAL): Quando o usuário pedir para detalhar uma informação que você acabou de dar, NÃO repita o valor macro. Entre direto nos detalhes solicitados (Ex: "Claro! As principais empresas são...").\nTRATAMENTO DE NULOS (GRACEFUL FALLBACK): Se a pesquisa retornar zerada, sugira uma alternativa. Se o usuário aceitar com um "Sim", aja imediatamente (dispare a ferramenta) sem hesitar. NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
@@ -271,8 +272,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
 
-              // Se a IA está se despedindo, fechar o microfone prematuramente para evitar que ruído humano quebre o tchau
-              if (pendingDisconnectRef.current) return;
+              // Se a IA está se despedindo ou FALANDO, fechar o microfone prematuramente para evitar que ruído/eco corte a IA (desativa barge-in)
+              if (pendingDisconnectRef.current || isSpeakingRef.current) return;
 
               const pcmBlob = createBlob(inputData);
               sessionPromiseRef.current!.then((session) => {
@@ -356,6 +357,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
                 
                 setIsSpeaking(true);
+                isSpeakingRef.current = true;
                 const currentOutputContext = outputAudioContextRef.current;
                 if (currentOutputContext.state === 'suspended') {
                   await currentOutputContext.resume();
@@ -374,6 +376,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                         // Isso previne que a animação da interface volte ao tamanho normal entre chunks de áudio ou respirações da IA.
                         isSpeakingTimeoutRef.current = setTimeout(() => {
                            setIsSpeaking(false);
+                           isSpeakingRef.current = false;
                            isSpeakingTimeoutRef.current = null;
                         }, 2500);
                     }
@@ -396,6 +399,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   isSpeakingTimeoutRef.current = null;
                 }
                 setIsSpeaking(false);
+                isSpeakingRef.current = false;
              }
           },
           onerror: (e: ErrorEvent) => {
