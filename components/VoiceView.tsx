@@ -62,13 +62,9 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   }, [currentTranscript]);
 
-  // Gerencia o modo imersivo:
-  // Ao conectar, sai do modo imersivo para mostrar o texto.
-  // Ao desconectar, volta ao modo imersivo para centralizar a esfera sem sobrepor.
+  // Quando desconecta, volta ao modo imersivo para a esfera centralizar sem sobrepor o texto
   useEffect(() => {
-    if (isConnected) {
-      setIsImmersive(false);
-    } else if (hasSpokenOnce) {
+    if (!isConnected && hasSpokenOnce) {
       setIsImmersive(true);
     }
   }, [isConnected, hasSpokenOnce]);
@@ -270,21 +266,23 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
           {isConnected ? "Toque para encerrar" : "Toque para iniciar"}
         </p>
-
-        {/* Botão de Download centralizado e elegante */}
-        <div className={`transition-all duration-500 ${!isConnected && hasTranscript ? 'opacity-100 translate-y-0 h-auto mt-2 pointer-events-auto' : 'opacity-0 -translate-y-2 h-0 overflow-hidden pointer-events-none'}`}>
-          <button
-            onClick={handleDownload}
-            aria-label="Baixar transcrição da conversa"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-all border border-white/5 shadow-lg active:scale-95"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            <span className="text-[10px] font-bold uppercase tracking-widest">Baixar Transcrição</span>
-          </button>
-        </div>
       </div>
+
+      {/* Botão de download — canto inferior esquerdo, aparece discretamente após encerrar sessão */}
+      <button
+        onClick={handleDownload}
+        aria-label="Baixar transcrição da conversa"
+        className={`absolute bottom-6 left-6 flex items-center gap-1.5 transition-all duration-500 ${
+          !isConnected && hasTranscript
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-1 pointer-events-none'
+        } text-slate-500 hover:text-slate-300`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        <span className="text-[10px] uppercase tracking-widest font-bold">Salvar</span>
+      </button>
     </div>
   );
 };
