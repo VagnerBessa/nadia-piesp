@@ -274,8 +274,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
 
-              // Se a IA está se despedindo, FALANDO ou PROCESSANDO FERRAMENTA, fechar o microfone para evitar que ruído/eco corte a IA ou confunda o Gemini
-              if (pendingDisconnectRef.current || isSpeakingRef.current || toolProcessingRef.current) return;
+              // Se a IA está se despedindo ou FALANDO, fechar o microfone para evitar que ruído/eco corte a IA (desativa barge-in)
+              // NOTA: NÃO mutar durante toolProcessing — o Gemini Live API exige fluxo de áudio contínuo para manter o WebSocket vivo
+              if (pendingDisconnectRef.current || isSpeakingRef.current) return;
 
               const pcmBlob = createBlob(inputData);
               sessionPromiseRef.current!.then((session) => {
