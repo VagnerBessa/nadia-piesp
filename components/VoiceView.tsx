@@ -231,7 +231,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
                 <div className={`w-1.5 h-1.5 rounded-full ${toolProcessing ? 'bg-cyan-400 animate-pulse' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
               )}
               <p className="text-slate-400 text-lg sm:text-xl font-medium tracking-tight">
-                {isConnecting ? "Conectando..." : toolProcessing ? "Buscando informações..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : "Pronta para conversar"}
+                {isConnecting ? "Conectando..." : toolProcessing ? "Buscando informações..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : hasTranscript ? "" : "Pronta para conversar"}
               </p>
             </div>
           )}
