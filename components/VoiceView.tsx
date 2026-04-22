@@ -62,10 +62,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   }, [currentTranscript]);
 
-  // Quando desconecta, volta ao modo imersivo para a esfera centralizar sem sobrepor o texto
+  // Quando desconecta com transcrição, NÃO recolhe para imersivo — mantém transcrição visível
+  // Quando desconecta SEM transcrição (ex: erro), volta ao modo padrão
   useEffect(() => {
-    if (!isConnected && hasSpokenOnce) {
-      setIsImmersive(true);
+    if (!isConnected && !hasSpokenOnce) {
+      setIsImmersive(false);
     }
   }, [isConnected, hasSpokenOnce]);
 
@@ -158,7 +159,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         {/* Container de Transcrição — turnos empilhados com scroll */}
         <div
           ref={transcriptContainerRef}
-          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto transition-all duration-[1000ms] ${isConnected && !isImmersive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+          className={`absolute top-0 bottom-8 w-full px-4 sm:px-8 pr-28 sm:pr-32 max-w-3xl z-10 overflow-y-auto transition-all duration-[1000ms] ${(isConnected && !isImmersive) || (!isConnected && hasTranscript) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
         >
           {/* Turnos completos — estáticos, levemente esmaecidos para indicar que são histórico */}
           {completedTurns.map((turn, i) => (
@@ -272,16 +273,16 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       <button
         onClick={handleDownload}
         aria-label="Baixar transcrição da conversa"
-        className={`absolute bottom-6 left-6 flex items-center gap-1.5 transition-all duration-500 ${
+        className={`absolute bottom-6 left-6 flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-500 ${
           !isConnected && hasTranscript
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-1 pointer-events-none'
-        } text-slate-500 hover:text-slate-300`}
+            ? 'opacity-100 translate-y-0 pointer-events-auto bg-slate-800/80 border border-white/10 shadow-lg hover:bg-slate-700/80 hover:border-rose-500/30'
+            : 'opacity-0 translate-y-2 pointer-events-none'
+        } text-slate-400 hover:text-white`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
         </svg>
-        <span className="text-[10px] uppercase tracking-widest font-bold">Salvar</span>
+        <span className="text-xs uppercase tracking-widest font-bold">Salvar conversa</span>
       </button>
     </div>
   );
