@@ -172,8 +172,34 @@ o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CUR
 
 **Solução:** Movido para dentro do fluxo flex dos controles inferiores, renderizado condicionalmente (`!isConnected && hasTranscript`) com animação `fade-in slide-in-from-bottom-4`. Agora aparece centralizado abaixo do botão de voz, sem sobreposição.
 
+
+### 6. Status "Buscando informações..." Sumia Instantaneamente (toolProcessing Race Condition)
+
+**Problema:** Ao acionar uma ferramenta, o status mostrava "Ouvindo você..." em vez de "Buscando informações...". A Nadia ficava muda e o indicador visual não refletia que uma consulta estava em andamento.
+
+**Causa raiz:** O `toolProcessing` era gerenciado em dois locais desconectados:
+- `VoiceView.tsx` setava `toolProcessing = true` via callback `onToolCall`
+- Um `useEffect` resetava para `false` sempre que `isSpeaking` era `true`
+- Mas `isSpeaking` **já era** `true` por causa do filler ("Vou pesquisar..."), então o estado era cancelado na mesma renderização
+
+**Solução:** Migramos `toolProcessing` para dentro do hook `useLiveConnection.ts`:
+- `toolProcessing = true` → quando o `message.toolCall` chega (antes de executar)
+- `toolProcessing = false` → quando o primeiro buffer de áudio da **resposta** chega (a IA começou a falar os resultados)
+- Removido o `useEffect` que limpava `toolProcessing` baseado em `isSpeaking`
+- O hook agora exporta `toolProcessing` e o VoiceView consome diretamente
+
+**Tentativa que deu errado (Mic Mute durante Tool Processing):** Tentamos também mutar o mic com `toolProcessingRef.current` (mesmo padrão do `isSpeakingRef`). Resultado: **a conexão WebSocket caía após ~2s**. O Gemini Live API exige **fluxo de áudio contínuo** (keepalive). Ao parar de enviar pacotes de áudio por 2.5s (o timeout do tool response), o servidor interpretava como queda de conexão e fechava o socket.
+
+**Regra crítica descoberta:** O mic NUNCA deve ser completamente silenciado durante tool processing. O fluxo de áudio ambiente serve como **heartbeat** para o WebSocket. O mic só pode ser mutado quando há áudio fluindo na direção oposta (IA falando → `isSpeakingRef`), porque nesse caso o servidor sabe que a conexão está ativa.
+
+| Cenário | Mic | Por quê |
+|---|---|---|
+| IA falando (filler/resposta) | 🔇 Mutado | Anti-echo — o servidor recebe áudio próprio e cancela por barge-in |
+| Tool processing (silêncio) | 🔊 Aberto | Keepalive — o servidor precisa receber pacotes para manter o WebSocket |
+| Despedida (`pendingDisconnect`) | 🔇 Mutado | Desconexão intencional — não importa se o socket cair |
+
 ### Arquivos Modificados
-- `hooks/useLiveConnection.ts` — Half-duplex mic mute, prompt engineering refinado
+- `hooks/useLiveConnection.ts` — Half-duplex mic mute, prompt engineering, toolProcessing centralizado
 - `components/VoiceView.tsx` — Auto-scroll iOS, cleanup de transcrição, reposição do botão download, ocultação de status text
 
 ### Commits (branch `nadia-mobile/0.2`)
@@ -182,6 +208,8 @@ o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CUR
 3. `fix(voice): corrige auto-scroll iOS, esconde texto ao desconectar, reposiciona botão download`
 4. `fix(voice): limpa texto do DOM instantaneamente ao desconectar e acelera fade-out para 200ms`
 5. `fix(voice): esconde texto 'Pronta para conversar' após sessão`
+6. `fix(voice): migra toolProcessing para o hook e corrige status "Buscando informações..."`
+7. `fix(voice): remove mic mute durante tool processing — Live API exige fluxo contínuo`
 
 ---
 
