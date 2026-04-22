@@ -62,9 +62,13 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   }, [currentTranscript]);
 
-  // Quando desconecta, volta ao modo imersivo para a esfera centralizar sem sobrepor o texto
+  // Gerencia o modo imersivo:
+  // Ao conectar, sai do modo imersivo para mostrar o texto.
+  // Ao desconectar, volta ao modo imersivo para centralizar a esfera sem sobrepor.
   useEffect(() => {
-    if (!isConnected && hasSpokenOnce) {
+    if (isConnected) {
+      setIsImmersive(false);
+    } else if (hasSpokenOnce) {
       setIsImmersive(true);
     }
   }, [isConnected, hasSpokenOnce]);
@@ -192,7 +196,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         <div
           onClick={() => { if (hasSpokenOnce) setIsImmersive(prev => !prev); }}
           className={`absolute z-20 transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
-            ${hasSpokenOnce && !isImmersive
+            ${hasSpokenOnce && isConnected && !isImmersive
               ? 'top-0 right-0 translate-x-0 translate-y-0 scale-[0.25] origin-top-right opacity-80'
               : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
             }
