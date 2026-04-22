@@ -90,6 +90,101 @@ npx vercel --prod --yes
 
 ---
 
+## Correções de Fluxo de Voz e UX Conversacional — 22/abr/2026
+
+Sessão focada em resolver três categorias de problemas na experiência de voz da Nadia Mobile (`nadia-mobile/0.2`): truncamento de áudio por eco, prompt engineering para fluxo conversacional, e bugs visuais de transcrição/UI.
+
+### 1. Truncamento de Voz por Echo Cancellation (Half-Duplex Fix)
+
+**Problema:** A Nadia começava a responder, dizia "um instante", buscava os dados, mas a voz era cortada abruptamente no meio da resposta. O status ficava preso em "ouvindo" e a transcrição parava.
+
+**Causa raiz:** O áudio da resposta da Nadia saía pelo alto-falante do celular e era captado pelo microfone do próprio dispositivo. O Gemini Live API possui um sistema de **Barge-in** (interrupção) muito sensível — ao "ouvir" qualquer som enquanto fala, ele envia um evento `interrupted: true` que cancela imediatamente o áudio em curso, achando que o usuário o interrompeu. O resultado era uma fala truncada e fragmentada.
+
+**Solução:** Implementamos um **modo Half-Duplex (Walkie-Talkie)** no `useLiveConnection.ts`:
+- Adicionado `isSpeakingRef = useRef<boolean>(false)` sincronizado com `setIsSpeaking`.
+- No `onaudioprocess`, adicionada a guarda `if (isSpeakingRef.current) return;` — enquanto a IA estiver falando, o envio de dados do microfone para a API é completamente bloqueado.
+- Quando a IA termina de falar, o microfone é religado automaticamente.
+
+**Tentativa que deu errado:** Inicialmente, o `isSpeakingRef.current = false` estava **dentro** do `setTimeout(2500)` (o debounce visual que impede a animação de piscar). Isso significava que, após a IA parar de falar, o microfone ficava **mutado por 2.5 segundos extras**. O usuário respondia "Sim" imediatamente mas o áudio era descartado — o Gemini nunca recebia a resposta.
+
+**Solução definitiva:** Separamos os dois comportamentos:
+- `isSpeakingRef.current = false` → executa **instantaneamente** quando o último buffer de áudio termina de tocar (desmuta o mic)
+- `setIsSpeaking(false)` → continua com debounce de 2.5s (apenas para a animação visual)
+
+**Regra:** Em manipuladores de áudio com dependência temporal, sempre separar sinais de controle funcional (mic mute) de sinais visuais (animação). O visual pode ter debounce; o funcional deve ser imediato.
+
+### 2. Prompt Engineering: Eliminação do "Atropelamento" e Restauração do Filler
+
+**Problema 1 (Atropelamento):** Após responder com o resumo macro e perguntar "Deseja que eu detalhe?", a Nadia não esperava o "Sim" e disparava imediatamente a ferramenta de detalhamento, falando por cima de si mesma.
+
+**Causa:** O modelo `gemini-2.5-flash-native-audio-preview` é extremamente proativo (temperature alta implícita). Ao terminar a pergunta de ancoragem, ele mesmo deduzia que o usuário "provavelmente quer saber mais" e disparava a tool call sem aguardar confirmação verbal.
+
+**Solução:** Inserida regra severa na `SYSTEM_INSTRUCTION` (via `useLiveConnection.ts`):
+```
+ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE.
+É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala.
+Espere o usuário responder "Sim".
+NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.
+```
+
+**Problema 2 (Filler silenciado):** A Nadia parou de dizer "Um instante, vou buscar os dados..." antes de acionar a ferramenta.
+
+**Causa:** Na tentativa de blindar o prompt contra atropelamento, inserimos uma regra excessivamente agressiva: `"TERMINANTEMENTE PROIBIDO começar a responder a pergunta ou despejar conhecimento genérico"`. Isso "assustou" o modelo a ponto dele não dizer **absolutamente nada** antes da tool call — nem a frase preenchedora.
+
+**Solução:** Removida a regra de "PROIBIÇÃO ABSOLUTA" e substituída por uma instrução mais suave e diretiva:
+```
+Se você precisar consultar a base de dados do PIESP, você OBRIGATORIAMENTE deve avisar
+o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CURTA
+(ex: "Um instante", "Vou buscar os dados..."). Fale apenas essa frase curta e acione a ferramenta.
+```
+
+**Lição aprendida:** Prompt engineering para modelos de voz nativa exige dosagem precisa. Instruções em tom de "PROIBIÇÃO ABSOLUTA" podem causar efeitos colaterais piores que o problema original — o modelo pode se calar completamente em vez de moderar. Preferir instruções **afirmativas e específicas** ("faça X") a proibições genéricas ("NUNCA faça Y").
+
+### 3. Auto-scroll Travado no iOS Safari
+
+**Problema:** A transcrição parava de rolar automaticamente após um determinado número de linhas. O texto continuava sendo gerado (o áudio seguia), mas o container não rolava — o usuário tinha que arrastar manualmente para ver o texto novo.
+
+**Causa:** O `scrollIntoView({ behavior: 'auto', block: 'end' })` **não funciona de forma confiável** em containers com `position: absolute` no Safari/WebKit mobile. O motor do navegador ignora silenciosamente o pedido de scroll em certas geometrias de layout.
+
+**Tentativa anterior (que funcionava parcialmente):** Na sessão de 20/abr, tínhamos substituído `scrollTop` forçado pelo `scrollIntoView` com elemento âncora. Isso melhorou o conflito com o WebKit para scrolls curtos, mas falhou em transcrições longas.
+
+**Solução definitiva:** Revertemos para `el.scrollTop = el.scrollHeight` direto — a forma mais primitiva e segura de forçar scroll — mas mantendo o Smart Scroll (checagem `isNearBottom < 100px`). O `scrollIntoView` foi removido completamente.
+
+**Regra:** Em iOS Safari com containers `position: absolute`, sempre usar `scrollTop = scrollHeight`. Nunca confiar em `scrollIntoView` para scroll automático contínuo.
+
+### 4. Texto Persistente Após Encerramento da Conversa
+
+**Problema:** Ao encerrar a conversa, a esfera voltava ao centro mas o texto da transcrição ficava visível atrás dela, criando uma sobreposição visual desagradável.
+
+**Causa (camada 1 — Transcrição):** O container de transcrição tinha condição `(isConnected && !isImmersive) || (!isConnected && hasTranscript)` — a segunda parte mantinha o texto visível após desconexão. Além disso, a transição de fade era de 1000ms, deixando o texto parcialmente visível durante a animação.
+
+**Solução (camada 1):** Revertido para `isConnected && !isImmersive` (oculta ao desconectar). Adicionada limpeza instantânea do DOM: `transcriptTextRef.current.textContent = ''` no `useEffect` de desconexão. Fade-out acelerado para 200ms (era 1000ms).
+
+**Causa (camada 2 — Status "Pronta para conversar"):** Mesmo após ocultar a transcrição, o texto **"Pronta para conversar"** dos controles inferiores continuava visível atrás da esfera centralizada. A esfera não cobre 100% da viewport, então fragmentos do texto ("Pron..." e "...rsar") ficavam visíveis nas bordas.
+
+**Solução (camada 2):** Condicional no status: quando `hasTranscript` é `true` e `!isConnected`, o status mostra string vazia em vez de "Pronta para conversar".
+
+**Lição aprendida:** Bugs visuais de sobreposição em mobile têm múltiplas camadas. Resolver a camada óbvia (transcrição) pode revelar uma camada oculta (texto de status) que usa z-index diferente. Sempre testar com screenshot real do device.
+
+### 5. Botão "Salvar Conversa" Sobreposto ao Botão de Voz
+
+**Problema:** O botão "Salvar Conversa" usava `position: absolute; bottom-6; left-6` e ficava sobreposto ao botão de microfone no mobile.
+
+**Solução:** Movido para dentro do fluxo flex dos controles inferiores, renderizado condicionalmente (`!isConnected && hasTranscript`) com animação `fade-in slide-in-from-bottom-4`. Agora aparece centralizado abaixo do botão de voz, sem sobreposição.
+
+### Arquivos Modificados
+- `hooks/useLiveConnection.ts` — Half-duplex mic mute, prompt engineering refinado
+- `components/VoiceView.tsx` — Auto-scroll iOS, cleanup de transcrição, reposição do botão download, ocultação de status text
+
+### Commits (branch `nadia-mobile/0.2`)
+1. `fix(voice): desativa barge-in mutando mic enquanto a IA fala`
+2. `fix(voice): desmuta mic instantaneamente ao fim da fala da IA`
+3. `fix(voice): corrige auto-scroll iOS, esconde texto ao desconectar, reposiciona botão download`
+4. `fix(voice): limpa texto do DOM instantaneamente ao desconectar e acelera fade-out para 200ms`
+5. `fix(voice): esconde texto 'Pronta para conversar' após sessão`
+
+---
+
 ## Correções de Estabilidade — 20/abr/2026
 
 Dois bugs identificados em revisão de código da `nadia-mobile/0.2` e corrigidos cirurgicamente, sem alterar nenhum comportamento funcional existente.
