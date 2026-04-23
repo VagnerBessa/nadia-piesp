@@ -111,6 +111,11 @@ Sessão focada em resolver três categorias de problemas na experiência de voz 
 - `isSpeakingRef.current = false` → executa **instantaneamente** quando o último buffer de áudio termina de tocar (desmuta o mic)
 - `setIsSpeaking(false)` → continua com debounce de 2.5s (apenas para a animação visual)
 
+3. **Prompt Engineering de Fluxo (Naturalidade):**
+    *   **Trava de Progressive Disclosure:** Impede que a IA dispare ferramentas ou detalhes exaustivos sem a confirmação explícita do usuário (ex: "Deseja que eu detalhe essas empresas?").
+    *   **Prevenção de Saudações Repetitivas:** Implementada lógica no prompt/contexto para evitar que a Nadia se apresente formalmente em cada nova chamada de uma mesma sessão, tornando o início da conversa direto.
+    *   **Restauração do Filler:** Recuperada a frase de preenchimento ("Um instante, vou pesquisar...") que havia sido silenciada por restrições excessivas.
+
 **Regra:** Em manipuladores de áudio com dependência temporal, sempre separar sinais de controle funcional (mic mute) de sinais visuais (animação). O visual pode ter debounce; o funcional deve ser imediato.
 
 ### 2. Prompt Engineering: Eliminação do "Atropelamento" e Restauração do Filler

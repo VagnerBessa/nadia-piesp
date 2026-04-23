@@ -79,3 +79,23 @@ O problema técnico era simples: o áudio da Nadia saía pelo alto-falante do ce
 4. **O "Half-Duplex Humano":** A solução final — mutar o mic enquanto a IA fala e reabrir instantaneamente quando ela para — é um padrão que existe há décadas em rádios e walkie-talkies. É curioso que a tecnologia mais avançada de IA generativa (um modelo multimodal de voz nativa rodando em cloud) precisou ser contida pela técnica mais antiga de telecomunicações. Às vezes, a inovação não está em inventar algo novo, mas em saber quando aplicar o que já existe.
 
 5. **O Coração de Áudio (WebSocket Keepalive):** Descobrimos da pior maneira que o Gemini Live API possui uma dependência silenciosa: ele precisa receber pacotes de áudio constantemente para manter o WebSocket vivo. Quando tentamos mutar o microfone durante o processamento de ferramentas (um intervalo de ~2.5 segundos onde a IA está esperando dados locais), a conexão caiu instantaneamente. A razão é elegante: num protocolo bidirecional de áudio em tempo real, o silêncio absoluto é indistinguível de uma queda de conexão. O fluxo de ruído ambiente funciona como o batimento cardíaco de um paciente no monitor — não é o conteúdo que importa (o ruído não contém informação útil), é a prova de vida. A lição transcende o técnico: em sistemas distribuídos de tempo real, o "lixo" (ruído de fundo) pode ser mais importante que o "sinal" (a voz do usuário) quando se trata de manter a infraestrutura operacional.
+
+---
+
+### Comunicado Oficial — Nadia-PIESP Mobile v0.2
+**Data:** 23 de abril de 2026
+
+**Texto de Release (Style: Google):**
+
+#### Nadia-PIESP Mobile v0.2: Uma nova experiência em análise de dados conversacionais
+
+Estamos lançando a versão 0.2 da Nadia Mobile, trazendo avanços fundamentais em estabilidade, inteligência de diálogo e precisão analítica. Esta atualização refina a forma como os dados do PIESP são acessados e apresentados, garantindo uma interação mais fluida e profissional.
+
+**Destaques da Versão:**
+*   **Interação de voz sem interrupções:** Novo sistema de processamento de áudio que elimina o feedback acústico e garante que a Nadia conclua suas respostas sem interferências externas.
+*   **Continuidade e agilidade no atendimento:** Memória de contexto para sessões recorrentes, evitando apresentações redundantes a cada nova chamada.
+*   **Diálogo estruturado e intuitivo:** Implementação de desocultamento progressivo, priorizando visões macro e aguardando confirmações do usuário.
+*   **Performance otimizada:** Refino na renderização de texto e rolagem para estabilidade em navegadores Safari e iOS.
+*   **Inteligência de busca aprimorada:** Mapeamento lexical profundo integrando a classificação CNAE às consultas.
+*   **Registro e portabilidade:** Exportação da transcrição completa da conversa para documentação e compartilhamento.
+*   **Privacidade e controle de áudio:** Encerramento ativo da captação do microfone ao final de cada sessão, garantindo a privacidade do usuário após a conclusão do diálogo.
