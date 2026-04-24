@@ -233,7 +233,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
       
       if (invInicio === 0) {
         match = false;
-      } else if (invInicio > reqFim || invFim < reqInicio) {
+      } else if (invInicio < reqInicio || invFim > reqFim) {
         match = false;
       }
     }
@@ -358,7 +358,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
       }
       
       if (invInicio === 0) continue;
-      if (invInicio > reqFim || invFim < reqInicio) continue;
+      if (invInicio < reqInicio || invFim > reqFim) continue;
     }
 
     resultados.push({
@@ -582,7 +582,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
       
       if (invInicio === 0) {
         match = false;
-      } else if (invInicio > reqFim || invFim < reqInicio) {
+      } else if (invInicio < reqInicio || invFim > reqFim) {
         match = false;
       }
     }

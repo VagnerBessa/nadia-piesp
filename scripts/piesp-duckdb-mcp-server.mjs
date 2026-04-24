@@ -44,13 +44,21 @@ function normalizarRegiao(texto = '') {
     .trim();
 }
 
-async function consultarProjetosPiesp({ ano, municipio, regiao, setor, termo_busca }) {
+async function consultarProjetosPiesp({ ano, ano_inicio, ano_fim, municipio, regiao, setor, termo_busca }) {
   let sql = `SELECT * FROM piesp WHERE fonte = 'COM_VALOR'`;
   const params = [];
 
   if (ano) {
     sql += ` AND anuncio_ano = ?`;
     params.push(parseInt(ano));
+  }
+  if (ano_inicio) {
+    sql += ` AND investimento_ano_inicio >= ?`;
+    params.push(parseInt(ano_inicio));
+  }
+  if (ano_fim) {
+    sql += ` AND investimento_ano_fim <= ? AND investimento_ano_fim IS NOT NULL`;
+    params.push(parseInt(ano_fim));
   }
   if (municipio) {
     sql += ` AND lower(municipio) LIKE ?`;
@@ -100,13 +108,21 @@ async function consultarProjetosPiesp({ ano, municipio, regiao, setor, termo_bus
   };
 }
 
-async function consultarAnunciosSemValor({ ano, municipio, termo_busca }) {
+async function consultarAnunciosSemValor({ ano, ano_inicio, ano_fim, municipio, termo_busca }) {
   let sql = `SELECT * FROM piesp WHERE fonte = 'SEM_VALOR'`;
   const params = [];
 
   if (ano) {
     sql += ` AND anuncio_ano = ?`;
     params.push(parseInt(ano));
+  }
+  if (ano_inicio) {
+    sql += ` AND investimento_ano_inicio >= ?`;
+    params.push(parseInt(ano_inicio));
+  }
+  if (ano_fim) {
+    sql += ` AND investimento_ano_fim <= ? AND investimento_ano_fim IS NOT NULL`;
+    params.push(parseInt(ano_fim));
   }
   if (municipio) {
     sql += ` AND lower(municipio) LIKE ?`;
@@ -140,7 +156,7 @@ async function consultarAnunciosSemValor({ ano, municipio, termo_busca }) {
   };
 }
 
-async function filtrarParaRelatorio({ setor, regiao, ano, tipo, municipio, termo_busca }) {
+async function filtrarParaRelatorio({ setor, regiao, ano, ano_inicio, ano_fim, tipo, municipio, termo_busca }) {
   let where = `WHERE fonte = 'COM_VALOR'`;
   const params = [];
 
@@ -159,6 +175,16 @@ async function filtrarParaRelatorio({ setor, regiao, ano, tipo, municipio, termo
   };
 
   addFilter('anuncio_ano', ano);
+  
+  if (ano_inicio) {
+    where += ` AND investimento_ano_inicio >= ?`;
+    params.push(parseInt(ano_inicio));
+  }
+  if (ano_fim) {
+    where += ` AND investimento_ano_fim <= ? AND investimento_ano_fim IS NOT NULL`;
+    params.push(parseInt(ano_fim));
+  }
+
   addFilter('setor_desc', setor);
   addFilter('tipo', tipo);
   addFilter('municipio', municipio, false);
