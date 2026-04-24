@@ -102,7 +102,7 @@ Você pode usar qualquer combinação dos seguintes tipos de seção:
    → Ideal para top 5-10 empresas ou municípios
 
 4. "tabela" — tabela detalhada de projetos
-   { "tipo": "tabela", "titulo": "opcional", "data_source": "projetos", "colunas": ["Empresa", "Município", "Setor", "Ano", "Valor"] }
+   { "tipo": "tabela", "titulo": "opcional", "data_source": "projetos", "colunas": ["Empresa", "Município", "Setor", "Período", "Valor"] }
 
 5. "texto" — análise narrativa interpretativa
    { "tipo": "texto", "conteudo": "parágrafos separados por \\n\\n" }
@@ -278,10 +278,10 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
           } else {
             sec.items = [];
           }
-        } else if (sec.tipo === 'tabela' && sec.data_source === 'projetos') {
+        } else if (sec.tipo === 'tabela') {
           sec.linhas = resumo.projetos.slice(0, 10).map((p: any) => {
-            const periodo = p.ano_inicio ? `${p.ano_inicio}-${p.ano_fim || '...'}` : p.ano;
-            return [p.empresa, p.municipio, p.setor, periodo, `R$ ${p.valor_milhoes_reais} mi`];
+            const periodoDisplay = p.periodo ? p.periodo : p.ano;
+            return [p.empresa, p.municipio, p.setor, periodoDisplay, `R$ ${p.valor_milhoes_reais} mi`];
           });
           if (sec.colunas && sec.colunas.length > 3) {
             sec.colunas[3] = 'Período'; // Sobrescreve 'Ano' por 'Período' dinamicamente

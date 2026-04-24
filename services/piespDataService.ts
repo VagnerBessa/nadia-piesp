@@ -398,8 +398,13 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
 
   function agruparAno() {
     const map = new Map<string, { valor: number; count: number }>();
+    const isPeriodo = !!(filtro.ano_inicio || filtro.ano_fim);
     for (const r of resultados) {
-      const key = r.ano as string;
+      let key = r.ano as string;
+      if (isPeriodo && r.periodo) {
+        const parts = r.periodo.split('-');
+        if (parts[0]) key = parts[0];
+      }
       if (!key) continue;
       const existing = map.get(key) || { valor: 0, count: 0 };
       existing.valor += limpaValor(r.valor_milhoes_reais);
