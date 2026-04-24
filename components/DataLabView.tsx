@@ -33,9 +33,13 @@ Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto a
   "municipio": "nome do município específico se mencionado, senão omita",
   "setor": "um de: Agropecuária, Comércio, Indústria, Infraestrutura, Serviços — apenas se mencionado",
   "regiao": "nome EXATO da região, copiado da lista abaixo — apenas se o usuário mencionar uma região, senão omita",
-  "ano": "ano com 4 dígitos se mencionado, senão omita",
+  "ano": ["ano com 4 dígitos se mencionado, senão omita o array inteiro"],
+  "ano_inicio": "ano com 4 dígitos se for mencionado um PERÍODO de execução, senão omita",
+  "ano_fim": "ano com 4 dígitos se for mencionado um PERÍODO de execução, senão omita",
   "termo_busca": "palavra-chave temática (ex: 'energia', 'automóvel', 'data center') se a análise for sobre tema específico, senão omita"
 }
+
+Atenção: Não confunda 'ano de anúncio' (filtro 'ano') com 'período de execução' (filtros 'ano_inicio' e 'ano_fim'). Se o usuário pedir 'investimentos que serão feitos entre 2025 e 2030' ou 'a partir de 2025', use ano_inicio e ano_fim, e OMITA o filtro 'ano'.
 
 Regiões válidas na base (usar o nome exato): ${regioesList}
 

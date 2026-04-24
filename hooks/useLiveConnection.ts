@@ -369,7 +369,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       ano: { type: Type.STRING, description: 'Ano de anúncio/registro do investimento. Não confunda com o período de execução. Para buscas de período ("entre 2026 e 2030"), use ano_inicio e ano_fim.' },
                       ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
                       ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+                      regiao: { type: Type.STRING, description: 'Região administrativa. Ex: "Região Metropolitana de São Paulo", "Região Administrativa de Campinas".' },
+                      setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
                     }
                   }
@@ -383,7 +385,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       ano: { type: Type.STRING, description: 'O ano do anúncio/registro do investimento, ex: "2026"' },
                       ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
                       ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+                      regiao: { type: Type.STRING, description: 'Região administrativa. Ex: "Região Metropolitana de São Paulo", "Região Administrativa de Campinas".' },
+                      setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
                     }
                   }
