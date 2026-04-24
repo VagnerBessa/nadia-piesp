@@ -522,8 +522,9 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
 
   function agruparAno() {
     const map = new Map<string, { valor: number; count: number }>();
+    const isPeriodo = !!(filtro.ano_inicio || filtro.ano_fim);
     for (const r of resultados) {
-      const key = r.ano as string;
+      const key = (isPeriodo && r.ano_inicio) ? r.ano_inicio.toString() : (r.ano as string);
       if (!key) continue;
       const existing = map.get(key) || { valor: 0, count: 0 };
       existing.valor += limpaValor(r.valor_milhoes_reais);

@@ -279,9 +279,13 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
             sec.items = [];
           }
         } else if (sec.tipo === 'tabela' && sec.data_source === 'projetos') {
-          sec.linhas = resumo.projetos.slice(0, 10).map((p: any) => [
-            p.empresa, p.municipio, p.setor, p.ano, `R$ ${p.valor_milhoes_reais} mi`
-          ]);
+          sec.linhas = resumo.projetos.slice(0, 10).map((p: any) => {
+            const periodo = p.ano_inicio ? `${p.ano_inicio}-${p.ano_fim || '...'}` : p.ano;
+            return [p.empresa, p.municipio, p.setor, periodo, `R$ ${p.valor_milhoes_reais} mi`];
+          });
+          if (sec.colunas && sec.colunas.length > 3) {
+            sec.colunas[3] = 'Período'; // Sobrescreve 'Ano' por 'Período' dinamicamente
+          }
         }
       });
 
