@@ -22,7 +22,7 @@ export interface Message {
 // Tipo local para o histórico compatível com a API
 interface HistoryItem {
   role: 'user' | 'model';
-  parts: { text: string }[];
+  parts: any[];
 }
 
 export type ResponseMode = 'fast' | 'complete';
@@ -32,15 +32,8 @@ const initialMessage: Message = {
     text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
 };
 
-// Carregado uma vez — os metadados não mudam durante a sessão
-const _metadados = getMetadados();
-
-// Ferramentas PIESP: function calling para dados estruturados
-// (não pode ser combinado com googleSearch na mesma chamada)
-// Inclui os valores reais de regiões para que o Gemini não precise adivinhar.
-const regiaoDesc = _metadados.regioes.length > 0
-  ? `Região administrativa do Estado de SP. Valores válidos: ${_metadados.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
-  : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+// A descrição da região agora é estática porque os metadados são carregados de forma assíncrona.
+const regiaoDesc = 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo" ou "Campinas". Usar quando o usuário perguntar por região, não por município específico.';
 
 const piespTools = [
   {
@@ -56,8 +49,8 @@ const piespTools = [
             ano_fim: { type: Type.STRING, description: 'Ano de fim do período de execução do investimento (ex: "2030"). Use para buscas por período ("investimentos previstos até Y").' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Use APENAS estes valores — não invente variações.' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade"). NÃO usar para setores — use o parâmetro setor.' }
+            setor: { type: Type.STRING, description: 'Macro-setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". NUNCA invente variações. Se for um sub-setor (ex: "saúde", "tecnologia"), deixe isso vazio e use termo_busca.' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição, CNAE ou sub-setor (ex: "saúde", "tecnologia", "carro elétrico"). Use isso sempre que o usuário referir-se a uma área de negócio que não seja um dos 5 macro-setores.' }
           }
         }
       },
@@ -72,8 +65,8 @@ const piespTools = [
             ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
             regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento. NÃO usar para setores.' }
+            setor: { type: Type.STRING, description: 'Macro-setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". NUNCA invente variações. Se for um sub-setor (ex: "saúde", "tecnologia"), deixe isso vazio e use termo_busca.' },
+            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição, CNAE ou sub-setor (ex: "saúde", "tecnologia", "carro elétrico"). Use isso sempre que o usuário referir-se a uma área de negócio que não seja um dos 5 macro-setores.' }
           }
         }
       }
@@ -88,24 +81,24 @@ const searchTools = [
 ];
 
 // Executa a ferramenta localmente e retorna o resultado
-function executarFerramenta(nome: string, args: any): any {
+async function executarFerramenta(nome: string, args: any): Promise<any> {
   if (nome === 'consultar_projetos_piesp') {
-    let resultados = consultarPiespData({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    let resultados = await consultarPiespData({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
     // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
-    if (resultados.total === 0 && args.ano) {
-      const semAno = consultarPiespData({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total > 0) resultados = semAno;
+    if (resultados.metadados.total_projetos === 0 && args.ano) {
+      const semAno = await consultarPiespData({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.metadados.total_projetos > 0) resultados = semAno;
     }
-    return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+    return { sucesso: true, total_investimentos: resultados.metadados.total_investimento_milhoes, projetos: resultados.investimentos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    let resultados = consultarAnunciosSemValor({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    if (resultados.total === 0 && args.ano) {
-      const semAno = consultarAnunciosSemValor({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total > 0) resultados = semAno;
+    let resultados = await consultarAnunciosSemValor({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    if (resultados.length === 0 && args.ano) {
+      const semAno = await consultarAnunciosSemValor({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.length > 0) resultados = semAno;
     }
-    return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+    return { sucesso: true, total_projetos: resultados.length, projetos: resultados };
   }
   return { error: 'Ferramenta não reconhecida' };
 }
@@ -153,7 +146,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
     setMessages(prev => [...prev, userMessage]);
 
     // Variáveis declaradas fora do try para serem acessíveis no catch (fallback OpenRouter)
-    const contents: HistoryItem[] = [
+    let currentContents: HistoryItem[] = [
       ...historyRef.current,
       { role: 'user', parts: [{ text: text }] }
     ];
@@ -192,7 +185,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       // Primeira chamada: envia a mensagem com as ferramentas selecionadas (com retry automático para 503)
       let response = await withRetry(() => ai.models.generateContent({
         model: modelName,
-        contents: contents,
+        contents: currentContents,
         config: {
           systemInstruction: systemInstructionWithSkill,
           tools: ferramentasAtivas,
@@ -215,11 +208,11 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
         const fcall = functionCallPart.functionCall;
 
         // Executa a ferramenta localmente
-        const resultado = executarFerramenta(fcall.name!, fcall.args || {});
+        const resultado = await executarFerramenta(fcall.name!, fcall.args || {});
 
         // Monta o histórico com a resposta da ferramenta
-        const updatedContents = [
-          ...contents,
+        currentContents = [
+          ...currentContents,
           { role: 'model' as const, parts: [{ functionCall: { name: fcall.name!, args: fcall.args || {} } }] },
           { role: 'user' as const, parts: [{ functionResponse: { name: fcall.name!, response: resultado } }] }
         ];
@@ -227,7 +220,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
         // Segunda chamada: usa as mesmas ferramentas ativas (com retry automático para 503)
         response = await withRetry(() => ai.models.generateContent({
           model: modelName,
-          contents: updatedContents,
+          contents: currentContents,
           config: {
             systemInstruction: systemInstructionWithSkill,
             tools: ferramentasAtivas,
@@ -261,7 +254,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       };
 
       // Atualiza o histórico com a resposta do modelo para as próximas interações
-      historyRef.current = [...contents, { role: 'model', parts: [{ text: responseText }] }];
+      historyRef.current = [...currentContents, { role: 'model', parts: [{ text: responseText }] }];
       
       // Atualiza a UI com a resposta
       setMessages(prev => [...prev, modelMessage]);
@@ -277,13 +270,13 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
         console.warn('🔀 Gemini 503 persistente — ativando fallback OpenRouter...');
         try {
           const result = await callOpenRouter(
-            contents,
+            currentContents,
             systemInstructionWithSkill,
             ferramentasAtivas as any,
             executarFerramenta
           );
           const modelMessage: Message = { role: 'model', text: result.text };
-          historyRef.current = [...contents, { role: 'model', parts: [{ text: result.text }] }];
+          historyRef.current = [...currentContents, { role: 'model', parts: [{ text: result.text }] }];
           setMessages(prev => [...prev, modelMessage]);
           return; // sucesso via fallback — não exibe erro
         } catch (orError: any) {
