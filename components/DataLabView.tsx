@@ -33,13 +33,12 @@ Extraia os filtros de busca e retorne APENAS um objeto JSON válido, sem texto a
   "municipio": "nome do município específico se mencionado, senão omita",
   "setor": "um de: Agropecuária, Comércio, Indústria, Infraestrutura, Serviços — apenas se mencionado",
   "regiao": "nome EXATO da região, copiado da lista abaixo — apenas se o usuário mencionar uma região, senão omita",
-  "ano": ["ano com 4 dígitos se mencionado, senão omita o array inteiro"],
-  "ano_inicio": "ano com 4 dígitos se for mencionado um PERÍODO de execução, senão omita",
-  "ano_fim": "ano com 4 dígitos se for mencionado um PERÍODO de execução, senão omita",
+  "ano_inicio": "ano com 4 dígitos se o usuário mencionar o início da execução (ex: 'a partir de 2026', 'início em 2026' ou 'entre 2026 e 2030'), senão omita",
+  "ano_fim": "ano com 4 dígitos se o usuário mencionar o fim da execução (ex: 'até 2030', 'término em 2030' ou 'entre 2026 e 2030'), senão omita",
   "termo_busca": "palavra-chave temática (ex: 'energia', 'automóvel', 'data center') se a análise for sobre tema específico, senão omita"
 }
 
-Atenção: Não confunda 'ano de anúncio' (filtro 'ano') com 'período de execução' (filtros 'ano_inicio' e 'ano_fim'). Se o usuário pedir 'investimentos que serão feitos entre 2025 e 2030' ou 'a partir de 2025', use ano_inicio e ano_fim, e OMITA o filtro 'ano'.
+Atenção: Não confunda 'ano de anúncio' (filtro 'ano') com 'período de execução' (filtros 'ano_inicio' e 'ano_fim'). Se o usuário pedir 'investimentos que terão inicio em 2026 e término em 2030' ou 'a partir de 2025', preencha "ano_inicio" e "ano_fim", e DEIXE "ano" VAZIO.
 
 Regiões válidas na base (usar o nome exato): ${regioesList}
 
@@ -264,11 +263,16 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         } else if (sec.tipo === 'bar-list' && sec.data_source) {
           const ds = (resumo as any)[sec.data_source];
           if (Array.isArray(ds)) {
-            sec.items = ds.map((d: any) => ({
-               name: d.nome, 
-               value: d.valor, 
-               label: `R$ ${(d.valor / 1000).toFixed(1).replace('.', ',')} bi`
-            }));
+            sec.items = ds.map((d: any) => {
+               const nome = d.nome || d.empresa || 'Desconhecido';
+               const valStr = d.valor !== undefined ? d.valor : d.valor_milhoes_reais;
+               const valorNum = typeof valStr === 'number' ? valStr : parseFloat(String(valStr).replace(/\./g, '').replace(',', '.')) || 0;
+               return {
+                 name: nome, 
+                 value: valorNum, 
+                 label: `R$ ${(valorNum / 1000).toFixed(1).replace('.', ',')} bi`
+               };
+            }).slice(0, 15);
           } else {
             sec.items = [];
           }
