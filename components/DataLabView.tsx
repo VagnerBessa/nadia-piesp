@@ -45,12 +45,13 @@ Regiões válidas na base (usar o nome exato): ${regioesList}
 Omita campos não mencionados. Retorne apenas o JSON.`;
 }
 
-function buildDashboardPrompt(query: string, resumo: ResumoRelatorio): string {
+function buildDashboardPrompt(query: string, resumo: ResumoRelatorio, filtros: FiltroRelatorio): string {
   const totalBi = (resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',');
 
-  const projetosTexto = resumo.projetos.slice(0, 12).map((p, i) =>
-    `${i + 1}. ${p.empresa} | ${p.municipio} | ${p.setor} | ${p.ano} | R$ ${p.valor_milhoes_reais} mi`
-  ).join('\n');
+  const projetosTexto = resumo.projetos.slice(0, 12).map((p, i) => {
+    const periodo = p.ano_inicio ? `Execução: ${p.ano_inicio}-${p.ano_fim || '...'}` : `Anúncio: ${p.ano}`;
+    return `${i + 1}. ${p.empresa} | ${p.municipio} | ${p.setor} | ${periodo} | R$ ${p.valor_milhoes_reais} mi`;
+  }).join('\n');
 
   const porSetorTexto  = resumo.porSetor.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} proj)`).join(' | ');
   const porMunicipioTexto = resumo.porMunicipio.slice(0, 8).map(m => `${m.nome}: R$ ${m.valor} mi (${m.count} proj)`).join(' | ');
@@ -61,6 +62,7 @@ function buildDashboardPrompt(query: string, resumo: ResumoRelatorio): string {
 "${query}"
 
 DADOS DO PIESP FILTRADOS:
+- Filtros Ativos: ${JSON.stringify(filtros)}
 - Total de projetos: ${resumo.total}
 - Valor total: R$ ${resumo.totalMilhoes} mi (R$ ${totalBi} bi)
 - Por setor: ${porSetorTexto || '(sem dados)'}
@@ -232,7 +234,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       // ── Passo 3: gera o json-dashboard ──
       setLoadingStep(`Analisando ${resumo.total} projetos (R$ ${(resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi)...`);
       const dashResponse = await generateWithFallback({
-        prompt: buildDashboardPrompt(query, resumo),
+        prompt: buildDashboardPrompt(query, resumo, filtros),
         thinkingBudget: 1024,
       });
 
