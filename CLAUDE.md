@@ -915,3 +915,28 @@ No Oposto, a skill hierárquica `datalab_design.md` é **procedimental** — con
 ### Defesa Dupla de Renderização (Prompt + Frontend Guardrails)
 O prompt orienta a modelo: "nunca gere mais de 5 fatias de pizza". No entanto, LLMs podem quebrar diretrizes devido a anomalias de temperatura. 
 Por causa disso, o nosso `capPieData` na UI engole e reagrupa magicamente qualquer variável que passar de 5 em uma sub-fatia "Outros", sem que o usuário sinta. O Prompt define a regra social, mas é o frontend que blinda matematicamente o sistema contra LLMs voláteis.
+
+### Mudança para DuckDB-WASM e Abandono do CSV (24/04/2026)
+- **Problema:** O parser CSV local estava sofrendo com delimitações falhas (ponto e vírgula contidos nos campos de descrição textual), causando corrupção de dados e inconsistências nas colunas. Isso afetava a integridade da UI do Dashboard e da IA (geração de respostas alucinadas com descrições onde deviam haver CNAEs).
+- **Solução Implementada:** Todo o backend web da PIESP foi refatorado para utilizar `DuckDB-WASM` carregando um arquivo `piesp.parquet` diretamente na memória do navegador. 
+- **Benefícios:** Elimina 100% dos erros de parsing. Utiliza tipagem de dados SQL garantindo queries eficientes `(SELECT * FROM piesp WHERE...)`. O motor é executado de forma assíncrona, não travando a UI.
+- **Reflexo no Código:** `piespDataService.ts` centraliza a chamada SQL assíncrona com `db.all()`. O uso do `PIESP_DATA.split('\n')` foi descontinuado. Os arrays retornados `projetos`, `setores`, `municipios` etc. foram normalizados para um objeto `ResumoRelatorio` coerente em toda a aplicação (`DataLabView`, `ExplorarDadosView`, `PiespDashboardView`, `VoiceView` e `PerfilEmpresaView`).
+
+
+## Migração DuckDB-WASM e Estabilização da IA — 24/abr/2026
+
+### Migração do Engine (CSV para Parquet + DuckDB-WASM)
+O sistema foi refatorado para utilizar o DuckDB-WASM rodando diretamente no browser, consumindo o arquivo `piesp.parquet`. Isso eliminou travamentos do Event Loop que ocorriam durante o parseamento síncrono do CSV antigo e resolveu erros de parsing causados por ponto e vírgula na base.
+
+### Estabilização de Buscas e Inteligência Artificial
+**1. Tratamento de Acentos no DuckDB:**
+A função `LOWER()` do DuckDB é sensível a acentos, o que impedia a IA de encontrar termos como "saúde" se a query não fosse idêntica ao banco. Foi implementada uma rotina em `piespDataService.ts` que normaliza o `termo_busca`, substituindo vogais acentuadas pelo caractere coringa `_` (SQL wildcard). Assim, `%sa_de%` captura tanto "saude" quanto "saúde".
+
+**2. Restrições Estritas de Setor no Prompt:**
+O LLM foi proibido de classificar sub-setores não mapeados (como "Saúde", "Tecnologia", etc.) dentro do argumento `setor`. O prompt do `useChat.ts` agora instrui a IA a direcionar todas as especificidades do negócio para o argumento `termo_busca`, limitando o `setor` exclusivamente às 5 categorias macro-oficiais da Seade.
+
+**3. Ampliação do Índice de Busca:**
+A query SQL no DuckDB agora utiliza `CONCAT_WS` integrando os campos de CNAE (`cnae_inv_2_desc`, `cnae_inv_descricao`, `cnae_empresa_descricao`) ao escopo de pesquisa de texto livre (`termo_busca`), aumentando radicalmente a precisão e taxa de acerto de buscas por nichos de mercado.
+
+**4. Dossiê de Empresa ("Dados não disponíveis"):**
+Para empresas oriundas da base "sem valor divulgado", a interface e o prompt em `PerfilEmpresaView.tsx` foram corrigidos. Em vez de exibir falsos investimentos de "R$ 0 milhões", o sistema agora identifica o agrupamento de valor zerado e informa visualmente (e textualmente para a IA) como "Não divulgado" / "Dados não disponíveis".
