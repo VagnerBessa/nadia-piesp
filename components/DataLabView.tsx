@@ -85,7 +85,7 @@ Você pode usar qualquer combinação dos seguintes tipos de seção:
    → Use tendencia "up" para crescimento, "down" para queda, omita se não aplicável
 
 2. "chart" — gráficos visuais (escolha o tipo mais adequado):
-   { "tipo": "chart", "chart": { "type": "TIPO", "title": "texto", "data": [{"name":"","value":0}] }}
+   { "tipo": "chart", "data_source": "porSetor|porRegiao|porAno|porMunicipio", "chart": { "type": "TIPO", "title": "texto" }}
 
    Tipos disponíveis:
    • "bar"            → barras verticais — ranking de setores, regiões, tipos
@@ -97,14 +97,11 @@ Você pode usar qualquer combinação dos seguintes tipos de seção:
                         (adicione campo "linha": número nos itens de data para a linha)
 
 3. "bar-list" — ranking textual com barra de proporção (sem eixos, mais limpo que chart)
-   { "tipo": "bar-list", "titulo": "opcional", "items": [
-       { "name": "texto", "value": 1500, "label": "R$ 1,5 bi" }
-   ]}
+   { "tipo": "bar-list", "titulo": "opcional", "data_source": "porSetor|porRegiao|porAno|porMunicipio" }
    → Ideal para top 5-10 empresas ou municípios
 
 4. "tabela" — tabela detalhada de projetos
-   { "tipo": "tabela", "titulo": "opcional",
-     "colunas": ["Col1","Col2"], "linhas": [["val","val"]] }
+   { "tipo": "tabela", "titulo": "opcional", "data_source": "projetos", "colunas": ["Empresa", "Município", "Setor", "Ano", "Valor"] }
 
 5. "texto" — análise narrativa interpretativa
    { "tipo": "texto", "conteudo": "parágrafos separados por \\n\\n" }
@@ -153,9 +150,9 @@ ${DESIGN_SKILL}
 ═══════════════════════════════════════════════════════
 REGRAS INVIOLÁVEIS DE SAÍDA
 - Retorne APENAS o bloco \`\`\`json-dashboard, sem texto fora dele
-- "value" nos dados de gráficos deve ser NÚMERO puro (sem R$, sem "mi", sem vírgula)
-- Use SOMENTE dados numéricos reais da seção de dados acima — nunca invente ou estime
-- O campo "label" no bar-list é o texto formatado exibido (ex: "R$ 2,1 bi")
+- NÃO GERE OS ARRAYS DE DADOS ("data", "items", "linhas"). Em vez disso, use APENAS a chave "data_source" indicando qual agrupamento o sistema deve injetar automaticamente.
+- O campo "valor" dos kpi-cards de totais deve usar a sintaxe "[INJETAR_TOTAL]" ou "[INJETAR_VALOR_BI]" para que o sistema preencha.
+- "texto" deve ser interpretativo e analítico, usando os totais fornecidos na seção acima.
 - "texto" deve ser interpretativo e analítico, não uma lista dos números já visíveis nos gráficos
 - Mínimo absoluto: 1 kpi-cards + 2 seções visuais (chart ou bar-list) + 1 texto
 
@@ -246,6 +243,41 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         setIsLoading(false);
         return;
       }
+
+      // ── Passo 4: Injeção determinística de dados (elimina alucinação) ──
+      parsed.secoes.forEach((sec: any) => {
+        if (sec.tipo === 'kpi-cards') {
+          sec.cards.forEach((card: any) => {
+            if (card.valor === '[INJETAR_TOTAL]' || (card.label && card.label.toLowerCase().includes('projeto'))) {
+              card.valor = resumo.total.toString();
+            } else if (card.valor === '[INJETAR_VALOR_BI]' || (card.label && card.label.toLowerCase().includes('investimento'))) {
+              card.valor = `R$ ${(resumo.totalMilhoes / 1000).toFixed(2).replace('.', ',')} bi`;
+            }
+          });
+        } else if (sec.tipo === 'chart' && sec.data_source) {
+          const ds = (resumo as any)[sec.data_source];
+          if (Array.isArray(ds)) {
+            sec.chart.data = ds.map((d: any) => ({ name: d.nome, value: d.valor }));
+          } else {
+            sec.chart.data = [];
+          }
+        } else if (sec.tipo === 'bar-list' && sec.data_source) {
+          const ds = (resumo as any)[sec.data_source];
+          if (Array.isArray(ds)) {
+            sec.items = ds.map((d: any) => ({
+               name: d.nome, 
+               value: d.valor, 
+               label: `R$ ${(d.valor / 1000).toFixed(1).replace('.', ',')} bi`
+            }));
+          } else {
+            sec.items = [];
+          }
+        } else if (sec.tipo === 'tabela' && sec.data_source === 'projetos') {
+          sec.linhas = resumo.projetos.slice(0, 10).map((p: any) => [
+            p.empresa, p.municipio, p.setor, p.ano, `R$ ${p.valor_milhoes_reais} mi`
+          ]);
+        }
+      });
 
       setDashboard(parsed);
       setQueryHistory(prev => [query, ...prev.slice(0, 4)]);
