@@ -22,6 +22,25 @@ function canonicalSetor(s: string): string | null {
   return null;
 }
 
+/**
+ * Faz o parse de uma linha de CSV delimitada por ponto e vírgula,
+ * respeitando os campos que estão entre aspas (ignorando ';' dentro deles).
+ */
+function parseCSVLine(line: string): string[] {
+  const cols = [];
+  let inQuotes = false;
+  let start = 0;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') inQuotes = !inQuotes;
+    else if (line[i] === ';' && !inQuotes) {
+      cols.push(line.substring(start, i).replace(/^"|"$/g, '').trim());
+      start = i + 1;
+    }
+  }
+  cols.push(line.substring(start).replace(/^"|"$/g, '').trim());
+  return cols;
+}
+
 const TIPOS_VALIDOS = new Set([
   'Implantação', 'Ampliação', 'Modernização', 'Ampliação/Modernização',
 ]);
@@ -203,7 +222,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   // A primeira linha é o cabeçalho
   // indices (piesp_confirmados_com_valor): 1=ano, 3=empresa_alvo, 5=reais, 7=municipio, 8=regiao, 9=descr_investimento, 10=setor
   for (let i = 1; i < linhas.length; i++) {
-    const colunas = linhas[i].split(';');
+    const colunas = parseCSVLine(linhas[i]);
     if (!linhaValida(colunas)) continue;
 
     const anoLinha = colunas[1]?.trim();
@@ -322,7 +341,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
   const resultados: ResumoRelatorio['projetos'] = [];
 
   for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(';');
+    const cols = parseCSVLine(linhas[i]);
     if (!linhaValida(cols)) continue;
 
     const anoLinha = (cols[1] || '').trim();
@@ -445,7 +464,7 @@ export function getMetadados(): { setores: string[]; regioes: string[]; anos: st
   const tipos = new Set<string>();
 
   for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(';');
+    const cols = parseCSVLine(linhas[i]);
     if (!linhaValida(cols)) continue;
 
     const setor = (cols[10] || '').trim();
@@ -472,7 +491,7 @@ export function getUniqueEmpresas(): string[] {
   const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
   const empresas = new Set<string>();
   for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(';');
+    const cols = parseCSVLine(linhas[i]);
     if (cols.length < 4) continue;
     const empresa = (cols[3] || '').trim();
     if (empresa && empresa !== 'Desconhecida') empresas.add(empresa);
@@ -486,7 +505,7 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
   const termo = nomeEmpresa.toLowerCase();
 
   for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(';');
+    const cols = parseCSVLine(linhas[i]);
     if (!linhaValida(cols)) continue;
 
     const empresaLinha = (cols[3] || '').trim();
@@ -559,7 +578,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   // A primeira linha é o cabeçalho
   // indices (piesp_confirmados_sem_valor): 1=ano, 3=empresa_alvo, 5=municipio, 7=descr_investimento, 8=setor_desc
   for (let i = 1; i < linhas.length; i++) {
-    const colunas = linhas[i].split(';');
+    const colunas = parseCSVLine(linhas[i]);
     if (colunas.length < 8) continue;
 
     const anoLinha = colunas[1]?.trim();
