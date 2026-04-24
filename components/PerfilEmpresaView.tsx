@@ -58,34 +58,40 @@ function injectInlineCitations(text: string, supports: any[], indexMap: Record<n
 }
 
 function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string {
-  const totalFormatado = piespData.totalMilhoes >= 1000
-    ? `R$ ${(piespData.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bilhões`
-    : `R$ ${piespData.totalMilhoes.toFixed(0)} milhões`;
+const totalFormatado = piespData.total_investimentos > 0
+    ? (piespData.total_investimentos >= 1000
+      ? `R$ ${(piespData.total_investimentos / 1000).toFixed(1).replace('.', ',')} bilhões`
+      : `R$ ${piespData.total_investimentos.toFixed(0)} milhões`)
+    : 'Dados não disponíveis';
 
   const projetosTexto = piespData.projetos.length > 0
-    ? piespData.projetos.map((p, i) =>
-        `${i + 1}. Ano ${p.ano} | ${p.municipio} (${p.regiao}) | Setor: ${p.setor} | Tipo: ${p.tipo || 'N/I'} | Valor: R$ ${p.valor_milhoes_reais} mi\n   Descrição: "${p.descricao}"`
-      ).join('\n\n')
+    ? piespData.projetos.map((p, i) => {
+        const val = p.valor_milhoes_reais > 0 ? `R$ ${p.valor_milhoes_reais} mi` : 'Não divulgado';
+        return `${i + 1}. Ano ${p.ano} | ${p.municipio} (${p.regiao}) | Setor: ${p.setor} | Tipo: ${p.tipo || 'N/I'} | Valor: ${val}\n   Descrição: "${p.descricao}"`;
+      }).join('\n\n')
     : 'Nenhum projeto com valor divulgado encontrado para essa empresa na base PIESP.';
 
-  const setoresTexto = piespData.porSetor.map(s =>
-    `- ${s.nome}: R$ ${s.valor} mi (${s.count} projeto${s.count > 1 ? 's' : ''})`
-  ).join('\n') || '—';
+  const setoresTexto = piespData.setores.map(s => {
+    const val = s.valor > 0 ? `R$ ${s.valor} mi` : 'Valor não divulgado';
+    return `- ${s.nome}: ${val} (${s.count} projeto${s.count > 1 ? 's' : ''})`;
+  }).join('\n') || '—';
 
-  const municipiosTexto = piespData.porMunicipio.map(m =>
-    `- ${m.nome}: R$ ${m.valor} mi`
-  ).join('\n') || '—';
+  const municipiosTexto = piespData.municipios.map(m => {
+    const val = m.valor > 0 ? `R$ ${m.valor} mi` : 'Valor não divulgado';
+    return `- ${m.nome}: ${val}`;
+  }).join('\n') || '—';
 
-  const porAnoTexto = piespData.porAno.map(a =>
-    `- ${a.nome}: R$ ${a.valor} mi (${a.count} projetos)`
-  ).join('\n') || '—';
+  const porAnoTexto = piespData.evolucao_anual.map(a => {
+    const val = a.valor > 0 ? `R$ ${a.valor} mi` : 'Valor não divulgado';
+    return `- ${a.nome}: ${val} (${a.count} projetos)`;
+  }).join('\n') || '—';
 
   return `Você é a Nadia, analista sênior de investimentos da Fundação Seade.
 
 O usuário solicitou um dossiê completo e aprofundado sobre: **"${empresa}"**
 
 DADOS INTERNOS DO PIESP — investimentos confirmados no Estado de SP:
-- Projetos registrados: ${piespData.total} | Valor total: ${totalFormatado}
+- Projetos registrados: ${piespData.total_projetos} | Valor total: ${totalFormatado}
 
 PROJETOS DETALHADOS:
 ${projetosTexto}
@@ -374,7 +380,11 @@ const DossieRenderer: React.FC<DossieRendererProps> = ({ content, sources }) => 
 };
 
 const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome }) => {
-  const todasEmpresas = useMemo(() => getUniqueEmpresas(), []);
+  const [todasEmpresas, setTodasEmpresas] = useState<string[]>([]);
+  
+  useEffect(() => {
+    getUniqueEmpresas().then(setTodasEmpresas).catch(console.error);
+  }, []);
 
   const [busca, setBusca] = useState('');
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
@@ -383,7 +393,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [empresaPesquisada, setEmpresaPesquisada] = useState<string | null>(null);
-  const [piespStats, setPiespStats] = useState<{ total: number; totalMilhoes: number } | null>(null);
+  const [piespStats, setPiespStats] = useState<{ total_projetos: number; total_investimentos: number } | null>(null);
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sugestoesRef = useRef<HTMLDivElement>(null);
@@ -423,8 +433,16 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
 
     try {
       // 1. Busca dados internos do PIESP
-      const piespData = buscarEmpresaNoPiesp(empresa);
-      setPiespStats({ total: piespData.total, totalMilhoes: piespData.totalMilhoes });
+      const piespData = await buscarEmpresaNoPiesp(empresa);
+      
+      if (piespData.total_projetos === 0) {
+        setDossie(null);
+        setError('Empresa não encontrada na base PIESP ou sem valores divulgados.');
+        setIsLoading(false);
+        return;
+      }
+
+      setPiespStats({ total_projetos: piespData.total_projetos, total_investimentos: piespData.total_investimentos });
 
       // 2. Monta o prompt combinado
       const prompt = buildDossiePrompt(empresa, piespData);
@@ -675,18 +693,18 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                   <div className="flex gap-4 flex-wrap">
                     <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                       <p className="text-xs text-slate-400">Projetos no PIESP</p>
-                      <p className="text-xl font-bold text-white">{piespStats.total}</p>
+                      <p className="text-xl font-bold text-white">{piespStats.total_projetos}</p>
                     </div>
-                    {piespStats.totalMilhoes > 0 && (
-                      <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                        <p className="text-xs text-slate-400">Valor total investido em SP</p>
-                        <p className="text-xl font-bold text-rose-400">
-                          {piespStats.totalMilhoes >= 1000
-                            ? `R$ ${(piespStats.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi`
-                            : `R$ ${piespStats.totalMilhoes.toFixed(0)} mi`}
-                        </p>
-                      </div>
-                    )}
+                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                      <p className="text-xs text-slate-400">Valor total investido em SP</p>
+                      <p className={`text-xl font-bold ${piespStats.total_investimentos > 0 ? 'text-rose-400' : 'text-slate-500 text-lg'}`}>
+                        {piespStats.total_investimentos > 0
+                          ? (piespStats.total_investimentos >= 1000
+                            ? `R$ ${(piespStats.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi`
+                            : `R$ ${piespStats.total_investimentos.toFixed(0)} mi`)
+                          : 'Não divulgado'}
+                      </p>
+                    </div>
                     <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                       <p className="text-xs text-slate-400">Empresa pesquisada</p>
                       <p className="text-base font-bold text-white truncate max-w-48">{empresaPesquisada}</p>
