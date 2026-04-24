@@ -51,7 +51,9 @@ const piespTools = [
         parameters: {
           type: Type.OBJECT,
           properties: {
-            ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+            ano: { type: Type.STRING, description: 'Ano de anúncio/registro. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período de execução. Nesses casos OMITA este campo completamente e use ano_inicio/ano_fim.' },
+            ano_inicio: { type: Type.STRING, description: 'Ano de início do período de execução do investimento (ex: "2026"). Use para buscas por período ("investimentos previstos entre X e Y", "começando em X").' },
+            ano_fim: { type: Type.STRING, description: 'Ano de fim do período de execução do investimento (ex: "2030"). Use para buscas por período ("investimentos previstos até Y").' },
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Use APENAS estes valores — não invente variações.' },
@@ -66,6 +68,8 @@ const piespTools = [
           type: Type.OBJECT,
           properties: {
             ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
+            ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
+            ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
@@ -86,19 +90,19 @@ const searchTools = [
 // Executa a ferramenta localmente e retorna o resultado
 function executarFerramenta(nome: string, args: any): any {
   if (nome === 'consultar_projetos_piesp') {
-    let resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    let resultados = consultarPiespData({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
     // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
     if (resultados.total === 0 && args.ano) {
-      const semAno = consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      const semAno = consultarPiespData({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
       if (semAno.total > 0) resultados = semAno;
     }
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    let resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    let resultados = consultarAnunciosSemValor({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     if (resultados.total === 0 && args.ano) {
-      const semAno = consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      const semAno = consultarAnunciosSemValor({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
       if (semAno.total > 0) resultados = semAno;
     }
     return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };

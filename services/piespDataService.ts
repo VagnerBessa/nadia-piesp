@@ -192,6 +192,8 @@ export interface FiltroPiesp {
   regiao?: string;
   setor?: string;
   termo_busca?: string;
+  ano_inicio?: string;
+  ano_fim?: string;
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
@@ -210,11 +212,30 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     const empresaLinha = colunas[3] || 'Desconhecida';
     const setorLinha = canonicalSetor(colunas[10] || '') || colunas[10] || 'Geral';
     const descricaoLinha = colunas[9] || '';
+    const periodoLinha = colunas[15]?.trim() || '';
 
     let match = true;
 
     if (filtro.ano && anoLinha !== filtro.ano) {
       match = false;
+    }
+
+    if (filtro.ano_inicio || filtro.ano_fim) {
+      const reqInicio = filtro.ano_inicio ? parseInt(filtro.ano_inicio, 10) : 0;
+      const reqFim = filtro.ano_fim ? parseInt(filtro.ano_fim, 10) : 9999;
+      
+      let invInicio = 0, invFim = 0;
+      if (periodoLinha) {
+        const parts = periodoLinha.split('-');
+        invInicio = parseInt(parts[0], 10) || 0;
+        invFim = parseInt(parts[1], 10) || invInicio;
+      }
+      
+      if (invInicio === 0) {
+        match = false;
+      } else if (invInicio > reqFim || invFim < reqInicio) {
+        match = false;
+      }
     }
 
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
@@ -244,6 +265,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
         municipio: colunas[7] || 'Não informado',
         regiao: colunas[8] || 'Não informada',
         ano: anoLinha,
+        periodo: periodoLinha,
         setor: setorLinha,
         descricao: descricaoLinha.substring(0, 150),
         valor_milhoes_reais: colunas[5] || '0,00'
@@ -267,10 +289,12 @@ export function consultarPiespData(filtro: FiltroPiesp) {
 export interface FiltroRelatorio {
   setor?: string;
   regiao?: string;
-  ano?: string;
+  ano?: string[];
   tipo?: string;
   municipio?: string;
   termo_busca?: string;
+  ano_inicio?: string;
+  ano_fim?: string;
 }
 
 export interface ResumoRelatorio {
@@ -281,6 +305,7 @@ export interface ResumoRelatorio {
     municipio: string;
     regiao: string;
     ano: string;
+    periodo?: string;
     setor: string;
     tipo: string;
     descricao: string;
@@ -308,8 +333,9 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
     const tipoLinha = (cols[14] || '').trim();
     const descricaoLinha = (cols[9] || '').trim();
     const valorStr = (cols[5] || '0').trim();
+    const periodoLinha = (cols[15] || '').trim();
 
-    if (filtro.ano && anoLinha !== filtro.ano) continue;
+    if (filtro.ano && filtro.ano.length > 0 && !filtro.ano.includes(anoLinha)) continue;
     if (filtro.setor && canonicalSetor(setorLinha) !== canonicalSetor(filtro.setor)) continue;
     if (filtro.regiao && !regiaoMatch(regiaoLinha, municipioLinha, filtro.regiao)) continue;
     if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
@@ -319,12 +345,28 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
       if (!textToSearch.includes(tb)) continue;
     }
+    
+    if (filtro.ano_inicio || filtro.ano_fim) {
+      const reqInicio = filtro.ano_inicio ? parseInt(filtro.ano_inicio, 10) : 0;
+      const reqFim = filtro.ano_fim ? parseInt(filtro.ano_fim, 10) : 9999;
+      
+      let invInicio = 0, invFim = 0;
+      if (periodoLinha) {
+        const parts = periodoLinha.split('-');
+        invInicio = parseInt(parts[0], 10) || 0;
+        invFim = parseInt(parts[1], 10) || invInicio;
+      }
+      
+      if (invInicio === 0) continue;
+      if (invInicio > reqFim || invFim < reqInicio) continue;
+    }
 
     resultados.push({
       empresa: empresaLinha,
       municipio: municipioLinha,
       regiao: regiaoLinha,
       ano: anoLinha,
+      periodo: periodoLinha,
       setor: setorLinha,
       tipo: tipoLinha,
       descricao: descricaoLinha.substring(0, 200),
@@ -519,11 +561,30 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     const empresaLinha = colunas[3] || 'Desconhecida';
     const setorLinha = colunas[8] || 'Geral';
     const descricaoLinha = colunas[7] || '';
+    const periodoLinha = colunas[13]?.trim() || '';
 
     let match = true;
 
     if (filtro.ano && anoLinha !== filtro.ano) {
       match = false;
+    }
+
+    if (filtro.ano_inicio || filtro.ano_fim) {
+      const reqInicio = filtro.ano_inicio ? parseInt(filtro.ano_inicio, 10) : 0;
+      const reqFim = filtro.ano_fim ? parseInt(filtro.ano_fim, 10) : 9999;
+      
+      let invInicio = 0, invFim = 0;
+      if (periodoLinha) {
+        const parts = periodoLinha.split('-');
+        invInicio = parseInt(parts[0], 10) || 0;
+        invFim = parseInt(parts[1], 10) || invInicio;
+      }
+      
+      if (invInicio === 0) {
+        match = false;
+      } else if (invInicio > reqFim || invFim < reqInicio) {
+        match = false;
+      }
     }
 
     if (filtro.municipio && !municipioLinha.includes(filtro.municipio.toLowerCase())) {
@@ -548,6 +609,7 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
         empresa: empresaLinha,
         municipio: colunas[5] || 'Não informado',
         ano: anoLinha,
+        periodo: periodoLinha,
         setor: setorLinha,
         descricao: descricaoLinha.substring(0, 150)
       });

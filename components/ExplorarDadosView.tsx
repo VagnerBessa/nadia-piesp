@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { generateWithFallback } from '../services/geminiService';
 import { getMetadados, filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -15,7 +15,8 @@ function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string 
   const filtroDesc = [
     filtros.setor ? `Setor: ${filtros.setor}` : null,
     filtros.regiao ? `Região: ${filtros.regiao}` : null,
-    filtros.ano ? `Ano: ${filtros.ano}` : null,
+    filtros.ano && filtros.ano.length > 0 ? `Ano(s) de Anúncio: ${filtros.ano.join(', ')}` : null,
+    filtros.ano_inicio || filtros.ano_fim ? `Período de Execução: ${filtros.ano_inicio || 'Início'} a ${filtros.ano_fim || 'Fim'}` : null,
     filtros.tipo ? `Tipo de investimento: ${filtros.tipo}` : null,
   ].filter(Boolean).join(' | ') || 'Sem filtros específicos (base completa)';
 
@@ -121,7 +122,9 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
   const [setor, setSetor] = useState('');
   const [regiao, setRegiao] = useState('');
-  const [ano, setAno] = useState('');
+  const [anosSelecionados, setAnosSelecionados] = useState<string[]>([]);
+  const [anoInicio, setAnoInicio] = useState('');
+  const [anoFim, setAnoFim] = useState('');
   const [tipo, setTipo] = useState('');
 
   const [relatorio, setRelatorio] = useState<string | null>(null);
@@ -129,18 +132,60 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
   const [error, setError] = useState<string | null>(null);
   const [resumoStats, setResumoStats] = useState<{ total: number; totalMilhoes: number } | null>(null);
 
+  const [anoDropdownOpen, setAnoDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setAnoDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const minAnoAnuncio = anosSelecionados.length > 0 ? Math.min(...anosSelecionados.map(Number)) : null;
+
+  useEffect(() => {
+    let changed = false;
+    let newAnoInicio = anoInicio;
+    let newAnoFim = anoFim;
+
+    if (minAnoAnuncio) {
+      if (newAnoInicio && Number(newAnoInicio) < minAnoAnuncio) { newAnoInicio = ''; changed = true; }
+      if (newAnoFim && Number(newAnoFim) < minAnoAnuncio) { newAnoFim = ''; changed = true; }
+    }
+
+    if (newAnoInicio && newAnoFim && Number(newAnoFim) < Number(newAnoInicio)) {
+      newAnoFim = '';
+      changed = true;
+    }
+
+    if (changed) {
+      if (newAnoInicio !== anoInicio) setAnoInicio(newAnoInicio);
+      if (newAnoFim !== anoFim) setAnoFim(newAnoFim);
+    }
+  }, [minAnoAnuncio, anoInicio, anoFim]);
+
+  const opcoesPeriodo = useMemo(() => {
+    return metadados.anos.filter(a => minAnoAnuncio ? Number(a) >= minAnoAnuncio : true);
+  }, [metadados.anos, minAnoAnuncio]);
+
   // Preview count as filters change
   const previewCount = useMemo(() => {
     const filtro: FiltroRelatorio = {
       setor: setor || undefined,
       regiao: regiao || undefined,
-      ano: ano || undefined,
+      ano: anosSelecionados.length > 0 ? anosSelecionados : undefined,
       tipo: tipo || undefined,
+      ano_inicio: anoInicio || undefined,
+      ano_fim: anoFim || undefined,
     };
     // Quick count without full aggregation
     const r = filtrarParaRelatorio(filtro);
     return r.total;
-  }, [setor, regiao, ano, tipo]);
+  }, [setor, regiao, anosSelecionados, tipo, anoInicio, anoFim]);
 
   const handleGerarRelatorio = async () => {
     setIsLoading(true);
@@ -151,8 +196,10 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
       const filtro: FiltroRelatorio = {
         setor: setor || undefined,
         regiao: regiao || undefined,
-        ano: ano || undefined,
+        ano: anosSelecionados.length > 0 ? anosSelecionados : undefined,
         tipo: tipo || undefined,
+        ano_inicio: anoInicio || undefined,
+        ano_fim: anoFim || undefined,
       };
 
       const resumo = filtrarParaRelatorio(filtro);
@@ -245,14 +292,68 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
                   </div>
                 </div>
 
-                <div>
-                  <label className={labelClass}>Ano</label>
-                  <div className="relative">
-                    <select value={ano} onChange={e => setAno(e.target.value)} className={selectClass}>
-                      <option value="">{TODOS}</option>
-                      {metadados.anos.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                <div className="relative" ref={dropdownRef}>
+                  <label className={labelClass}>Anos de Anúncio</label>
+                  <div 
+                    className={`${selectClass} flex items-center justify-between cursor-pointer`}
+                    onClick={() => setAnoDropdownOpen(!anoDropdownOpen)}
+                  >
+                    <span className={anosSelecionados.length === 0 ? "text-slate-400" : "text-slate-200 truncate pr-4"}>
+                      {anosSelecionados.length === 0 ? TODOS || 'Todos' : anosSelecionados.sort().join(', ')}
+                    </span>
+                    <span className="text-slate-400 text-xs">▾</span>
+                  </div>
+                  
+                  {anoDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                      <div className="p-2 space-y-1">
+                        {metadados.anos.map(a => {
+                          const isSelected = anosSelecionados.includes(a);
+                          return (
+                            <div 
+                              key={a} 
+                              className="flex items-center space-x-3 px-2 py-2 hover:bg-slate-700 rounded cursor-pointer transition-colors"
+                              onClick={() => {
+                                setAnosSelecionados(prev => 
+                                  isSelected ? prev.filter(y => y !== a) : [...prev, a]
+                                );
+                              }}
+                            >
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-rose-500 border-rose-500' : 'border-slate-500 bg-slate-900/50'}`}>
+                                {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              </div>
+                              <span className="text-sm font-medium text-slate-200">{a}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>Período Início</label>
+                    <div className="relative">
+                      <select value={anoInicio} onChange={e => setAnoInicio(e.target.value)} className={selectClass}>
+                        <option value="">{TODOS}</option>
+                        {[...opcoesPeriodo].reverse().map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Período Fim</label>
+                    <div className="relative">
+                      <select value={anoFim} onChange={e => setAnoFim(e.target.value)} className={selectClass}>
+                        <option value="">{TODOS}</option>
+                        {[...opcoesPeriodo]
+                          .reverse()
+                          .filter(a => anoInicio ? Number(a) >= Number(anoInicio) : true)
+                          .map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                    </div>
                   </div>
                 </div>
 
@@ -284,9 +385,9 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
             </button>
 
             {/* Limpar filtros */}
-            {(setor || regiao || ano || tipo) && (
+            {(setor || regiao || anosSelecionados.length > 0 || tipo || anoInicio || anoFim) && (
               <button
-                onClick={() => { setSetor(''); setRegiao(''); setAno(''); setTipo(''); }}
+                onClick={() => { setSetor(''); setRegiao(''); setAnosSelecionados([]); setTipo(''); setAnoInicio(''); setAnoFim(''); }}
                 className="text-xs text-slate-500 hover:text-slate-300 transition-colors text-center"
               >
                 Limpar filtros

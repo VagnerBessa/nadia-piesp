@@ -167,3 +167,24 @@ app.use(cors({
 
 - [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 - [Gemini API Documentation](https://ai.google.dev/gemini-api/docs)
+
+---
+
+## 🦆 PIESP DuckDB MCP Server (Branch: `feature/duckdb-migration`)
+
+Durante a evolução do sistema, foi desenvolvida uma nova camada de integração usando DuckDB e formato colunar (Parquet) para processar os dados completos do PIESP em memória de forma ultrarrápida, mitigando os gargalos do carregamento nativo de CSVs grandes via string literals no Vite.
+
+### O Servidor
+- **Arquivo**: `scripts/piesp-duckdb-mcp-server.mjs`
+- **Banco e Dados**: Cria um banco DuckDB em memória que espelha os dados do arquivo gerado `knowledge_base/piesp.parquet`.
+- **Ferramentas Registradas**:
+  - `consultar_projetos_piesp`
+  - `consultar_anuncios_sem_valor`
+  - `filtrar_para_relatorio`
+  - `get_metadados`
+  - `buscar_empresa`
+
+### Detalhes Técnicos e Aprendizados
+1. **Diferenciação Semântica (Anúncio vs Execução)**: O servidor DuckDB expôs explicitamente que a coluna nativa `ano` do CSV se referia ao **ano do anúncio**, enquanto muitos analistas buscam projetos pelo **período de execução** (`periodo`). Isso forçou a atualização das ferramentas (e da interface web da Nadia) para separar parâmetros `ano`, `ano_inicio` e `ano_fim`.
+2. **Ambiente Paralelo**: A branch `feature/duckdb-migration` opera em um *dual-server environment*. Enquanto o frontend principal ainda confia em fallback para `services/piespDataService.ts`, o MCP Server com DuckDB garante um playground robusto de testes (por exemplo, via Claude Desktop ou scripts isolados) para certificar que a agregação SQL colunar tenha 100% de match com o comportamento legado antes do corte final em produção.
+3. **Run**: `npm run mcp:duckdb` (porta 3456).

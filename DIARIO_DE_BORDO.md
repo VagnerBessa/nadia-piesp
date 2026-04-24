@@ -55,3 +55,23 @@ Sintetizamos que essa etapa de "Match Semântico" não reintroduz a alucinação
 **A Recomendação Arquitetural do Módulo**
 A abordagem recomendada para a engenharia atual do Seade (Fases 1/2) é um modelo **Híbrido**.
 Aplica-se a **Alternativa 1 (Enums + Descriptions no JSON Schema da Tool)** de forma imediata para os filtros que já possuímos (como anos e macrossetores no Dashboard PIESP). Quando os MCP Servers avançarem para bases hiper-fragmentadas (como CAGED/PNAD), a **Alternativa 3 (RAG Lexical Dinâmico)** deverá obrigatoriamente ser construída, visto que injetar listas infinitas de sinônimos em Tools destruiria o Budget e a precisão do modelo Gemini.
+
+---
+
+### Migração DuckDB, Fragilidades do ESM e Refinamento de Filtros Temporais
+**Data:** 24 de abril de 2026
+
+Hoje avançamos em frentes críticas de infraestrutura e usabilidade, inaugurando a branch `feature/duckdb-migration`.
+
+1. **A Transição para DuckDB e Parquet:**
+   Iniciamos a migração da leitura bruta de CSVs em memória para um banco de dados analítico local embutido (DuckDB) consultando arquivos colunares (Parquet). O arquivo `knowledge_base/piesp.parquet` e o servidor `scripts/piesp-duckdb-mcp-server.mjs` marcam a evolução do sistema para lidar com metadados complexos e agregações ultrarrápidas, sem sobrecarregar a memória do navegador. A escolha de isolar isso numa branch (`feature/duckdb-migration`) foi vital para manter a estabilidade da produção enquanto homologamos o dual-server environment.
+
+2. **A "Tela Branca da Morte" e a Rigidez do Vite (ESM):**
+   A aplicação quebrou completamente ao trocarmos de branch devido à ausência do arquivo `config.ts` (ignorado via `.gitignore`). O aprendizado arquitetural aqui é que módulos ESM no Vite quebram o parsing *imediatamente* caso uma importação nomeada não exista (ex: faltava `OPENROUTER_API_KEY`). A tela fica em branco sem sequer montar o DOM do React. Em aplicações baseadas em chaves de IA variadas, o tratamento de variáveis de ambiente deve ser resiliente, preferencialmente usando `import.meta.env` com fallbacks amigáveis em vez de imports rígidos que cracham a thread principal.
+
+3. **Ontologia Temporal: Ano de Anúncio vs. Período de Execução:**
+   Detectamos uma alucinação de dados sutil: a Nadia estava confundindo o "ano em que o projeto foi registrado" com o "período de tempo em que ele será executado". Se o usuário pedia "investimentos entre 2026 e 2030", ela enviava o parâmetro `ano` padrão para o buscador.
+   - *A Correção:* Alteramos a engenharia do `piespDataService.ts` e do Schema das Tools (`useChat.ts` / `useLiveConnection.ts`) para separar explicitamente `ano_inicio` e `ano_fim` extraídos da coluna `periodo` do banco. Ensinamos ao System Prompt a diferença semântica, forçando-o a ignorar o ano de anúncio quando a pergunta envolver "intervalos de execução".
+
+4. **Agregação Flexível na Aba Explorar:**
+   Evoluímos o painel visual "Explorar Dados". Onde antes o usuário só podia filtrar um ano isolado (limitação de `<select>`), implementamos seletores múltiplos (pílulas toggle) para agregar múltiplos anos de registro (ex: 2022 + 2023 + 2024), além de adicionar campos explícitos para o "Período de Execução" (Início e Fim). Essa mudança simples multiplicou exponencialmente o poder analítico da prompt de relatórios automatizados da Fundação.

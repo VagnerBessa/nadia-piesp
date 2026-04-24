@@ -366,7 +366,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
+                      ano: { type: Type.STRING, description: 'Ano de anúncio/registro do investimento. Não confunda com o período de execução. Para buscas de período ("entre 2026 e 2030"), use ano_inicio e ano_fim.' },
+                      ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
+                      ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
                       municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
                     }
@@ -378,7 +380,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
+                      ano: { type: Type.STRING, description: 'O ano do anúncio/registro do investimento, ex: "2026"' },
+                      ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
+                      ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
                       municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
                       termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
                     }
