@@ -8,9 +8,9 @@ import { getMetadados } from '../services/piespDataService';
 
 // Lazy: só chama getMetadados() quando o chat de voz for usado de fato
 let _regiaoDescCache: string | null = null;
-function getRegiaoDesc(): string {
+async function getRegiaoDesc(): Promise<string> {
   if (_regiaoDescCache) return _regiaoDescCache;
-  const meta = getMetadados();
+  const meta = await getMetadados();
   _regiaoDescCache = meta.regioes.length > 0
     ? `Região administrativa do Estado de SP. Valores válidos: ${meta.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
     : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
@@ -440,7 +440,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
           responseModalities: [Modality.AUDIO],
           outputAudioTranscription: { },
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
-          tools: tools || [
+          tools: tools || await (async () => {
+            const rd = await getRegiaoDesc();
+            return [
             { googleSearch: {} },
             {
               functionDeclarations: [
@@ -452,7 +454,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     properties: {
                       ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: getRegiaoDesc() },
+                      regiao: { type: Type.STRING, description: rd },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
                       termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
@@ -466,7 +468,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     properties: {
                       ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: getRegiaoDesc() },
+                      regiao: { type: Type.STRING, description: rd },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
                       termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
@@ -482,7 +484,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
               ]
             }
-          ],
+          ];
+          })(),
           systemInstruction: finalSystemInstruction,
         },
       });

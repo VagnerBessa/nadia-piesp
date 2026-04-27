@@ -32,50 +32,53 @@ const initialMessage: Message = {
     text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
 };
 
-// Carregado uma vez — os metadados não mudam durante a sessão
-const _metadados = getMetadados();
+// Cache lazy para os metadados e tools — carregados sob demanda
+let _piespToolsCache: any[] | null = null;
 
-// Ferramentas PIESP: function calling para dados estruturados
-// (não pode ser combinado com googleSearch na mesma chamada)
-// Inclui os valores reais de regiões para que o Gemini não precise adivinhar.
-const regiaoDesc = _metadados.regioes.length > 0
-  ? `Região administrativa do Estado de SP. Valores válidos: ${_metadados.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
-  : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+async function getPiespTools() {
+  if (_piespToolsCache) return _piespToolsCache;
 
-const piespTools = [
-  {
-    functionDeclarations: [
-      {
-        name: 'consultar_projetos_piesp',
-        description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Para filtrar por setor (Indústria, Infraestrutura etc.), use o parâmetro `setor`. Retorna os principais projetos confirmados com montante financeiro.',
-        parameters: {
-          type: Type.OBJECT,
-          properties: {
-            ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
-            municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-            regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-            termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
+  const meta = await getMetadados();
+  const regiaoDesc = meta.regioes.length > 0
+    ? `Região administrativa do Estado de SP. Valores válidos: ${meta.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
+    : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+
+  _piespToolsCache = [
+    {
+      functionDeclarations: [
+        {
+          name: 'consultar_projetos_piesp',
+          description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Para filtrar por setor (Indústria, Infraestrutura etc.), use o parâmetro `setor`. Retorna os principais projetos confirmados com montante financeiro.',
+          parameters: {
+            type: Type.OBJECT,
+            properties: {
+              ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+              municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+              regiao: { type: Type.STRING, description: regiaoDesc },
+              setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
+              termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
+            }
+          }
+        },
+        {
+          name: 'consultar_anuncios_sem_valor',
+          description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas.',
+          parameters: {
+            type: Type.OBJECT,
+            properties: {
+              ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
+              municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
+              regiao: { type: Type.STRING, description: regiaoDesc },
+              setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Para atividades específicas (saúde, educação, farmácia etc.) use termo_busca.' },
+              termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia" etc.' }
+            }
           }
         }
-      },
-      {
-        name: 'consultar_anuncios_sem_valor',
-        description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas.',
-        parameters: {
-          type: Type.OBJECT,
-          properties: {
-            ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
-            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-            regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Para atividades específicas (saúde, educação, farmácia etc.) use termo_busca.' },
-            termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia" etc.' }
-          }
-        }
-      }
-    ]
-  }
-];
+      ]
+    }
+  ];
+  return _piespToolsCache;
+}
 
 // Ferramentas de pesquisa: Google Search para contexto externo
 // (não pode ser combinado com functionDeclarations na mesma chamada)
@@ -83,25 +86,25 @@ const searchTools = [
   { googleSearch: {} }
 ];
 
-// Executa a ferramenta localmente e retorna o resultado
-function executarFerramenta(nome: string, args: any): any {
+// Executa a ferramenta localmente e retorna o resultado (async — DuckDB queries)
+async function executarFerramenta(nome: string, args: any): Promise<any> {
   if (nome === 'consultar_projetos_piesp') {
-    let resultados = consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    let resultados = await consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
     // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
     // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
-    if (resultados.total === 0 && args.ano) {
-      const semAno = consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total > 0) resultados = semAno;
+    if (resultados.total_projetos === 0 && args.ano) {
+      const semAno = await consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.total_projetos > 0) resultados = semAno;
     }
-    return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+    return { sucesso: true, ...resultados };
   }
   if (nome === 'consultar_anuncios_sem_valor') {
-    let resultados = consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    if (resultados.total === 0 && args.ano) {
-      const semAno = consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total > 0) resultados = semAno;
+    let resultados = await consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+    if (resultados.total_anuncios === 0 && args.ano) {
+      const semAno = await consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
+      if (semAno.total_anuncios > 0) resultados = semAno;
     }
-    return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+    return { sucesso: true, ...resultados };
   }
   return { error: 'Ferramenta não reconhecida' };
 }
@@ -160,6 +163,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
 
     const detectedSkill = selectedSkillName ? null : detectSkill(text);
     const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
+    const piespTools = await getPiespTools();
     const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
 
     try {
@@ -210,8 +214,8 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
 
         const fcall = functionCallPart.functionCall;
 
-        // Executa a ferramenta localmente
-        const resultado = executarFerramenta(fcall.name!, fcall.args || {});
+        // Executa a ferramenta localmente (async — DuckDB)
+        const resultado = await executarFerramenta(fcall.name!, fcall.args || {});
 
         // Monta o histórico com a resposta da ferramenta
         const updatedContents = [

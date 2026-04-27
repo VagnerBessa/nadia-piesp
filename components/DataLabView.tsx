@@ -15,8 +15,9 @@ interface DataLabViewProps {
 // Prompts
 // ───────────────────────────────────────────────
 
-// Carregado uma vez — metadados não mudam durante a sessão
-const _metadadosDataLab = getMetadados();
+// Metadados carregados lazily (async — DuckDB)
+let _metadadosDataLab: any = { setores: [], regioes: [], anos: [], tipos: [] };
+getMetadados().then(m => { _metadadosDataLab = m; }).catch(() => {});
 
 function buildExtractFiltersPrompt(query: string): string {
   const regioesList = _metadadosDataLab.regioes.length > 0
@@ -43,23 +44,23 @@ Omita campos não mencionados. Retorne apenas o JSON.`;
 }
 
 function buildDashboardPrompt(query: string, resumo: ResumoRelatorio): string {
-  const totalBi = (resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',');
+  const totalBi = (resumo.total_investimentos / 1000).toFixed(1).replace('.', ',');
 
   const projetosTexto = resumo.projetos.slice(0, 12).map((p, i) =>
     `${i + 1}. ${p.empresa} | ${p.municipio} | ${p.setor} | ${p.ano} | R$ ${p.valor_milhoes_reais} mi`
   ).join('\n');
 
-  const porSetorTexto  = resumo.porSetor.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} proj)`).join(' | ');
-  const porMunicipioTexto = resumo.porMunicipio.slice(0, 8).map(m => `${m.nome}: R$ ${m.valor} mi (${m.count} proj)`).join(' | ');
-  const porAnoTexto    = resumo.porAno.map(a => `${a.nome}: R$ ${a.valor} mi`).join(' | ');
-  const porRegiaoTexto = resumo.porRegiao.slice(0, 5).map(r => `${r.nome}: R$ ${r.valor} mi (${r.count} proj)`).join(' | ');
+  const porSetorTexto  = resumo.setores.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} proj)`).join(' | ');
+  const porMunicipioTexto = resumo.municipios.slice(0, 8).map(m => `${m.nome}: R$ ${m.valor} mi (${m.count} proj)`).join(' | ');
+  const porAnoTexto    = resumo.evolucao_anual.map(a => `${a.nome}: R$ ${a.valor} mi`).join(' | ');
+  const porRegiaoTexto = resumo.regioes.slice(0, 5).map(r => `${r.nome}: R$ ${r.valor} mi (${r.count} proj)`).join(' | ');
 
   return `Você é a Nadia, analista de dados da Fundação Seade. O usuário pediu no Data Lab:
 "${query}"
 
 DADOS DO PIESP FILTRADOS:
-- Total de projetos: ${resumo.total}
-- Valor total: R$ ${resumo.totalMilhoes} mi (R$ ${totalBi} bi)
+- Total de projetos: ${resumo.total_projetos}
+- Valor total: R$ ${resumo.total_investimentos} mi (R$ ${totalBi} bi)
 - Por setor: ${porSetorTexto || '(sem dados)'}
 - Por município (top 8): ${porMunicipioTexto || '(sem dados)'}
 - Por região: ${porRegiaoTexto || '(sem dados)'}
@@ -219,18 +220,18 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         // Se falhar o parse, segue sem filtros (base completa)
       }
 
-      // ── Passo 2: consulta determinística no CSV ──
+      // ── Passo 2: consulta determinística no DuckDB ──
       setLoadingStep('Consultando a base PIESP...');
-      const resumo = filtrarParaRelatorio(filtros);
+      const resumo = await filtrarParaRelatorio(filtros);
 
-      if (resumo.total === 0) {
+      if (resumo.total_projetos === 0) {
         setError('Nenhum projeto encontrado com esses critérios. Tente uma busca mais ampla.');
         setIsLoading(false);
         return;
       }
 
       // ── Passo 3: gera o json-dashboard ──
-      setLoadingStep(`Analisando ${resumo.total} projetos (R$ ${(resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi)...`);
+      setLoadingStep(`Analisando ${resumo.total_projetos} projetos (R$ ${(resumo.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi)...`);
       const dashResponse = await generateWithFallback({
         prompt: buildDashboardPrompt(query, resumo),
         thinkingBudget: 1024,

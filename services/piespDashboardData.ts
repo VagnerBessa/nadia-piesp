@@ -1,10 +1,10 @@
 /**
  * piespDashboardData.ts
  * Serviço de agregação para o dashboard PIESP.
- * Parseia o CSV completo e retorna estruturas prontas para gráficos Recharts.
+ * Agora usa DuckDB WASM via piespDataService (Parquet) em vez de parsear CSV.
  */
-import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
-import { getLinhas } from './piespDataService';
+import { getDbConnection } from './duckdbService';
+import { canonicalSetor } from './piespDataService';
 
 // --- Tipos ---
 export interface PiespRecord {
@@ -52,48 +52,53 @@ const MES_NAMES: Record<string, string> = {
 // --- Paleta de cores ---
 const COLORS = [
   '#f43f5e', '#22d3ee', '#34d399', '#fbbf24', '#818cf8',
-  '#f97316', '#a78bfa', '#fb7185', '#2dd4bf', '#e879f7',
+  '#f97316', '#a78bfa', '#fb7185', '#2dd4bf', '#e879f9',
 ];
 
-// Valores canônicos de setor — linhas com setor fora destes foram corrompidas por csv multiline
-const SETORES_VALIDOS = new Set([
-  'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
-]);
+function formatBilhoes(milhoes: number): string {
+  const bi = milhoes / 1000;
+  return bi.toFixed(1).replace('.', ',');
+}
 
-// --- Parser ---
-function parseCSV(): PiespRecord[] {
-  const linhas = getLinhas();
-  const records: PiespRecord[] = [];
+function topNFromMap(map: Map<string, { soma: number; count: number }>, n: number): AggItem[] {
+  return Array.from(map.entries())
+    .sort((a, b) => b[1].soma - a[1].soma)
+    .slice(0, n)
+    .map(([name, { soma, count }], i) => ({
+      name,
+      value: Math.round(soma * 10) / 10,
+      count,
+      color: COLORS[i % COLORS.length],
+    }));
+}
 
-  // Colunas: 0=data, 1=ano, 2=mes, 3=empresa_alvo, 4=investidora_s,
-  //          5=reais_milhoes, 6=dolares_milhoes, 7=municipio, 8=regiao,
-  //          9=descr_investimento, 10=setor_desc, 11=cnae_inv_2_desc,
-  //          12=cnae_inv_5_cod_desc, 13=cnae_empresa_5_cod_desc, 14=tipo, 15=periodo
-  for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(';');
-    if (cols.length < 15) continue;
-    const setorRaw = (cols[10] || '').trim();
-    if (!SETORES_VALIDOS.has(setorRaw)) continue;
-
-    const valorStr = (cols[5] || '0').trim().replace(/\./g, '').replace(',', '.');
-    const valor = parseFloat(valorStr) || 0;
-
-    records.push({
-      ano: (cols[1] || '').trim(),
-      mes: (cols[2] || '').trim(),
-      empresa: (cols[3] || 'Não informada').trim(),
-      investidora: (cols[4] || '').trim(),
-      reais_milhoes: valor,
-      municipio: (cols[7] || 'Não informado').trim(),
-      regiao: (cols[8] || 'Não informada').trim(),
-      setor: (cols[10] || 'Outros').trim(),
-      cnae2: (cols[11] || '').trim(),
-      tipo: (cols[14] || 'Não classificado').trim(),
-      descricao: (cols[9] || '').trim(),
-    });
-  }
-
-  return records;
+// --- Carrega records do DuckDB (async) ---
+async function loadRecords(anoFilter?: string): Promise<PiespRecord[]> {
+  const conn = await getDbConnection();
+  const whereClause = anoFilter ? `WHERE anuncio_ano = ${parseInt(anoFilter)} AND reais_milhoes > 0` : `WHERE reais_milhoes > 0`;
+  const result = await conn.query(`
+    SELECT anuncio_ano, anuncio_mes, empresa_alvo, investidora_s, reais_milhoes, 
+           municipio, regiao, setor_desc, cnae_inv_2_desc, tipo, descr_investimento
+    FROM piesp
+    ${whereClause}
+  `);
+  
+  return result.toArray().map(r => {
+    const row = r.toJSON();
+    return {
+      ano: row.anuncio_ano?.toString() || '',
+      mes: row.anuncio_mes?.toString() || '',
+      empresa: row.empresa_alvo || 'Não informada',
+      investidora: row.investidora_s || '',
+      reais_milhoes: row.reais_milhoes || 0,
+      municipio: row.municipio || 'Não informado',
+      regiao: row.regiao || 'Não informada',
+      setor: canonicalSetor(row.setor_desc || ''),
+      cnae2: row.cnae_inv_2_desc || '',
+      tipo: row.tipo || 'Não classificado',
+      descricao: row.descr_investimento || '',
+    };
+  });
 }
 
 // --- Funções auxiliares ---
@@ -108,37 +113,6 @@ function agruparPor(records: PiespRecord[], campo: keyof PiespRecord): Map<strin
     map.set(key, existing);
   }
   return map;
-}
-
-function topN(map: Map<string, { soma: number; count: number }>, n: number): AggItem[] {
-  return Array.from(map.entries())
-    .sort((a, b) => b[1].soma - a[1].soma)
-    .slice(0, n)
-    .map(([name, { soma, count }], i) => ({
-      name,
-      value: Math.round(soma * 10) / 10,
-      count,
-      color: COLORS[i % COLORS.length],
-    }));
-}
-
-function formatBilhoes(milhoes: number): string {
-  const bi = milhoes / 1000;
-  return bi.toFixed(1).replace('.', ',');
-}
-
-// --- Cache de records brutos ---
-let _records: PiespRecord[] | null = null;
-function getRecords(): PiespRecord[] {
-  if (!_records) _records = parseCSV();
-  return _records;
-}
-
-// --- Anos disponíveis na base ---
-export function getAvailableYears(): string[] {
-  return Array.from(new Set(getRecords().map(r => r.ano)))
-    .filter(Boolean)
-    .sort();
 }
 
 // --- Agregação de um conjunto de records ---
@@ -164,10 +138,10 @@ function agregarRecords(records: PiespRecord[]): DashboardData {
       name, value: Math.round(soma * 10) / 10, count, color: COLORS[i % COLORS.length],
     }));
 
-  // Por mês: agrupado por número de mês, exibido com nome abreviado
+  // Por mês
   const byMes = new Map<string, { soma: number; count: number }>();
   for (const r of records) {
-    const mesNum = r.mes.replace(/^0/, ''); // remove zero à esquerda
+    const mesNum = r.mes.replace(/^0/, '');
     if (!mesNum) continue;
     const existing = byMes.get(mesNum) || { soma: 0, count: 0 };
     existing.soma += r.reais_milhoes;
@@ -190,11 +164,11 @@ function agregarRecords(records: PiespRecord[]): DashboardData {
     totalMunicipios: municipiosUnicos.size,
     porAno,
     porMes,
-    porSetor: topN(bySetor, 8),
-    porMunicipio: topN(byMunicipio, 10),
-    porRegiao: topN(byRegiao, 10),
-    porEmpresa: topN(byEmpresa, 10),
-    porTipo: topN(byTipo, 5),
+    porSetor: topNFromMap(bySetor, 8),
+    porMunicipio: topNFromMap(byMunicipio, 10),
+    porRegiao: topNFromMap(byRegiao, 10),
+    porEmpresa: topNFromMap(byEmpresa, 10),
+    porTipo: topNFromMap(byTipo, 5),
     rmspVsInterior: {
       rmsp: Math.round(rmspTotal * 10) / 10,
       interior: Math.round((totalMilhoes - rmspTotal) * 10) / 10,
@@ -202,20 +176,27 @@ function agregarRecords(records: PiespRecord[]): DashboardData {
   };
 }
 
-// --- Agregação principal ---
+// --- Cache ---
 let _cache: DashboardData | null = null;
 const _cacheByYear = new Map<string, DashboardData>();
 
-export function getDashboardData(): DashboardData {
+export async function getAvailableYears(): Promise<string[]> {
+  const conn = await getDbConnection();
+  const result = await conn.query(`SELECT DISTINCT anuncio_ano FROM piesp WHERE anuncio_ano IS NOT NULL AND reais_milhoes > 0 ORDER BY anuncio_ano`);
+  return result.toArray().map(r => r.toJSON().anuncio_ano?.toString()).filter(Boolean);
+}
+
+export async function getDashboardData(): Promise<DashboardData> {
   if (_cache) return _cache;
-  _cache = agregarRecords(getRecords());
+  const records = await loadRecords();
+  _cache = agregarRecords(records);
   return _cache;
 }
 
-export function getDashboardDataByYear(ano: string): DashboardData {
+export async function getDashboardDataByYear(ano: string): Promise<DashboardData> {
   if (_cacheByYear.has(ano)) return _cacheByYear.get(ano)!;
-  const filtered = getRecords().filter(r => r.ano === ano);
-  const result = agregarRecords(filtered);
+  const records = await loadRecords(ano);
+  const result = agregarRecords(records);
   _cacheByYear.set(ano, result);
   return result;
 }
@@ -223,8 +204,8 @@ export function getDashboardDataByYear(ano: string): DashboardData {
 /**
  * Gera um resumo textual dos dados para injeção no system instruction da Nadia (modo voz contextualizado).
  */
-export function getDashboardContext(): string {
-  const d = getDashboardData();
+export async function getDashboardContext(): Promise<string> {
+  const d = await getDashboardData();
   return `
 DADOS AGREGADOS DO DASHBOARD PIESP (calculados da base real):
 - Total acumulado: R$ ${d.totalBilhoes} bilhões em ${d.totalProjetos} projetos

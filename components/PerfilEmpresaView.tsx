@@ -58,9 +58,9 @@ function injectInlineCitations(text: string, supports: any[], indexMap: Record<n
 }
 
 function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string {
-  const totalFormatado = piespData.totalMilhoes >= 1000
-    ? `R$ ${(piespData.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bilhões`
-    : `R$ ${piespData.totalMilhoes.toFixed(0)} milhões`;
+  const totalFormatado = piespData.total_investimentos >= 1000
+    ? `R$ ${(piespData.total_investimentos / 1000).toFixed(1).replace('.', ',')} bilhões`
+    : `R$ ${piespData.total_investimentos.toFixed(0)} milhões`;
 
   const projetosTexto = piespData.projetos.length > 0
     ? piespData.projetos.map((p, i) =>
@@ -68,15 +68,15 @@ function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string 
       ).join('\n\n')
     : 'Nenhum projeto com valor divulgado encontrado para essa empresa na base PIESP.';
 
-  const setoresTexto = piespData.porSetor.map(s =>
+  const setoresTexto = piespData.setores.map(s =>
     `- ${s.nome}: R$ ${s.valor} mi (${s.count} projeto${s.count > 1 ? 's' : ''})`
   ).join('\n') || '—';
 
-  const municipiosTexto = piespData.porMunicipio.map(m =>
+  const municipiosTexto = piespData.municipios.map(m =>
     `- ${m.nome}: R$ ${m.valor} mi`
   ).join('\n') || '—';
 
-  const porAnoTexto = piespData.porAno.map(a =>
+  const porAnoTexto = piespData.evolucao_anual.map(a =>
     `- ${a.nome}: R$ ${a.valor} mi (${a.count} projetos)`
   ).join('\n') || '—';
 
@@ -85,7 +85,7 @@ function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string 
 O usuário solicitou um dossiê completo e aprofundado sobre: **"${empresa}"**
 
 DADOS INTERNOS DO PIESP — investimentos confirmados no Estado de SP:
-- Projetos registrados: ${piespData.total} | Valor total: ${totalFormatado}
+- Projetos registrados: ${piespData.total_projetos} | Valor total: ${totalFormatado}
 
 PROJETOS DETALHADOS:
 ${projetosTexto}
@@ -374,7 +374,15 @@ const DossieRenderer: React.FC<DossieRendererProps> = ({ content, sources }) => 
 };
 
 const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome }) => {
-  const todasEmpresas = useMemo(() => getUniqueEmpresas(), []);
+  const [todasEmpresas, setTodasEmpresas] = useState<string[]>([]);
+
+  // Carrega lista de empresas (async — DuckDB)
+  useEffect(() => {
+    (async () => {
+      const empresas = await getUniqueEmpresas();
+      setTodasEmpresas(empresas);
+    })();
+  }, []);
 
   const [busca, setBusca] = useState('');
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
@@ -422,9 +430,9 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
     setMostrarSugestoes(false);
 
     try {
-      // 1. Busca dados internos do PIESP
-      const piespData = buscarEmpresaNoPiesp(empresa);
-      setPiespStats({ total: piespData.total, totalMilhoes: piespData.totalMilhoes });
+      // 1. Busca dados internos do PIESP (async)
+      const piespData = await buscarEmpresaNoPiesp(empresa);
+      setPiespStats({ total: piespData.total_projetos, totalMilhoes: piespData.total_investimentos });
 
       // 2. Monta o prompt combinado
       const prompt = buildDossiePrompt(empresa, piespData);

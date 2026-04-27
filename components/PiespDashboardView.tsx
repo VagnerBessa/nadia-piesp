@@ -131,12 +131,41 @@ interface PiespDashboardViewProps {
 
 const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome }) => {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [allData, setAllData] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
+  const [years, setYears] = useState<string[]>([]);
+  const [context, setContext] = useState<string>('');
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
-  const allData = getDashboardData();
-  const years = getAvailableYears();
-  // "Volume por Ano" sempre usa dados completos; demais gráficos filtram pelo ano selecionado
-  const data = selectedYear ? getDashboardDataByYear(selectedYear) : allData;
-  const context = getDashboardContext();
+  // Carrega dados iniciais (async — DuckDB)
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoadingData(true);
+      const [d, y, c] = await Promise.all([getDashboardData(), getAvailableYears(), getDashboardContext()]);
+      if (!cancelled) {
+        setAllData(d);
+        setData(d);
+        setYears(y);
+        setContext(c);
+        setIsLoadingData(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Recarrega ao trocar ano
+  React.useEffect(() => {
+    if (!allData) return;
+    if (!selectedYear) {
+      setData(allData);
+      return;
+    }
+    (async () => {
+      const d = await getDashboardDataByYear(selectedYear);
+      setData(d);
+    })();
+  }, [selectedYear, allData]);
 
   const dashboardSystemInstruction = `
   ${SYSTEM_INSTRUCTION}
@@ -164,13 +193,13 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
     onToolCall: async (toolCall) => {
       if (toolCall.name === 'consultar_projetos_piesp') {
         const { ano, municipio, termo_busca } = toolCall.args;
-        const resultados = consultarPiespData({ ano, municipio, termo_busca });
-        return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+        const resultados = await consultarPiespData({ ano, municipio, termo_busca });
+        return { sucesso: true, ...resultados };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
         const { ano, municipio, termo_busca } = toolCall.args;
-        const resultados = consultarAnunciosSemValor({ ano, municipio, termo_busca });
-        return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+        const resultados = await consultarAnunciosSemValor({ ano, municipio, termo_busca });
+        return { sucesso: true, ...resultados };
       }
       return { error: 'Tool não reconhecido' };
     },

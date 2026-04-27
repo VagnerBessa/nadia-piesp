@@ -19,25 +19,25 @@ function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string 
     filtros.tipo ? `Tipo de investimento: ${filtros.tipo}` : null,
   ].filter(Boolean).join(' | ') || 'Sem filtros específicos (base completa)';
 
-  const totalBi = (resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',');
+  const totalBi = (resumo.total_investimentos / 1000).toFixed(1).replace('.', ',');
 
   const projetosTexto = resumo.projetos.slice(0, 15).map((p, i) =>
     `${i + 1}. ${p.empresa} — ${p.municipio} (${p.regiao}), ${p.ano}, Setor: ${p.setor}, Tipo: ${p.tipo || 'N/I'}, Valor: R$ ${p.valor_milhoes_reais} mi — "${p.descricao}"`
   ).join('\n');
 
-  const porSetorTexto = resumo.porSetor.map(s =>
+  const porSetorTexto = resumo.setores.map(s =>
     `- ${s.nome}: R$ ${s.valor} mi em ${s.count} projeto(s)`
   ).join('\n');
 
-  const porMunicipioTexto = resumo.porMunicipio.map(m =>
+  const porMunicipioTexto = resumo.municipios.map(m =>
     `- ${m.nome}: R$ ${m.valor} mi em ${m.count} projeto(s)`
   ).join('\n');
 
-  const porRegiaoTexto = resumo.porRegiao.map(r =>
+  const porRegiaoTexto = resumo.regioes.map(r =>
     `- ${r.nome}: R$ ${r.valor} mi em ${r.count} projeto(s)`
   ).join('\n');
 
-  const porAnoTexto = resumo.porAno.map(a =>
+  const porAnoTexto = resumo.evolucao_anual.map(a =>
     `- ${a.nome}: R$ ${a.valor} mi em ${a.count} projeto(s)`
   ).join('\n');
 
@@ -47,8 +47,8 @@ O usuário solicitou um relatório analítico com o seguinte recorte:
 **${filtroDesc}**
 
 DADOS FILTRADOS DO PIESP:
-- Total de projetos encontrados: ${resumo.total}
-- Valor total: R$ ${resumo.totalMilhoes} milhões (R$ ${totalBi} bilhões)
+- Total de projetos encontrados: ${resumo.total_projetos}
+- Valor total: R$ ${resumo.total_investimentos} milhões (R$ ${totalBi} bilhões)
 
 PRINCIPAIS PROJETOS (top 15 por valor):
 ${projetosTexto}
@@ -117,7 +117,7 @@ Se (e somente se) houver dados suficientes para comparação, procure incluir 2 
 }
 
 const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome }) => {
-  const metadados = useMemo(() => getMetadados(), []);
+  const [metadados, setMetadados] = useState<any>({ setores: [], regioes: [], anos: [], tipos: [] });
 
   const [setor, setSetor] = useState('');
   const [regiao, setRegiao] = useState('');
@@ -128,18 +128,28 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resumoStats, setResumoStats] = useState<{ total: number; totalMilhoes: number } | null>(null);
+  const [previewCount, setPreviewCount] = useState<number>(0);
 
-  // Preview count as filters change
-  const previewCount = useMemo(() => {
-    const filtro: FiltroRelatorio = {
-      setor: setor || undefined,
-      regiao: regiao || undefined,
-      ano: ano || undefined,
-      tipo: tipo || undefined,
-    };
-    // Quick count without full aggregation
-    const r = filtrarParaRelatorio(filtro);
-    return r.total;
+  // Carrega metadados (async — DuckDB)
+  useEffect(() => {
+    (async () => {
+      const m = await getMetadados();
+      setMetadados(m);
+    })();
+  }, []);
+
+  // Preview count as filters change (async)
+  useEffect(() => {
+    (async () => {
+      const filtro: FiltroRelatorio = {
+        setor: setor || undefined,
+        regiao: regiao || undefined,
+        ano: ano || undefined,
+        tipo: tipo || undefined,
+      };
+      const r = await filtrarParaRelatorio(filtro);
+      setPreviewCount(r.total_projetos);
+    })();
   }, [setor, regiao, ano, tipo]);
 
   const handleGerarRelatorio = async () => {
@@ -155,10 +165,10 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
         tipo: tipo || undefined,
       };
 
-      const resumo = filtrarParaRelatorio(filtro);
-      setResumoStats({ total: resumo.total, totalMilhoes: resumo.totalMilhoes });
+      const resumo = await filtrarParaRelatorio(filtro);
+      setResumoStats({ total: resumo.total_projetos, totalMilhoes: resumo.total_investimentos });
 
-      if (resumo.total === 0) {
+      if (resumo.total_projetos === 0) {
         setError('Nenhum projeto encontrado com os filtros selecionados. Tente ampliar o recorte.');
         setIsLoading(false);
         return;
