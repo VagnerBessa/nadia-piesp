@@ -11,7 +11,7 @@ Para detalhes, ver `docs/`.
 
 - **Stack:** React 19 + TypeScript + Vite, Material-UI + Tailwind CSS
 - **IA:** Google Gemini 2.5 Flash (chat e relatórios), Gemini Live API (voz)
-- **Dados:** CSVs do PIESP em `knowledge_base/` (importados como `?raw` via Vite)
+- **Dados:** DuckDB WASM + `public/piesp.parquet` (HTTP range requests no browser)
 - **Sem backend** — app puramente frontend
 
 ---
@@ -87,6 +87,29 @@ npx vercel --prod --yes
 **Solução:** Criar a chave pelo **Google AI Studio** ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) com uma **conta Google pessoal** (não @seade.gov.br). Chaves do AI Studio têm o formato `AIzaSy...` e funcionam normalmente em frontends.
 
 **Regra para o futuro:** Qualquer nova chave Gemini para deploy externo deve ser criada via AI Studio com conta pessoal, não pelo Console da organização Seade.
+
+---
+
+#### Problema 4: "Can't find variable: require" no browser após migração para DuckDB WASM — 27/abr/2026
+
+**Sintoma:** App deployado no Vercel lançava `ReferenceError: Can't find variable: require` no browser (especialmente Safari/WebKit).
+
+**Causa:** O pacote `@duckdb/duckdb-wasm` tem duas versões de build:
+- `dist/duckdb-browser.mjs` — ESM puro, zero `require()`
+- `dist/duckdb-browser.cjs` — CJS, contém `require("apache-arrow")`
+
+O Rollup (usado pelo Vite no build de produção) pode resolver o pacote para a versão CJS em determinados ambientes de build, fazendo com que `require("apache-arrow")` vaze para o bundle final do browser. O browser não tem `require` global → erro.
+
+**Solução:** Adicionar alias explícito no `vite.config.ts` apontando direto para o arquivo `.mjs`:
+```ts
+resolve: {
+  alias: {
+    '@duckdb/duckdb-wasm': path.resolve(__dirname, 'node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser.mjs'),
+  }
+}
+```
+
+**Regra:** Para qualquer pacote que tenha versão CJS e ESM, e que cause erros de `require()` no browser, adicionar um alias explícito para o arquivo `.mjs` no `vite.config.ts`. Não confiar somente no `optimizeDeps.exclude` (que só afeta o dev server, não o build de produção).
 
 ---
 
