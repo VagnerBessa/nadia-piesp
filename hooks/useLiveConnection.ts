@@ -4,12 +4,19 @@ import { GoogleGenAI, LiveServerMessage, Modality, Blob, Tool, FunctionDeclarati
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { getMetadados } from '../services/piespDataService';
 
-const _metadados = getMetadados();
-const regiaoDesc = _metadados.regioes.length > 0
-  ? `Região administrativa do Estado de SP. Valores válidos: ${_metadados.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
-  : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+// Lazy: só carrega os metadados (e o CSV pesado) quando o chat de voz for usado de fato
+let _regiaoDescCache: string | null = null;
+function getRegiaoDesc(): string {
+  if (_regiaoDescCache) return _regiaoDescCache;
+  // dynamic import inline não funciona com top-level, então usamos require-style lazy
+  const { getMetadados } = require('../services/piespDataService');
+  const meta = getMetadados();
+  _regiaoDescCache = meta.regioes.length > 0
+    ? `Região administrativa do Estado de SP. Valores válidos: ${meta.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
+    : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
+  return _regiaoDescCache;
+}
 
 // Audio settings
 const INPUT_SAMPLE_RATE = 16000;
@@ -446,7 +453,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     properties: {
                       ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: regiaoDesc },
+                      regiao: { type: Type.STRING, description: getRegiaoDesc() },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
                       termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
@@ -460,7 +467,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     properties: {
                       ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: regiaoDesc },
+                      regiao: { type: Type.STRING, description: getRegiaoDesc() },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
                       termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
