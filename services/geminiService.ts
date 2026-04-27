@@ -15,7 +15,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GEMINI_API_KEY, OPENROUTER_API_KEY } from '../config';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const FALLBACK_MODEL = 'google/gemini-2.0-flash-001';
+const FALLBACK_MODEL = 'openai/gpt-4o-mini';
 
 export interface GenerateOptions {
   prompt: string;
