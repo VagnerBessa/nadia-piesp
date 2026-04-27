@@ -1,6 +1,14 @@
 import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
 import PIESP_SEM_VALOR_DATA from '../knowledge_base/piesp_confirmados_sem_valor.csv?raw';
 
+let _linhasCache: string[] | null = null;
+export function getLinhas() {
+  if (!_linhasCache) {
+    _linhasCache = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  }
+  return _linhasCache;
+}
+
 // Valores canônicos — para display e ferramentas
 const SETORES_VALIDOS = new Set([
   'Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços',
@@ -195,7 +203,7 @@ export interface FiltroPiesp {
 }
 
 export function consultarPiespData(filtro: FiltroPiesp) {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const linhas = getLinhas();
   const resultados = [];
 
   // A primeira linha é o cabeçalho
@@ -302,7 +310,7 @@ export interface ResumoRelatorio {
 }
 
 export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const linhas = getLinhas();
   const resultados: ResumoRelatorio['projetos'] = [];
 
   for (let i = 1; i < linhas.length; i++) {
@@ -399,8 +407,12 @@ function linhaValida(cols: string[]): boolean {
   return canonicalSetor(setor) !== null;
 }
 
+let _metadadosCache: { setores: string[]; regioes: string[]; anos: string[]; tipos: string[] } | null = null;
+
 export function getMetadados(): { setores: string[]; regioes: string[]; anos: string[]; tipos: string[] } {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  if (_metadadosCache) return _metadadosCache;
+
+  const linhas = getLinhas();
   const setores = new Set<string>();
   const regioes = new Set<string>();
   const anos = new Set<string>();
@@ -422,16 +434,20 @@ export function getMetadados(): { setores: string[]; regioes: string[]; anos: st
     if (tipo && TIPOS_VALIDOS.has(tipo)) tipos.add(tipo);
   }
 
-  return {
+  _metadadosCache = {
     setores: Array.from(setores).sort((a, b) => a.localeCompare(b, 'pt-BR')),
     regioes: Array.from(regioes).sort((a, b) => a.localeCompare(b, 'pt-BR')),
     anos: Array.from(anos).sort().reverse(),
     tipos: Array.from(tipos).sort((a, b) => a.localeCompare(b, 'pt-BR')),
   };
+  return _metadadosCache;
 }
 
+let _empresasCache: string[] | null = null;
+
 export function getUniqueEmpresas(): string[] {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  if (_empresasCache) return _empresasCache;
+  const linhas = getLinhas();
   const empresas = new Set<string>();
   for (let i = 1; i < linhas.length; i++) {
     const cols = linhas[i].split(';');
@@ -439,11 +455,12 @@ export function getUniqueEmpresas(): string[] {
     const empresa = (cols[3] || '').trim();
     if (empresa && empresa !== 'Desconhecida') empresas.add(empresa);
   }
-  return Array.from(empresas).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  _empresasCache = Array.from(empresas).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  return _empresasCache;
 }
 
 export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const linhas = getLinhas();
   const resultados: ResumoRelatorio['projetos'] = [];
   const termo = nomeEmpresa.toLowerCase();
 
@@ -513,8 +530,16 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
   };
 }
 
+let _linhasSemValorCache: string[] | null = null;
+function getLinhasSemValor() {
+  if (!_linhasSemValorCache) {
+    _linhasSemValorCache = PIESP_SEM_VALOR_DATA.split('\n').filter(l => l.trim().length > 0);
+  }
+  return _linhasSemValorCache;
+}
+
 export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
-  const linhas = PIESP_SEM_VALOR_DATA.split('\n').filter(l => l.trim().length > 0);
+  const linhas = getLinhasSemValor();
   const resultados = [];
   
   // A primeira linha é o cabeçalho

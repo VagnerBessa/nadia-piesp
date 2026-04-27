@@ -4,6 +4,7 @@
  * Parseia o CSV completo e retorna estruturas prontas para gráficos Recharts.
  */
 import PIESP_DATA from '../knowledge_base/piesp_confirmados_com_valor.csv?raw';
+import { getLinhas } from './piespDataService';
 
 // --- Tipos ---
 export interface PiespRecord {
@@ -61,7 +62,7 @@ const SETORES_VALIDOS = new Set([
 
 // --- Parser ---
 function parseCSV(): PiespRecord[] {
-  const linhas = PIESP_DATA.split('\n').filter(l => l.trim().length > 0);
+  const linhas = getLinhas();
   const records: PiespRecord[] = [];
 
   // Colunas: 0=data, 1=ano, 2=mes, 3=empresa_alvo, 4=investidora_s,
