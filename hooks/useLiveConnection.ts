@@ -4,6 +4,12 @@ import { GoogleGenAI, LiveServerMessage, Modality, Blob, Tool, FunctionDeclarati
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
+import { getMetadados } from '../services/piespDataService';
+
+const _metadados = getMetadados();
+const regiaoDesc = _metadados.regioes.length > 0
+  ? `Região administrativa do Estado de SP. Valores válidos: ${_metadados.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
+  : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
 
 // Audio settings
 const INPUT_SAMPLE_RATE = 16000;
@@ -438,11 +444,11 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-                      regiao: { type: Type.STRING, description: 'Uma região administrativa ou metropolitana inteira (ex: "sao paulo", "vale do paraiba")' },
+                      ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+                      regiao: { type: Type.STRING, description: regiaoDesc },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
+                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
                   }
                 },
@@ -452,11 +458,11 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'O ano do investimento, ex: "2026"' },
-                      municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-                      regiao: { type: Type.STRING, description: 'Uma região administrativa ou metropolitana' },
-                      setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Para atividades específicas (saúde, educação, farmácia etc.) use termo_busca.' },
-                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia" etc.' }
+                      ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
+                      regiao: { type: Type.STRING, description: regiaoDesc },
+                      setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
+                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
                     }
                   }
                 },
