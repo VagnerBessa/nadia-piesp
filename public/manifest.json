@@ -1,0 +1,21 @@
+{
+  "name": "Nadia AI Assistant",
+  "short_name": "Nadia",
+  "description": "Assistente de IA da Fundação Seade para o PIESP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b2231",
+  "theme_color": "#0b2231",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
