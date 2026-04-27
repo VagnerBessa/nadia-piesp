@@ -4,13 +4,12 @@ import { GoogleGenAI, LiveServerMessage, Modality, Blob, Tool, FunctionDeclarati
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
+import { getMetadados } from '../services/piespDataService';
 
-// Lazy: só carrega os metadados (e o CSV pesado) quando o chat de voz for usado de fato
+// Lazy: só chama getMetadados() quando o chat de voz for usado de fato
 let _regiaoDescCache: string | null = null;
 function getRegiaoDesc(): string {
   if (_regiaoDescCache) return _regiaoDescCache;
-  // dynamic import inline não funciona com top-level, então usamos require-style lazy
-  const { getMetadados } = require('../services/piespDataService');
   const meta = getMetadados();
   _regiaoDescCache = meta.regioes.length > 0
     ? `Região administrativa do Estado de SP. Valores válidos: ${meta.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
