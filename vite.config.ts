@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          // Força o Rollup a usar a versão ESM do DuckDB WASM,
+          // evitando que a versão CJS (com require("apache-arrow")) seja bundlada.
+          '@duckdb/duckdb-wasm': path.resolve(__dirname, 'node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser.mjs'),
         }
       },
       optimizeDeps: {
