@@ -30,29 +30,19 @@ export interface GenerateResult {
   groundingSupports?: any[];
 }
 
-function isRetryable(e: any): boolean {
-  // Inspeciona todas as propriedades possíveis onde o SDK pode guardar o erro
+function getGeminiError(e: any) {
   const status = e?.status ?? e?.statusCode ?? e?.code ?? 0;
-  if (status === 429 || status === 500 || status === 503) return true;
-
-  // Serializa tudo que sobrou para busca textual
-  let msg = '';
-  try { msg = (e?.message || '') + ' ' + JSON.stringify(e); } catch { msg = String(e); }
-  msg = msg.toLowerCase();
-
-  return (
-    msg.includes('503') ||
-    msg.includes('unavailable') ||
-    msg.includes('overloaded') ||
-    msg.includes('high demand') ||
-    msg.includes('429') ||
-    msg.includes('quota') ||
-    msg.includes('rate limit') ||
-    msg.includes('resource_exhausted') ||
-    msg.includes('500') ||
-    msg.includes('internal') ||
-    msg.includes('too many requests')
-  );
+  const msg = (e?.message || JSON.stringify(e) || '').toLowerCase();
+  
+  const isRetryable = 
+    status === 503 || status === 429 || status === 500 ||
+    msg.includes('503') || msg.includes('429') || msg.includes('500') ||
+    msg.includes('unavailable') || msg.includes('overloaded') || 
+    msg.includes('high demand') || msg.includes('quota') || 
+    msg.includes('rate limit') || msg.includes('resource_exhausted') ||
+    msg.includes('fetch failed');
+    
+  return { isRetryable, status, msg };
 }
 
 async function tryOpenRouter(options: GenerateOptions): Promise<GenerateResult> {
@@ -107,8 +97,10 @@ export async function generateWithFallback(options: GenerateOptions): Promise<Ge
     };
 
   } catch (e: any) {
-    if (OPENROUTER_API_KEY) {
+    const { isRetryable: retryable } = getGeminiError(e);
+    if (retryable && OPENROUTER_API_KEY) {
       try {
+        console.warn('🔀 Gemini error detectado — ativando fallback OpenRouter...');
         return await tryOpenRouter(options);
       } catch (orError: any) {
         console.error('❌ OpenRouter também falhou:', orError?.message);
