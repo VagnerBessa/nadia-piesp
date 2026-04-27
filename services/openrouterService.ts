@@ -52,16 +52,18 @@ function geminiContentsToOAI(systemInstruction: string, contents: GeminiContent[
   for (const item of contents) {
     const role = item.role === 'model' ? 'assistant' : 'user';
 
-    for (const part of item.parts) {
+    for (const [partIdx, part] of item.parts.entries()) {
       if (part.text) {
         messages.push({ role, content: part.text });
       } else if (part.functionCall) {
-        // Chamada de ferramenta do modelo
+        // Chamada de ferramenta do modelo — usa ID determinístico baseado na posição
+        // para que a resposta (functionResponse) possa casar o ID.
+        const callId = `call_${part.functionCall.name}_${partIdx}`;
         messages.push({
           role: 'assistant',
           content: null,
           tool_calls: [{
-            id: `call_${part.functionCall.name}_${Date.now()}`,
+            id: callId,
             type: 'function',
             function: {
               name: part.functionCall.name,
@@ -70,11 +72,12 @@ function geminiContentsToOAI(systemInstruction: string, contents: GeminiContent[
           }]
         });
       } else if (part.functionResponse) {
-        // Resposta da ferramenta
+        // Resposta da ferramenta — busca o ID correspondente (mesma posição relativa)
+        const callId = `call_${part.functionResponse.name}_${partIdx - 1}`;
         messages.push({
           role: 'tool',
           content: JSON.stringify(part.functionResponse.response),
-          tool_call_id: `call_${part.functionResponse.name}_${Date.now()}`,
+          tool_call_id: callId,
           name: part.functionResponse.name
         });
       }
@@ -94,9 +97,12 @@ type GeminiToolDecl = {
   }[]
 };
 
-function geminiToolsToOAI(geminiTools: GeminiToolDecl[]): OAITool[] {
+function geminiToolsToOAI(geminiTools: any[]): OAITool[] {
   const tools: OAITool[] = [];
   for (const group of geminiTools) {
+    // Pula grupos de ferramentas que não são baseadas em funções (ex: googleSearch)
+    if (!group.functionDeclarations) continue;
+    
     for (const decl of group.functionDeclarations) {
       // Converte parâmetros Gemini (Type.STRING etc.) para JSON Schema puro
       const params = convertGeminiParams(decl.parameters);
@@ -146,7 +152,7 @@ export async function callOpenRouter(
   contents: GeminiContent[],
   systemInstruction: string,
   geminiTools: GeminiToolDecl[],
-  executarFerramenta: (nome: string, args: Record<string, unknown>) => unknown
+  executarFerramenta: (nome: string, args: Record<string, unknown>) => Promise<any>
 ): Promise<OpenRouterResult> {
   if (!OPENROUTER_API_KEY) {
     throw new Error('OPENROUTER_API_KEY não configurada em config.ts');
@@ -199,7 +205,7 @@ export async function callOpenRouter(
       const args = JSON.parse(toolCall.function.arguments || '{}');
       console.log(`🛠️ [OpenRouter] Tool call: ${toolCall.function.name}`, args);
 
-      const resultado = executarFerramenta(toolCall.function.name, args);
+      const resultado = await executarFerramenta(toolCall.function.name, args);
 
       messages.push({
         role: 'tool',

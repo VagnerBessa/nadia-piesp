@@ -107,7 +107,19 @@ interface UseChatOptions {
   selectedSkillName?: string | null;
 }
 
-// Retry com backoff para erros 503 — tenta até maxRetries vezes com pausa crescente
+// Extrai o código de erro ou status da exceção do Gemini
+function getGeminiError(e: any) {
+  const status = e?.status ?? e?.statusCode ?? e?.code ?? 0;
+  const msg = (e?.message || JSON.stringify(e) || '').toLowerCase();
+  
+  const is503 = status === 503 || msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('fetch failed');
+  const is429 = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('resource_exhausted');
+  const is500 = status === 500 || msg.includes('500') || msg.includes('internal');
+  
+  return { status, msg, is503, is429, is500 };
+}
+
+// Retry com backoff para erros temporários — tenta até maxRetries vezes com pausa crescente
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 2000): Promise<T> {
   let lastError: any;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -115,11 +127,13 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 
       return await fn();
     } catch (e: any) {
       lastError = e;
-      const msg = (e?.message || '').toLowerCase();
-      const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand');
+      const { is503, is429, is500 } = getGeminiError(e);
+      const isRetryable = is503 || is429 || is500;
+      
       if (!isRetryable || attempt === maxRetries) throw e;
+      
       const delay = baseDelayMs * (attempt + 1); // 2s, 4s
-      console.warn(`⏳ Gemini 503 — tentativa ${attempt + 1}/${maxRetries}. Aguardando ${delay}ms...`);
+      console.warn(`⏳ Gemini Error — tentativa ${attempt + 1}/${maxRetries}. Aguardando ${delay}ms...`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
@@ -260,14 +274,12 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (e: any) {
-      const rawMsg = (e?.message || JSON.stringify(e) || '').toLowerCase();
-      console.error('❌ Chat error — raw:', e?.message || e);
+      const { msg: rawMsg, is503, is429, is500 } = getGeminiError(e);
+      console.error('❌ Chat error details:', { is503, is429, is500, message: e?.message || e });
 
-      const is503 = rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('unavailable') || rawMsg.includes('overloaded');
-
-      // Fallback OpenRouter: tenta quando Gemini retorna 503 e a chave está configurada
-      if (is503 && OPENROUTER_API_KEY) {
-        console.warn('🔀 Gemini 503 persistente — ativando fallback OpenRouter...');
+      // Fallback OpenRouter: tenta quando Gemini retorna 503 ou 429
+      if ((is503 || is429) && OPENROUTER_API_KEY) {
+        console.warn(`🔀 Gemini ${is503 ? '503' : '429'} detectado — ativando fallback OpenRouter...`);
         try {
           const result = await callOpenRouter(
             currentContents,
@@ -278,11 +290,12 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
           const modelMessage: Message = { role: 'model', text: result.text };
           historyRef.current = [...currentContents, { role: 'model', parts: [{ text: result.text }] }];
           setMessages(prev => [...prev, modelMessage]);
-          return; // sucesso via fallback — não exibe erro
+          return; // sucesso via fallback
         } catch (orError: any) {
           console.error('❌ OpenRouter fallback também falhou:', orError?.message || orError);
-          // Continua para exibir mensagem de erro abaixo
         }
+      } else if ((is503 || is429) && !OPENROUTER_API_KEY) {
+        console.error('❌ Erro de cota/sobrecarga mas OPENROUTER_API_KEY não está configurada.');
       }
 
       let errorMessage: string;
