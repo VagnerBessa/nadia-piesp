@@ -116,7 +116,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const { messages, sendMessage, isLoading } = useChat({ selectedSkillName: activeAgent?.name });
+  const { messages, sendMessage, isLoading, streamingText, streamingComplete } = useChat({ selectedSkillName: activeAgent?.name });
   const { text: speechText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
   const [inputValue, setInputValue] = useState('');
   const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
@@ -125,6 +125,57 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const prevIsListening = useRef(isListening);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottom = useRef(true);
+
+  // Animação palavra-a-palavra: setInterval a 22ms/palavra drena fila independente do tamanho dos chunks
+  const [displayText, setDisplayText] = useState('');
+  const streamQueueRef = useRef('');
+  const prevStreamLenRef = useRef(0);
+  const drainIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamingCompleteRef = useRef(false);
+  streamingCompleteRef.current = streamingComplete;
+
+  const stopDrain = useCallback(() => {
+    if (drainIntervalRef.current !== null) {
+      clearInterval(drainIntervalRef.current);
+      drainIntervalRef.current = null;
+    }
+  }, []);
+
+  const startDrain = useCallback(() => {
+    if (drainIntervalRef.current !== null) return;
+    drainIntervalRef.current = setInterval(() => {
+      const queue = streamQueueRef.current;
+      if (!queue) {
+        clearInterval(drainIntervalRef.current!);
+        drainIntervalRef.current = null;
+        if (streamingCompleteRef.current) setDisplayText('');
+        return;
+      }
+      const match = queue.match(/^(\S+[\s]*|[\s]+)/);
+      if (!match) { clearInterval(drainIntervalRef.current!); drainIntervalRef.current = null; return; }
+      const word = match[1];
+      streamQueueRef.current = queue.slice(word.length);
+      setDisplayText(prev => prev + word);
+    }, 22);
+  }, [stopDrain]);
+
+  useEffect(() => {
+    if (streamingText === null) {
+      if (!streamingComplete) {
+        stopDrain(); streamQueueRef.current = ''; prevStreamLenRef.current = 0; setDisplayText('');
+      } else {
+        prevStreamLenRef.current = 0;
+      }
+      return;
+    }
+    const newChars = streamingText.slice(prevStreamLenRef.current);
+    prevStreamLenRef.current = streamingText.length;
+    if (!newChars) return;
+    streamQueueRef.current += newChars;
+    startDrain();
+  }, [streamingText, streamingComplete, startDrain, stopDrain]);
+
+  useEffect(() => () => stopDrain(), [stopDrain]);
 
   useAutoResizeTextArea(textAreaRef.current, inputValue);
 
@@ -176,6 +227,12 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  useLayoutEffect(() => {
+    if (shouldStickToBottom.current && displayText) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [displayText]);
 
   const handleMicClick = () => {
     if (isListening) stopListening();
@@ -377,7 +434,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
           /* Estado de chat — mensagens + input no rodapé */
           <>
             <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
-              {messages.map((msg, index) => (
+              {messages.map((msg, index) => {
+                // Esconde a última mensagem do modelo enquanto o drain de palavras está ativo
+                if (displayText && streamingComplete && index === messages.length - 1 && msg.role === 'model') return null;
+                return (
                 <div
                   key={index}
                   className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -406,8 +466,18 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                     )}
                   </div>
                 </div>
-              ))}
-              {isLoading && (
+                );
+              })}
+              {displayText && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0"><ChatHeaderSphere /></div>
+                  <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
+                    <span className="whitespace-pre-wrap leading-relaxed">{displayText}</span>
+                    <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
+                  </div>
+                </div>
+              )}
+              {isLoading && !displayText && (
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                   <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">
