@@ -126,6 +126,46 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottom = useRef(true);
 
+  // Animação palavra-a-palavra: drena a fila de texto gradualmente
+  const [displayText, setDisplayText] = useState('');
+  const streamQueueRef = useRef('');
+  const prevStreamLenRef = useRef(0);
+  const drainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const drainWords = useCallback(() => {
+    drainTimerRef.current = null;
+    if (!streamQueueRef.current) return;
+    // Consome uma palavra (chars não-espaço + espaços/quebras de linha que a seguem)
+    const match = streamQueueRef.current.match(/^(\S+[\s]*|[\s]+)/);
+    if (!match) return;
+    const word = match[1];
+    streamQueueRef.current = streamQueueRef.current.slice(word.length);
+    setDisplayText(prev => prev + word);
+    if (streamQueueRef.current.length > 0) {
+      drainTimerRef.current = setTimeout(drainWords, 22);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (streamingText === null) {
+      if (drainTimerRef.current) clearTimeout(drainTimerRef.current);
+      drainTimerRef.current = null;
+      streamQueueRef.current = '';
+      prevStreamLenRef.current = 0;
+      setDisplayText('');
+      return;
+    }
+    const newChars = streamingText.slice(prevStreamLenRef.current);
+    prevStreamLenRef.current = streamingText.length;
+    if (!newChars) return;
+    streamQueueRef.current += newChars;
+    if (!drainTimerRef.current) {
+      drainTimerRef.current = setTimeout(drainWords, 22);
+    }
+  }, [streamingText, drainWords]);
+
+  useEffect(() => () => { if (drainTimerRef.current) clearTimeout(drainTimerRef.current); }, []);
+
   useAutoResizeTextArea(textAreaRef.current, inputValue);
 
   useEffect(() => {
@@ -178,10 +218,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   }, [messages]);
 
   useLayoutEffect(() => {
-    if (shouldStickToBottom.current && streamingText !== null) {
+    if (shouldStickToBottom.current && displayText) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
-  }, [streamingText]);
+  }, [displayText]);
 
   const handleMicClick = () => {
     if (isListening) stopListening();
@@ -456,16 +496,16 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                     </div>
                   </div>
                 ))}
-                {isLoading && streamingText && (
+                {isLoading && (streamingText !== null || displayText) && (
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                     <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
-                      <span className="whitespace-pre-wrap leading-relaxed">{streamingText}</span>
+                      <span className="whitespace-pre-wrap leading-relaxed">{displayText}</span>
                       <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
                     </div>
                   </div>
                 )}
-                {isLoading && !streamingText && (
+                {isLoading && streamingText === null && !displayText && (
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                     <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">
