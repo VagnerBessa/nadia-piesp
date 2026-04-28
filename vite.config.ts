@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
         headers: {
           // Necessário para DuckDB WASM usar SharedArrayBuffer
           'Cross-Origin-Opener-Policy': 'same-origin',
-          'Cross-Origin-Embedder-Policy': 'require-corp',
+          'Cross-Origin-Embedder-Policy': 'credentialless',
         },
       },
       plugins: [react()],
