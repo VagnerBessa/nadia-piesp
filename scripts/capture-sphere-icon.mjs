@@ -24,19 +24,32 @@ await canvas.waitFor({ state: 'visible' });
 // Screenshot do canvas como PNG buffer
 const rawBuf = await canvas.screenshot({ type: 'png' });
 
-// Detecta as dimensões reais
+// Garante quadrado recortando o centro
 const meta = await sharp(rawBuf).metadata();
-const size = Math.min(meta.width, meta.height); // garante quadrado
+const cropSize = Math.min(meta.width, meta.height);
 const squareBuf = await sharp(rawBuf)
-  .extract({ left: Math.round((meta.width - size) / 2), top: Math.round((meta.height - size) / 2), width: size, height: size })
+  .extract({ left: Math.round((meta.width - cropSize) / 2), top: Math.round((meta.height - cropSize) / 2), width: cropSize, height: cropSize })
   .toBuffer();
 
+// Gera ícone com padding para que a esfera não encoste nas bordas (macOS arredonda o container)
+// A esfera ocupa ~78% do ícone; o restante é fundo #0b2231
 async function saveIcon(sizePx, outFile) {
-  await sharp(squareBuf)
-    .resize(sizePx, sizePx, { fit: 'fill' })
+  const PADDING_RATIO = 0.11; // 11% de cada lado → esfera em 78% do espaço
+  const padding = Math.round(sizePx * PADDING_RATIO);
+  const innerSize = sizePx - padding * 2;
+
+  const sphereBuf = await sharp(squareBuf)
+    .resize(innerSize, innerSize, { fit: 'fill' })
+    .png()
+    .toBuffer();
+
+  await sharp({
+    create: { width: sizePx, height: sizePx, channels: 4, background: { r: 11, g: 34, b: 49, alpha: 1 } },
+  })
+    .composite([{ input: sphereBuf, left: padding, top: padding }])
     .png()
     .toFile(outFile);
-  console.log(`✓ ${path.basename(outFile)} (${sizePx}×${sizePx})`);
+  console.log(`✓ ${path.basename(outFile)} (${sizePx}×${sizePx}, padding ${padding}px)`);
 }
 
 await saveIcon(512, path.join(root, 'public', 'icon-512x512.png'));
