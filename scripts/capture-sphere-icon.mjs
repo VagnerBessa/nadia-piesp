@@ -34,7 +34,7 @@ const squareBuf = await sharp(rawBuf)
 // Gera ícone com padding para que a esfera não encoste nas bordas (macOS arredonda o container)
 // A esfera ocupa ~78% do ícone; o restante é fundo #0b2231
 async function saveIcon(sizePx, outFile) {
-  const PADDING_RATIO = 0.11; // 11% de cada lado → esfera em 78% do espaço
+  const PADDING_RATIO = 0.18; // 18% de cada lado → esfera em 64% do espaço (safe zone macOS)
   const padding = Math.round(sizePx * PADDING_RATIO);
   const innerSize = sizePx - padding * 2;
 
