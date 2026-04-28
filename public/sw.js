@@ -1,7 +1,7 @@
 // Service Worker — Nadia PWA Cache
 // Estratégia: Network-first para HTML, Cache-first para assets estáticos
 
-const CACHE_NAME = 'nadia-v0.3';
+const CACHE_NAME = 'nadia-v0.2.0';
 const STATIC_ASSETS = [
   '/manifest.json',
 ];

@@ -66,9 +66,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
           </div>
         </div>
 
-        {/* Divisor sutil no final do bottom sheet */}
-        <div className="mt-6 pt-2 border-t border-white/[0.03] flex flex-col items-center">
+        {/* Versão discreta */}
+        <div className="mt-6 pt-2 border-t border-white/[0.03] flex flex-col items-center gap-1.5">
           <div className="w-1 h-1 bg-rose-500/20 rounded-full" />
+          <span className="text-[10px] text-slate-700 font-mono tracking-wider select-none">
+            v{__APP_VERSION__}
+          </span>
         </div>
       </div>
 
