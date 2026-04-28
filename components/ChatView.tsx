@@ -116,7 +116,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const { messages, sendMessage, isLoading, streamingText } = useChat({ selectedSkillName: activeAgent?.name });
+  const { messages, sendMessage, isLoading, streamingText, streamingComplete } = useChat({ selectedSkillName: activeAgent?.name });
   const { text: speechText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
   const [inputValue, setInputValue] = useState('');
   const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
@@ -126,45 +126,63 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottom = useRef(true);
 
-  // Animação palavra-a-palavra: drena a fila de texto gradualmente
+  // Animação palavra-a-palavra com setInterval — velocidade constante independente do tamanho dos chunks
   const [displayText, setDisplayText] = useState('');
   const streamQueueRef = useRef('');
   const prevStreamLenRef = useRef(0);
-  const drainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drainIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref sincronizado com streamingComplete para uso dentro do callback do setInterval
+  const streamingCompleteRef = useRef(false);
+  streamingCompleteRef.current = streamingComplete;
 
-  const drainWords = useCallback(() => {
-    drainTimerRef.current = null;
-    if (!streamQueueRef.current) return;
-    // Consome uma palavra (chars não-espaço + espaços/quebras de linha que a seguem)
-    const match = streamQueueRef.current.match(/^(\S+[\s]*|[\s]+)/);
-    if (!match) return;
-    const word = match[1];
-    streamQueueRef.current = streamQueueRef.current.slice(word.length);
-    setDisplayText(prev => prev + word);
-    if (streamQueueRef.current.length > 0) {
-      drainTimerRef.current = setTimeout(drainWords, 22);
+  const stopDrain = useCallback(() => {
+    if (drainIntervalRef.current !== null) {
+      clearInterval(drainIntervalRef.current);
+      drainIntervalRef.current = null;
     }
   }, []);
 
+  const startDrain = useCallback(() => {
+    if (drainIntervalRef.current !== null) return;
+    drainIntervalRef.current = setInterval(() => {
+      const queue = streamQueueRef.current;
+      if (!queue) {
+        // Fila vazia: encerra drain; se o streaming terminou, revela a mensagem final
+        clearInterval(drainIntervalRef.current!);
+        drainIntervalRef.current = null;
+        if (streamingCompleteRef.current) setDisplayText('');
+        return;
+      }
+      const match = queue.match(/^(\S+[\s]*|[\s]+)/);
+      if (!match) { clearInterval(drainIntervalRef.current!); drainIntervalRef.current = null; return; }
+      const word = match[1];
+      streamQueueRef.current = queue.slice(word.length);
+      setDisplayText(prev => prev + word);
+    }, 22);
+  }, [stopDrain]);
+
   useEffect(() => {
     if (streamingText === null) {
-      if (drainTimerRef.current) clearTimeout(drainTimerRef.current);
-      drainTimerRef.current = null;
-      streamQueueRef.current = '';
-      prevStreamLenRef.current = 0;
-      setDisplayText('');
+      if (!streamingComplete) {
+        // Pausa por tool call — limpa imediatamente
+        stopDrain();
+        streamQueueRef.current = '';
+        prevStreamLenRef.current = 0;
+        setDisplayText('');
+      } else {
+        // Streaming concluído — deixa a fila drenar naturalmente
+        prevStreamLenRef.current = 0;
+      }
       return;
     }
     const newChars = streamingText.slice(prevStreamLenRef.current);
     prevStreamLenRef.current = streamingText.length;
     if (!newChars) return;
     streamQueueRef.current += newChars;
-    if (!drainTimerRef.current) {
-      drainTimerRef.current = setTimeout(drainWords, 22);
-    }
-  }, [streamingText, drainWords]);
+    startDrain();
+  }, [streamingText, streamingComplete, startDrain, stopDrain]);
 
-  useEffect(() => () => { if (drainTimerRef.current) clearTimeout(drainTimerRef.current); }, []);
+  useEffect(() => () => stopDrain(), [stopDrain]);
 
   useAutoResizeTextArea(textAreaRef.current, inputValue);
 
@@ -466,7 +484,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                 </div>
               </div>
               <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
-                {messages.map((msg, index) => (
+                {messages.map((msg, index) => {
+                  // Esconde a última mensagem do modelo enquanto a animação de drain está ativa
+                  if (displayText && streamingComplete && index === messages.length - 1 && msg.role === 'model') return null;
+                  return (
                   <div
                     key={index}
                     className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -495,8 +516,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                       )}
                     </div>
                   </div>
-                ))}
-                {isLoading && (streamingText !== null || displayText) && (
+                  );
+                })}
+                {displayText && (
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                     <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
@@ -505,7 +527,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                     </div>
                   </div>
                 )}
-                {isLoading && streamingText === null && !displayText && (
+                {isLoading && !displayText && (
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                     <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">

@@ -137,6 +137,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState<string | null>(null);
+  const [streamingComplete, setStreamingComplete] = useState(false);
 
   const historyRef = useRef<HistoryItem[]>([
     { role: 'model', parts: [{ text: initialMessage.text }] }
@@ -148,6 +149,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
     setIsLoading(true);
     setError(null);
     setStreamingText(null);
+    setStreamingComplete(false);
 
     // Atualização otimista da UI com a mensagem do usuário
     const userMessage: Message = { role: 'user', text };
@@ -275,7 +277,8 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       // Atualiza o histórico para a próxima interação
       historyRef.current = [...contents, { role: 'model', parts: [{ text: finalText }] }];
 
-      // Transição atômica: limpa streaming e adiciona mensagem final no mesmo ciclo React
+      // Sinaliza conclusão para o drain terminar antes de exibir a mensagem final
+      setStreamingComplete(true);
       setStreamingText(null);
       setMessages(prev => [...prev, modelMessage]);
 
@@ -329,5 +332,5 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
     }
   };
 
-  return { messages, sendMessage, isLoading, error, streamingText };
+  return { messages, sendMessage, isLoading, error, streamingText, streamingComplete };
 };
