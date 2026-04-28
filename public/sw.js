@@ -4,6 +4,9 @@
 const CACHE_NAME = 'nadia-v0.2.0';
 const STATIC_ASSETS = [
   '/manifest.json',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
+  '/apple-touch-icon.png',
 ];
 
 // Install: pré-cacheia apenas assets não-HTML
