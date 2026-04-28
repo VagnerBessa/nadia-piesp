@@ -116,7 +116,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const { messages, sendMessage, isLoading } = useChat({ selectedSkillName: activeAgent?.name });
+  const { messages, sendMessage, isLoading, streamingText } = useChat({ selectedSkillName: activeAgent?.name });
   const { text: speechText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
   const [inputValue, setInputValue] = useState('');
   const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
@@ -176,6 +176,12 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  useLayoutEffect(() => {
+    if (shouldStickToBottom.current && streamingText !== null) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [streamingText]);
 
   const handleMicClick = () => {
     if (isListening) stopListening();
@@ -450,7 +456,16 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                     </div>
                   </div>
                 ))}
-                {isLoading && (
+                {isLoading && streamingText && (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0"><ChatHeaderSphere /></div>
+                    <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
+                      <span className="whitespace-pre-wrap leading-relaxed">{streamingText}</span>
+                      <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
+                    </div>
+                  </div>
+                )}
+                {isLoading && !streamingText && (
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                     <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">

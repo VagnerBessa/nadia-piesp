@@ -19,10 +19,10 @@ export interface Message {
   sources?: Source[];
 }
 
-// Tipo local para o histórico compatível com a API
+// Tipo local para o histórico compatível com a API (inclui function call/response parts)
 interface HistoryItem {
   role: 'user' | 'model';
-  parts: { text: string }[];
+  parts: { text?: string; functionCall?: any; functionResponse?: any }[];
 }
 
 export type ResponseMode = 'fast' | 'complete';
@@ -136,7 +136,8 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+
   const historyRef = useRef<HistoryItem[]>([
     { role: 'model', parts: [{ text: initialMessage.text }] }
   ]);
@@ -146,7 +147,8 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
 
     setIsLoading(true);
     setError(null);
-    
+    setStreamingText(null);
+
     // Atualização otimista da UI com a mensagem do usuário
     const userMessage: Message = { role: 'user', text };
     setMessages(prev => [...prev, userMessage]);
@@ -169,15 +171,11 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-      // Configuração do modelo
       const modelName = 'gemini-2.5-flash';
-
-      // Configuração de Thinking (Pensamento)
       const thinkingConfig = mode === 'complete'
-        ? { thinkingConfig: { thinkingBudget: 512 } }   // reduzido de 2048 → 512 para evitar erros 429/503
+        ? { thinkingConfig: { thinkingBudget: 512 } }
         : { thinkingConfig: { thinkingBudget: 0 } };
 
-      // Log de confirmação: mostra qual skill está ativa e o tamanho do system instruction
       if (selectedSkillName) {
         console.log(`🎯 [Agente manual] Skill "${selectedSkillName}" injetada. System instruction: ${systemInstructionWithSkill.length} chars.`);
       } else {
@@ -189,81 +187,96 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
         }
       }
 
-      // Primeira chamada: envia a mensagem com as ferramentas selecionadas (com retry automático para 503)
-      let response = await withRetry(() => ai.models.generateContent({
-        model: modelName,
-        contents: contents,
-        config: {
-          systemInstruction: systemInstructionWithSkill,
-          tools: ferramentasAtivas,
-          ...thinkingConfig
-        }
-      }));
+      // Loop de function calling com streaming na resposta final.
+      // Itera até 4 vezes; function calls usam generateContent (necessário para detectar o call
+      // antes de executar a ferramenta). A última chamada (texto final) usa generateContentStream.
+      let currentContents: HistoryItem[] = [...contents];
+      let finalText = '';
+      let finalSources: Source[] = [];
 
-      // Loop de Function Calling: executa ferramentas até o modelo retornar texto final
-      // Máx 4: permite chamar as duas bases (projetos + sem_valor) e ainda ter iterações
-      // para o modelo gerar a resposta final após receber os resultados
-      let maxIterations = 4;
-      while (maxIterations > 0) {
-        const candidate = response.candidates?.[0];
-        const parts = candidate?.content?.parts;
-        
-        // Verifica se houve chamada de ferramenta
-        const functionCallPart = parts?.find((p: any) => p.functionCall);
-        if (!functionCallPart || !functionCallPart.functionCall) break; // Sem tool call, temos a resposta final
+      for (let iteration = 0; iteration < 4; iteration++) {
+        const iterResult = await withRetry(async () => {
+          setStreamingText(null); // limpa em caso de retry
+          const fcalls: any[] = [];
+          let iterText = '';
+          let lastChunk: any = null;
 
-        const fcall = functionCallPart.functionCall;
+          const stream = await (ai.models as any).generateContentStream({
+            model: modelName,
+            contents: currentContents,
+            config: {
+              systemInstruction: systemInstructionWithSkill,
+              tools: ferramentasAtivas,
+              ...thinkingConfig
+            }
+          });
 
-        // Executa a ferramenta localmente (async — DuckDB)
-        const resultado = await executarFerramenta(fcall.name!, fcall.args || {});
+          for await (const chunk of stream) {
+            lastChunk = chunk;
+            const parts = chunk.candidates?.[0]?.content?.parts || [];
 
-        // Monta o histórico com a resposta da ferramenta
-        const updatedContents = [
-          ...contents,
-          { role: 'model' as const, parts: [{ functionCall: { name: fcall.name!, args: fcall.args || {} } }] },
-          { role: 'user' as const, parts: [{ functionResponse: { name: fcall.name!, response: resultado } }] }
-        ];
+            let hasFunctionCall = false;
+            for (const part of parts) {
+              if (part.functionCall) {
+                fcalls.push(part.functionCall);
+                hasFunctionCall = true;
+              }
+            }
 
-        // Segunda chamada: usa as mesmas ferramentas ativas (com retry automático para 503)
-        response = await withRetry(() => ai.models.generateContent({
-          model: modelName,
-          contents: updatedContents,
-          config: {
-            systemInstruction: systemInstructionWithSkill,
-            tools: ferramentasAtivas,
-            ...thinkingConfig
+            if (hasFunctionCall) {
+              // Resposta com tool call — descarta qualquer texto de preamble
+              iterText = '';
+              setStreamingText(null);
+            } else {
+              const delta: string = chunk.text || '';
+              if (delta) {
+                iterText += delta;
+                setStreamingText(prev => (prev || '') + delta);
+              }
+            }
           }
-        }));
 
-        maxIterations--;
-      }
+          return { fcalls, text: iterText, lastChunk };
+        });
 
-      const responseText = response.text || "Não encontrei uma resposta para sua pergunta.";
-      
-      // Extração de fontes do Google Search Grounding
-      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      let sources: Source[] = [];
+        if (iterResult.fcalls.length === 0) {
+          // Resposta final em texto
+          finalText = iterResult.text || "Não encontrei uma resposta para sua pergunta.";
 
-      if (groundingChunks) {
-        const webSources = groundingChunks
-          .map((chunk: any) => chunk.web)
-          .filter((webSource: any) => webSource && webSource.uri && webSource.title)
-          .map((webSource: any) => ({ uri: webSource.uri, title: webSource.title }));
+          const groundingChunks = iterResult.lastChunk?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+          if (groundingChunks) {
+            const webSources = groundingChunks
+              .map((c: any) => c.web)
+              .filter((w: any) => w?.uri && w?.title)
+              .map((w: any) => ({ uri: w.uri, title: w.title }));
+            finalSources = webSources.filter((v: any, i: number, a: any[]) => a.findIndex((t: any) => t.uri === v.uri) === i);
+          }
+          break;
+        }
 
-        // Remove duplicatas baseadas na URI
-        sources = webSources.filter((v: any, i: number, a: any[]) => a.findIndex((t) => t.uri === v.uri) === i);
+        // Tem function calls — executa e acumula no histórico
+        setStreamingText(null);
+        for (const fc of iterResult.fcalls) {
+          const resultado = await executarFerramenta(fc.name!, fc.args || {});
+          currentContents = [
+            ...currentContents,
+            { role: 'model' as const, parts: [{ functionCall: { name: fc.name!, args: fc.args || {} } }] },
+            { role: 'user' as const, parts: [{ functionResponse: { name: fc.name!, response: resultado } }] }
+          ];
+        }
       }
 
       const modelMessage: Message = {
         role: 'model',
-        text: responseText,
-        sources: sources.length > 0 ? sources : undefined
+        text: finalText || "Não encontrei uma resposta para sua pergunta.",
+        sources: finalSources.length > 0 ? finalSources : undefined
       };
 
-      // Atualiza o histórico com a resposta do modelo para as próximas interações
-      historyRef.current = [...contents, { role: 'model', parts: [{ text: responseText }] }];
-      
-      // Atualiza a UI com a resposta
+      // Atualiza o histórico para a próxima interação
+      historyRef.current = [...contents, { role: 'model', parts: [{ text: finalText }] }];
+
+      // Transição atômica: limpa streaming e adiciona mensagem final no mesmo ciclo React
+      setStreamingText(null);
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (e: any) {
@@ -311,9 +324,10 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
       setError(errorMessage);
     } finally {
+      setStreamingText(null);
       setIsLoading(false);
     }
   };
 
-  return { messages, sendMessage, isLoading, error };
+  return { messages, sendMessage, isLoading, error, streamingText };
 };
