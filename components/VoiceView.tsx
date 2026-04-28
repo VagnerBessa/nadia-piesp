@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
-import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { consultarPiespData, consultarAnunciosSemValor, canonicalSetor } from '../services/piespDataService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
 
@@ -24,16 +24,33 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     stopConversation
   } = useLiveConnection({
     onToolCall: async (toolCall) => {
+      const VALID_SECTORS = new Set(['Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços']);
+
+      function normalizarArgs(args: any) {
+        let { ano, municipio, regiao, setor, termo_busca } = args;
+        if (setor) {
+          const canonical = canonicalSetor(setor);
+          if (!VALID_SECTORS.has(canonical)) {
+            console.warn(`⚠️ [Voz] setor "${setor}" não é válido — redirecionado para termo_busca`);
+            if (!termo_busca) termo_busca = setor;
+            setor = undefined;
+          } else {
+            setor = canonical;
+          }
+        }
+        return { ano, municipio, regiao, setor, termo_busca };
+      }
+
       if (toolCall.name === 'consultar_projetos_piesp') {
-        const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
-        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, setor, termo_busca });
-        const resultados = await consultarPiespData({ ano, municipio, regiao, setor, termo_busca });
+        const filtro = normalizarArgs(toolCall.args);
+        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", filtro);
+        const resultados = await consultarPiespData(filtro);
         return { sucesso: true, total_projetos: resultados.total_projetos, valor_total_milhoes: resultados.valor_total_milhoes, projetos: resultados.projetos };
       }
       if (toolCall.name === 'consultar_anuncios_sem_valor') {
-        const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
-        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, setor, termo_busca });
-        const resultados = await consultarAnunciosSemValor({ ano, municipio, regiao, setor, termo_busca });
+        const filtro = normalizarArgs(toolCall.args);
+        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", filtro);
+        const resultados = await consultarAnunciosSemValor(filtro);
         return { sucesso: true, total_anuncios: resultados.total_anuncios, anuncios: resultados.anuncios };
       }
       if (toolCall.name === 'encerrar_sessao') {
