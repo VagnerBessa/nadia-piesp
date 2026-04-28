@@ -26,7 +26,7 @@ Para detalhes, ver `docs/`.
 
 ---
 
-## Deploy Vercel — Branch `feature/nadia-mobile` — 14/abr/2026
+## Deploy Vercel — Branch `nadia-mobile/0.2.1` — 28/abr/2026
 
 ### URL de produção
 **https://nadia-piesp-mobile.vercel.app**
@@ -110,6 +110,51 @@ resolve: {
 ```
 
 **Regra:** Para qualquer pacote que tenha versão CJS e ESM, e que cause erros de `require()` no browser, adicionar um alias explícito para o arquivo `.mjs` no `vite.config.ts`. Não confiar somente no `optimizeDeps.exclude` (que só afeta o dev server, não o build de produção).
+
+---
+
+## Branch `nadia-mobile/0.2.1` — 28/abr/2026
+
+Esta versão finaliza três grandes entregas sobre a base da `nadia-mobile/0.2`.
+
+### 1. Migração CSV → Parquet/DuckDB WASM
+
+Os arquivos CSV da base PIESP foram convertidos para o formato **Apache Parquet** e a leitura passou a usar **DuckDB WASM** diretamente no browser, via HTTP range requests sobre `public/piesp.parquet`. O ganho é de desempenho e confiabilidade: DuckDB executa SQL real no browser, sem parsear CSV em JavaScript, e o formato Parquet permite leitura colunar seletiva (transfere apenas as colunas necessárias).
+
+**Detalhe técnico:** O `@duckdb/duckdb-wasm` tem duas builds — `duckdb-browser.mjs` (ESM puro) e `duckdb-browser.cjs` (CJS, contém `require("apache-arrow")`). O Rollup pode resolver para a CJS em prod, vazando `require()` para o bundle do browser. Solução: alias explícito no `vite.config.ts` apontando para o `.mjs`.
+
+### 2. PWA — Ícones, Manifest e Service Worker
+
+- **`public/manifest.json`** — `display: standalone`, orientação portrait, `background_color` e `theme_color: #0b2231`
+- **Ícones gerados via Playwright + sharp** — o script `scripts/capture-sphere-icon.mjs` abre o app no Chromium headless (viewport 1024px para ativar as classes `md:` do Tailwind), captura o elemento `div.rounded-full.overflow-hidden` (não o `<canvas>` bruto — o canvas tem fundo preto próprio que criaria dupla margem), e compõe os ícones com 16% de padding sobre fundo `#0b2231` para respeitar a safe zone da superelipse do macOS/iOS.
+- **`public/sw.js`** — Network-first para HTML (garante que headers COEP/COOP atualizados sejam aplicados), Cache-first para assets com hash (JS/CSS/imagens). Ícones incluídos no precache para propagação automática via `CACHE_NAME = 'nadia-v0.2.0'`.
+- **Versão discreta na UI** — `Nadia-Mobile · v0.2.0` injetada via `__APP_VERSION__` (Vite `define` lê `package.json` em build time).
+
+### 3. Streaming token a token no Chat Escrito
+
+**Problema original:** `generateContent()` retorna a resposta completa de uma vez. O usuário via "Pensando..." por vários segundos e depois todo o texto aparecia instantaneamente.
+
+**Solução — fase 1:** Migração para `generateContentStream()`. O loop de function calling manteve `generateContent()` para detectar tool calls; a resposta final passou a usar streaming, acumulando o texto em `streamingText` (estado do hook `useChat`).
+
+**Problema residual:** O Gemini envia chunks grandes (frases ou parágrafos inteiros), não tokens individuais. O efeito continuava parecendo "por blocos".
+
+**Solução — fase 2 (fila de drenagem com `setInterval`):**
+
+Uma fila de texto (`streamQueueRef`) recebe todos os chunks da API conforme chegam. Um `setInterval` de **22 ms por palavra** drena essa fila de forma independente do ritmo da API — garantindo velocidade constante independentemente do tamanho do chunk.
+
+```
+API envia chunk grande → fila cresce → setInterval drena 1 palavra/22ms → UI recebe tokens uniformes
+```
+
+**Problema de aceleração no final:** Quando `streamingText` tornava-se `null` (API terminou), a fila era limpa imediatamente e a mensagem final renderizada via `MarkdownRenderer` aparecia toda de uma vez — as palavras restantes na fila "aceleravam" e sumiam.
+
+**Solução — fase 3 (flag `streamingComplete`):**
+
+Introduzido `streamingComplete: boolean` no hook. Distingue dois casos de `streamingText → null`:
+- **Tool call** (`streamingComplete = false`): fila limpa imediatamente (o texto era preâmbulo de uma chamada de ferramenta)
+- **Resposta concluída** (`streamingComplete = true`): fila drena até o fim; a última mensagem `MarkdownRenderer` fica oculta enquanto `displayText` não esvaziar; só então o bubble de streaming some e a versão formatada aparece
+
+**Arquivos alterados:** `hooks/useChat.ts`, `components/ChatView.tsx`
 
 ---
 
