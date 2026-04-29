@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor, getMetadados } from '../services/piespDataService';
+import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
 import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
 import { callOpenRouter } from '../services/openrouterService';
 import { OPENROUTER_API_KEY } from '../config';
@@ -112,7 +112,7 @@ function getGeminiError(e: any) {
   const status = e?.status ?? e?.statusCode ?? e?.code ?? 0;
   const msg = (e?.message || JSON.stringify(e) || '').toLowerCase();
   
-  const is503 = status === 503 || msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('fetch failed');
+  const is503 = status === 503 || msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('fetch failed') || msg.includes('incomplete json');
   const is429 = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('resource_exhausted');
   const is500 = status === 500 || msg.includes('500') || msg.includes('internal');
   
@@ -285,12 +285,12 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       // Atualiza o histórico para a próxima interação
       historyRef.current = [...currentContents, { role: 'model', parts: [{ text: finalText }] }];
 
-      // Sinaliza conclusão para o drain de palavras terminar antes de exibir a mensagem final
+      // Sinaliza conclusão — streamingText mantém o valor acumulado para o drain drenar
       setStreamingComplete(true);
-      setStreamingText(null);
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (e: any) {
+      setStreamingText(null);
       const { msg: rawMsg, is503, is429, is500 } = getGeminiError(e);
       console.error('❌ Chat error details:', { is503, is429, is500, message: e?.message || e });
 
@@ -334,7 +334,6 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
       setError(errorMessage);
     } finally {
-      setStreamingText(null);
       setIsLoading(false);
     }
   };

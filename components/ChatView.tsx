@@ -159,7 +159,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
     }, 22);
   }, [stopDrain]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (streamingText === null) {
       if (!streamingComplete) {
         stopDrain(); streamQueueRef.current = ''; prevStreamLenRef.current = 0; setDisplayText('');
