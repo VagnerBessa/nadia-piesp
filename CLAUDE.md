@@ -990,3 +990,99 @@ setStreamingComplete(true);
 setStreamingText(null);  // ← nunca fazer isso no sucesso
 setMessages(prev => [...prev, modelMessage]);
 ```
+
+---
+
+## Bug: Busca por Tipo de Empresa Retorna 0 Resultados — 29/abr/2026
+
+### Sintoma
+Ao perguntar "quais hospitais estão investindo na RM SP sem valor declarado?", a Nadia respondia "encontrei apenas um" ou "não encontrei". Ao ampliar para "saúde", encontrava vários (incluindo hospitais).
+
+### Diagnóstico: o problema não era de dados
+
+A base tem **75 registros de hospitais** na RM SP sem valor declarado. A query SQL com `termo_busca: "hospital"` retornava os 75 corretamente. O problema estava em outra camada.
+
+**Verificação com DuckDB Python:**
+```python
+import duckdb
+conn = duckdb.connect()
+conn.execute("CREATE VIEW piesp AS SELECT * FROM 'public/piesp.parquet'")
+result = conn.execute("""
+  SELECT COUNT(*) FROM piesp
+  WHERE (LOWER(regiao) LIKE '%s_o paulo%')
+  AND LOWER(CONCAT_WS(' ', empresa_alvo, setor_desc, descr_investimento,
+      cnae_inv_2_desc, cnae_inv_descricao, cnae_empresa_descricao)) LIKE '%hospital%'
+  AND (reais_milhoes IS NULL OR reais_milhoes = 0)
+""").fetchone()[0]
+# → 75
+```
+
+### Causa Raiz: Dimensionamento do universo de dados sem filtro
+
+A base sem valor tem **2.495 registros só na RM SP**. A função `consultarAnunciosSemValor` retornava `rows.slice(0, 10)` — dez registros em ordem arbitrária do DuckDB. Estatisticamente, nenhum ou apenas 1 desses 10 era um hospital.
+
+O modelo chamava a ferramenta com `{ regiao: "Região Metropolitana de São Paulo" }` **sem** `termo_busca: "hospital"`, porque a descrição do parâmetro era genérica demais ("Termo livre para buscar na descrição") e não deixava claro que era **obrigatório** para filtrar por tipo de empresa.
+
+**Por que "saúde" funcionava e "hospital" não:**
+- `cnae_inv_2_desc` = "Atividades de atenção à saúde humana" → contém "saúde" ✓
+- Sem `termo_busca`, o modelo recebia 10 registros aleatórios (restaurantes, lojas, etc.)
+- "Saúde" era passada como `setor: "Saúde"` → `normalizarArgs` redirecionava para `termo_busca: "saúde"` → a query filtrava por `cnae_inv_2_desc` que contém "saúde"
+- "Hospital" muitas vezes só aparece em `cnae_inv_descricao` = "Atividades de atendimento **hospitalar**" — campo correto, mas o modelo precisava de instrução para usá-lo
+
+### Padrão de Falha: "Ilha de Dados"
+
+Este bug exemplifica um padrão recorrente em ferramentas de AI com bases grandes:
+
+> **O modelo chama a ferramenta com filtros insuficientes → recebe uma amostra aleatória → a amostra não representa o universo real → responde incorretamente.**
+
+A ferramenta funcionava perfeitamente quando chamada com os filtros corretos. O problema estava na lacuna entre o que o usuário perguntou e o que o modelo inferiu como parâmetros da tool call.
+
+### Solução em 3 camadas
+
+**Camada 1 — System Prompt (`utils/prompts.ts`):**
+Adicionada regra explícita antes das demais regras de processo:
+```
+REGRA DE FILTRO POR TIPO DE EMPRESA (OBRIGATÓRIA): Quando o usuário
+mencionar um tipo específico de empresa ou atividade — hospital, farmácia,
+montadora, data center, escola, banco, etc. — SEMPRE passe esse tipo como
+`termo_busca` em QUALQUER chamada de ferramenta PIESP.
+```
+
+**Camada 2 — Descrição do Tool (`useLiveConnection.ts` e `useChat.ts`):**
+A descrição do `consultar_anuncios_sem_valor` ganhou aviso crítico:
+```
+REGRA CRÍTICA: Se o usuário mencionar um tipo específico de empresa
+(hospital, farmácia, montadora, data center, escola, etc.),
+OBRIGATORIAMENTE passe esse tipo como `termo_busca`.
+Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os
+resultados não representarão o tipo solicitado.
+```
+
+**Camada 3 — Output da ferramenta (`piespDataService.ts`):**
+`consultarAnunciosSemValor` agora retorna:
+- Campo `atividade` (`cnae_inv_descricao`) — o modelo vê "Atividades de atendimento hospitalar" e identifica a Rede D'Or como hospital mesmo sem "Hospital" no nome
+- Campo `regiao` — permite o modelo confirmar o contexto geográfico
+- `ORDER BY empresa_alvo` — resultado alfabético, consistente entre chamadas
+- Limite aumentado de 10 → 20 registros
+- Retorno unificado com `total_anuncios` (antes retornava array sem contagem total)
+
+### Método de Diagnóstico: Simulação SQL Direta
+
+Antes de qualquer mudança de código, a simulação com Python+DuckDB contra o parquet real provou que os **dados existiam** e a **query SQL estava correta**. Isso descartou bugs de dados/infraestrutura e direcionou a investigação para o comportamento do modelo.
+
+```bash
+python3 -c "
+import duckdb
+conn = duckdb.connect()
+conn.execute(\"CREATE VIEW piesp AS SELECT * FROM 'public/piesp.parquet'\")
+# Total sem filtro
+print(conn.execute('SELECT COUNT(*) FROM piesp WHERE reais_milhoes IS NULL').fetchone())
+# Com filtro hospital
+print(conn.execute(\"SELECT COUNT(*) FROM piesp WHERE LOWER(cnae_inv_descricao) LIKE '%hospital%' AND reais_milhoes IS NULL\").fetchone())
+"
+```
+
+**Regra derivada:** Antes de debugar a lógica de prompts ou tool descriptions, sempre simular a query SQL diretamente contra o parquet para confirmar se o problema é de dados ou de comportamento do modelo.
+
+### Branches afetados
+Aplicado em `nadia-mobile/0.2.1` (commit `5858c41`) e `feature/v0.3-duckdb-streaming` (commit `c986eae`).
