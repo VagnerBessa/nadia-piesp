@@ -335,6 +335,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                             // imediatamente, o Gemini interrompe a frase "Vou pesquisar..." no meio para 
                             // começar a falar os resultados. O atraso garante que a fala termine.
                             setTimeout(() => {
+                                toolProcessingRef.current = false;
+                                setToolProcessing(false);
                                 sessionPromiseRef.current?.then((session) => {
                                     session.sendToolResponse({
                                         functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
@@ -377,11 +379,6 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 
                 setIsSpeaking(true);
                 isSpeakingRef.current = true;
-                // Desmuta ferramenta: a IA começou a falar a resposta
-                if (toolProcessingRef.current) {
-                  toolProcessingRef.current = false;
-                  setToolProcessing(false);
-                }
                 const currentOutputContext = outputAudioContextRef.current;
                 if (currentOutputContext.state === 'suspended') {
                   await currentOutputContext.resume();

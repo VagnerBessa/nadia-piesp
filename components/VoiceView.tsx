@@ -78,6 +78,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     }
   }, [currentTranscript]);
 
+  // Quando (re)conecta, sai do modo imersivo para exibir transcrição
+  useEffect(() => {
+    if (isConnected) setIsImmersive(false);
+  }, [isConnected]);
+
   // Quando desconecta, volta ao modo imersivo (esfera centralizada) e limpa texto do DOM instantaneamente
   useEffect(() => {
     if (!isConnected && hasSpokenOnce) {
