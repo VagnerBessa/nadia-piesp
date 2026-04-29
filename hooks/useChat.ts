@@ -62,7 +62,7 @@ async function getPiespTools() {
         },
         {
           name: 'consultar_anuncios_sem_valor',
-          description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas.',
+          description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas. REGRA CRÍTICA: Se o usuário mencionar um tipo específico de empresa (hospital, farmácia, montadora, data center, escola, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os resultados não representarão o tipo solicitado.',
           parameters: {
             type: Type.OBJECT,
             properties: {

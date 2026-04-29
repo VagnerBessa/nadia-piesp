@@ -459,7 +459,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*, APENAS QUANDO e SE o usuário demonstrar interesse nesses anúncios sem cifra. INSTRUÇÃO VITAL: Diga "Um momento, vou procurar..." ANTES de invocar.',
+                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*. INSTRUÇÃO VITAL: Diga "Um momento, vou procurar..." ANTES de invocar. REGRA CRÍTICA DE FILTRO: Se o usuário mencionar um tipo específico de empresa ou atividade (hospital, farmácia, escola, montadora, data center, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os 20 exibidos não representarão o tipo solicitado.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
