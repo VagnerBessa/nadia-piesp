@@ -161,7 +161,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
     }, 22);
   }, [stopDrain]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (streamingText === null) {
       if (!streamingComplete) {
         // Pausa por tool call — limpa imediatamente

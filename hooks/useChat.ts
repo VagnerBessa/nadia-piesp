@@ -122,7 +122,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 
     } catch (e: any) {
       lastError = e;
       const msg = (e?.message || '').toLowerCase();
-      const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand');
+      const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('incomplete json');
       if (!isRetryable || attempt === maxRetries) throw e;
       const delay = baseDelayMs * (attempt + 1); // 2s, 4s
       console.warn(`⏳ Gemini 503 — tentativa ${attempt + 1}/${maxRetries}. Aguardando ${delay}ms...`);
@@ -277,12 +277,12 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       // Atualiza o histórico para a próxima interação
       historyRef.current = [...contents, { role: 'model', parts: [{ text: finalText }] }];
 
-      // Sinaliza conclusão para o drain terminar antes de exibir a mensagem final
+      // Sinaliza conclusão — streamingText mantém o valor acumulado para o drain drenar
       setStreamingComplete(true);
-      setStreamingText(null);
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (e: any) {
+      setStreamingText(null);
       const rawMsg = (e?.message || JSON.stringify(e) || '').toLowerCase();
       console.error('❌ Chat error — raw:', e?.message || e);
 
@@ -327,7 +327,6 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
       setError(errorMessage);
     } finally {
-      setStreamingText(null);
       setIsLoading(false);
     }
   };
