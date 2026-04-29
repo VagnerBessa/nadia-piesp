@@ -67,3 +67,36 @@ Os CSVs são importados via `?raw` do Vite, transformados em string no bundle Ja
 CSV com JavaScript, SQLite ou Supabase — os três são determinísticos. O que a Nadia evita é deixar o modelo de linguagem filtrar dados diretamente (ele alucina). A busca sempre foi feita em código, nunca pelo Gemini. Isso não muda com a tecnologia de armazenamento.
 
 SQL é inclusive mais preciso que o scan manual em JavaScript: usa índices B-tree, otimizador de queries, e tipos de dado nativos.
+
+---
+
+## Armadilha: Amostragem vs. Filtragem — 29/abr/2026
+
+### O problema
+
+A função `consultarAnunciosSemValor` retornava `rows.slice(0, 10)` sem ordenação definida. Na RM SP há 2.495 registros sem valor. Dez registros aleatórios desse universo raramente incluíam o tipo solicitado.
+
+**Resultado observado:** usuário perguntava "quais hospitais estão na RM SP sem valor?" e recebia "encontrei apenas 1" — porque apenas 1 dos 10 aleatórios tinha "Hospital" no nome. A query com `termo_busca: "hospital"` retornava 75 registros corretos.
+
+### A lição
+
+> **Uma ferramenta de dados que retorna uma amostra aleatória de um universo grande é funcionalmente inútil para buscas por tipo.**
+
+A ferramenta funcionava. O SQL estava certo. O problema estava em *não instruir o modelo a passar o filtro correto*.
+
+**Checklist para qualquer nova função de consulta:**
+
+| Pergunta | Consequência se ignorada |
+|---|---|
+| Qual é o universo total sem filtro? | Se > 100 registros, amostragem aleatória é inútil |
+| O output inclui campos identificadores suficientes? | Modelo não consegue categorizar sem CNAE/tipo |
+| A descrição do tool instrui o modelo a usar filtros específicos? | Modelo faz chamada genérica, recebe lixo |
+| O total de registros é retornado junto com a amostra? | Modelo não sabe se viu 10 de 10 ou 10 de 2495 |
+
+### Correção aplicada
+
+- `ORDER BY empresa_alvo` — resultado determinístico entre chamadas
+- Limite 10 → 20 — mais contexto para o modelo
+- Retorno: `{ total_anuncios, anuncios[] }` — modelo sempre sabe quantos existem
+- Campo `atividade` (`cnae_inv_descricao`) no output — "Atividades de atendimento hospitalar" permite identificar hospital sem depender do nome da empresa
+- Três camadas de instrução ao modelo: system prompt + tool description + tool description do parâmetro

@@ -11,7 +11,7 @@ Para detalhes, ver `docs/`.
 
 - **Stack:** React 19 + TypeScript + Vite, Material-UI + Tailwind CSS
 - **IA:** Google Gemini 2.5 Flash (chat e relatórios), Gemini Live API (voz)
-- **Dados:** DuckDB WASM + `public/piesp.parquet` (HTTP range requests no browser)
+- **Dados:** CSVs do PIESP em `knowledge_base/` (importados como `?raw` via Vite)
 - **Sem backend** — app puramente frontend
 
 ---
@@ -26,420 +26,35 @@ Para detalhes, ver `docs/`.
 
 ---
 
-## Deploy Vercel — Branch `nadia-mobile/0.2.1` — 28/abr/2026
+## Documentação e Estratégia
 
-### URL de produção
-**https://nadia-piesp-mobile.vercel.app**
-
-Projeto Vercel: `vagner-bessas-projects/nadia-piesp-mobile`
-
-### Como fazer redeploy
-```bash
-cd "/Users/vagnerbessa/Library/Mobile Documents/com~apple~CloudDocs/Seade/Piesp/Nadia-PIESP"
-npx vercel --prod --yes
-```
-
-### Variáveis de ambiente no Vercel
-Três variáveis configuradas em Production:
-- `VITE_GEMINI_API_KEY` — chave do AI Studio (conta pessoal, não @seade.gov.br)
-- `VITE_GOOGLE_MAPS_API_KEY`
-- `VITE_OPENROUTER_API_KEY`
-
-Para atualizar uma variável:
-```bash
-npx vercel env rm NOME_DA_VAR production --yes
-printf '%s' "NOVO_VALOR" | npx vercel env add NOME_DA_VAR production --yes
-npx vercel --prod --yes
-```
-
-**Regra:** usar `printf '%s'` e não `echo` — o `echo` adiciona `\n` ao final, corrompendo o valor da chave.
+Para uma visão completa da evolução do projeto, consulte a pasta `cartografia/`:
+- **Ecosistema e Canais:** [`cartografia/ecossistema.md`](cartografia/ecossistema.md) (Abstração Web, Mobile e MCP)
+- **Roadmap e Backlog:** [`cartografia/roadmap.md`](cartografia/roadmap.md) (Inclui PEND-001 e BUG-001)
+- **Manual de Identidade Visual:** [`materiais/manual-identidade-visual-governo-sp.pdf`](materiais/manual-identidade-visual-governo-sp.pdf)
 
 ---
 
-### Problemas encontrados no deploy e soluções
+## Canais de Acesso e Branches
 
-#### Problema 1: `config.ts` no `.gitignore` impedia o build correto no Vercel
+O projeto Nadia opera em um modelo multi-branch para diferentes casos de uso:
 
-**Sintoma:** Chat e voz retornavam "Problema com a chave de API" mesmo com as variáveis configuradas no Vercel.
-
-**Causa:** `config.ts` estava no `.gitignore`. O Vercel CLI usa o `.gitignore` como filtro de upload quando não existe `.vercelignore`. Sem o `config.ts`, o Vite não conseguia injetar as variáveis `VITE_*` corretamente.
-
-**Solução:** Remover `config.ts` do `.gitignore` e commitá-lo. É seguro — o arquivo agora usa apenas `import.meta.env.VITE_*`, sem chaves hardcoded.
-
----
-
-#### Problema 2: Chave de API bloqueada pelo Google ("API key was reported as leaked")
-
-**Sintoma:** Curl direto à API retornava `403 — Your API key was reported as leaked`.
-
-**Causa:** A chave original (`AIzaSyD_nULg...`) apareceu em texto plano nesta conversa quando o Claude leu o arquivo `.env`. O Google monitora repositórios e conversas públicas e revoga chaves expostas automaticamente.
-
-**Solução:** Gerar nova chave e atualizar o Vercel. **Nunca ler o `.env` em voz alta nem compartilhar chaves no chat.**
-
----
-
-#### Problema 3: Organização Seade no Google Cloud exige conta de serviço
-
-**Sintoma:** A chave criada no Google Cloud Console (projeto Seade) tinha formato `AQ.Ab8RN...` em vez de `AIzaSy...`, e não funcionava como chave de API simples.
-
-**Causa:** A organização Seade tem uma policy que obriga todas as chaves Gemini/Vertex a serem vinculadas a uma conta de serviço (`nadia-vercel@gen-lang-client-0635245579.iam.gserviceaccount.com`). Esse tipo de chave é OAuth2 e não pode ser usada diretamente em um app frontend estático.
-
-**Solução:** Criar a chave pelo **Google AI Studio** ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) com uma **conta Google pessoal** (não @seade.gov.br). Chaves do AI Studio têm o formato `AIzaSy...` e funcionam normalmente em frontends.
-
-**Regra para o futuro:** Qualquer nova chave Gemini para deploy externo deve ser criada via AI Studio com conta pessoal, não pelo Console da organização Seade.
-
----
-
-#### Problema 4: "Can't find variable: require" no browser após migração para DuckDB WASM — 27/abr/2026
-
-**Sintoma:** App deployado no Vercel lançava `ReferenceError: Can't find variable: require` no browser (especialmente Safari/WebKit).
-
-**Causa:** O pacote `@duckdb/duckdb-wasm` tem duas versões de build:
-- `dist/duckdb-browser.mjs` — ESM puro, zero `require()`
-- `dist/duckdb-browser.cjs` — CJS, contém `require("apache-arrow")`
-
-O Rollup (usado pelo Vite no build de produção) pode resolver o pacote para a versão CJS em determinados ambientes de build, fazendo com que `require("apache-arrow")` vaze para o bundle final do browser. O browser não tem `require` global → erro.
-
-**Solução:** Adicionar alias explícito no `vite.config.ts` apontando direto para o arquivo `.mjs`:
-```ts
-resolve: {
-  alias: {
-    '@duckdb/duckdb-wasm': path.resolve(__dirname, 'node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser.mjs'),
-  }
-}
-```
-
-**Regra:** Para qualquer pacote que tenha versão CJS e ESM, e que cause erros de `require()` no browser, adicionar um alias explícito para o arquivo `.mjs` no `vite.config.ts`. Não confiar somente no `optimizeDeps.exclude` (que só afeta o dev server, não o build de produção).
-
----
-
-## Branch `nadia-mobile/0.2.1` — 28/abr/2026
-
-Esta versão finaliza três grandes entregas sobre a base da `nadia-mobile/0.2`.
-
-### 1. Migração CSV → Parquet/DuckDB WASM
-
-Os arquivos CSV da base PIESP foram convertidos para o formato **Apache Parquet** e a leitura passou a usar **DuckDB WASM** diretamente no browser, via HTTP range requests sobre `public/piesp.parquet`. O ganho é de desempenho e confiabilidade: DuckDB executa SQL real no browser, sem parsear CSV em JavaScript, e o formato Parquet permite leitura colunar seletiva (transfere apenas as colunas necessárias).
-
-**Detalhe técnico:** O `@duckdb/duckdb-wasm` tem duas builds — `duckdb-browser.mjs` (ESM puro) e `duckdb-browser.cjs` (CJS, contém `require("apache-arrow")`). O Rollup pode resolver para a CJS em prod, vazando `require()` para o bundle do browser. Solução: alias explícito no `vite.config.ts` apontando para o `.mjs`.
-
-### 2. PWA — Ícones, Manifest e Service Worker
-
-- **`public/manifest.json`** — `display: standalone`, orientação portrait, `background_color` e `theme_color: #0b2231`
-- **Ícones gerados via Playwright + sharp** — o script `scripts/capture-sphere-icon.mjs` abre o app no Chromium headless (viewport 1024px para ativar as classes `md:` do Tailwind), captura o elemento `div.rounded-full.overflow-hidden` (não o `<canvas>` bruto — o canvas tem fundo preto próprio que criaria dupla margem), e compõe os ícones com 16% de padding sobre fundo `#0b2231` para respeitar a safe zone da superelipse do macOS/iOS.
-- **`public/sw.js`** — Network-first para HTML (garante que headers COEP/COOP atualizados sejam aplicados), Cache-first para assets com hash (JS/CSS/imagens). Ícones incluídos no precache para propagação automática via `CACHE_NAME = 'nadia-v0.2.0'`.
-- **Versão discreta na UI** — `Nadia-Mobile · v0.2.0` injetada via `__APP_VERSION__` (Vite `define` lê `package.json` em build time).
-
-### 3. Streaming token a token no Chat Escrito
-
-**Problema original:** `generateContent()` retorna a resposta completa de uma vez. O usuário via "Pensando..." por vários segundos e depois todo o texto aparecia instantaneamente.
-
-**Solução — fase 1:** Migração para `generateContentStream()`. O loop de function calling manteve `generateContent()` para detectar tool calls; a resposta final passou a usar streaming, acumulando o texto em `streamingText` (estado do hook `useChat`).
-
-**Problema residual:** O Gemini envia chunks grandes (frases ou parágrafos inteiros), não tokens individuais. O efeito continuava parecendo "por blocos".
-
-**Solução — fase 2 (fila de drenagem com `setInterval`):**
-
-Uma fila de texto (`streamQueueRef`) recebe todos os chunks da API conforme chegam. Um `setInterval` de **22 ms por palavra** drena essa fila de forma independente do ritmo da API — garantindo velocidade constante independentemente do tamanho do chunk.
-
-```
-API envia chunk grande → fila cresce → setInterval drena 1 palavra/22ms → UI recebe tokens uniformes
-```
-
-**Problema de aceleração no final:** Quando `streamingText` tornava-se `null` (API terminou), a fila era limpa imediatamente e a mensagem final renderizada via `MarkdownRenderer` aparecia toda de uma vez — as palavras restantes na fila "aceleravam" e sumiam.
-
-**Solução — fase 3 (flag `streamingComplete`):**
-
-Introduzido `streamingComplete: boolean` no hook. Distingue dois casos de `streamingText → null`:
-- **Tool call** (`streamingComplete = false`): fila limpa imediatamente (o texto era preâmbulo de uma chamada de ferramenta)
-- **Resposta concluída** (`streamingComplete = true`): fila drena até o fim; a última mensagem `MarkdownRenderer` fica oculta enquanto `displayText` não esvaziar; só então o bubble de streaming some e a versão formatada aparece
-
-**Arquivos alterados:** `hooks/useChat.ts`, `components/ChatView.tsx`
-
----
-
-## Correções de Fluxo de Voz e UX Conversacional — 22/abr/2026
-
-Sessão focada em resolver três categorias de problemas na experiência de voz da Nadia Mobile (`nadia-mobile/0.2`): truncamento de áudio por eco, prompt engineering para fluxo conversacional, e bugs visuais de transcrição/UI.
-
-### 1. Truncamento de Voz por Echo Cancellation (Half-Duplex Fix)
-
-**Problema:** A Nadia começava a responder, dizia "um instante", buscava os dados, mas a voz era cortada abruptamente no meio da resposta. O status ficava preso em "ouvindo" e a transcrição parava.
-
-**Causa raiz:** O áudio da resposta da Nadia saía pelo alto-falante do celular e era captado pelo microfone do próprio dispositivo. O Gemini Live API possui um sistema de **Barge-in** (interrupção) muito sensível — ao "ouvir" qualquer som enquanto fala, ele envia um evento `interrupted: true` que cancela imediatamente o áudio em curso, achando que o usuário o interrompeu. O resultado era uma fala truncada e fragmentada.
-
-**Solução:** Implementamos um **modo Half-Duplex (Walkie-Talkie)** no `useLiveConnection.ts`:
-- Adicionado `isSpeakingRef = useRef<boolean>(false)` sincronizado com `setIsSpeaking`.
-- No `onaudioprocess`, adicionada a guarda `if (isSpeakingRef.current) return;` — enquanto a IA estiver falando, o envio de dados do microfone para a API é completamente bloqueado.
-- Quando a IA termina de falar, o microfone é religado automaticamente.
-
-**Tentativa que deu errado:** Inicialmente, o `isSpeakingRef.current = false` estava **dentro** do `setTimeout(2500)` (o debounce visual que impede a animação de piscar). Isso significava que, após a IA parar de falar, o microfone ficava **mutado por 2.5 segundos extras**. O usuário respondia "Sim" imediatamente mas o áudio era descartado — o Gemini nunca recebia a resposta.
-
-**Solução definitiva:** Separamos os dois comportamentos:
-- `isSpeakingRef.current = false` → executa **instantaneamente** quando o último buffer de áudio termina de tocar (desmuta o mic)
-- `setIsSpeaking(false)` → continua com debounce de 2.5s (apenas para a animação visual)
-
-3. **Prompt Engineering de Fluxo (Naturalidade):**
-    *   **Trava de Progressive Disclosure:** Impede que a IA dispare ferramentas ou detalhes exaustivos sem a confirmação explícita do usuário (ex: "Deseja que eu detalhe essas empresas?").
-    *   **Prevenção de Saudações Repetitivas:** Implementada lógica no prompt/contexto para evitar que a Nadia se apresente formalmente em cada nova chamada de uma mesma sessão, tornando o início da conversa direto.
-    *   **Restauração do Filler:** Recuperada a frase de preenchimento ("Um instante, vou pesquisar...") que havia sido silenciada por restrições excessivas.
-
-**Regra:** Em manipuladores de áudio com dependência temporal, sempre separar sinais de controle funcional (mic mute) de sinais visuais (animação). O visual pode ter debounce; o funcional deve ser imediato.
-
-### 2. Prompt Engineering: Eliminação do "Atropelamento" e Restauração do Filler
-
-**Problema 1 (Atropelamento):** Após responder com o resumo macro e perguntar "Deseja que eu detalhe?", a Nadia não esperava o "Sim" e disparava imediatamente a ferramenta de detalhamento, falando por cima de si mesma.
-
-**Causa:** O modelo `gemini-2.5-flash-native-audio-preview` é extremamente proativo (temperature alta implícita). Ao terminar a pergunta de ancoragem, ele mesmo deduzia que o usuário "provavelmente quer saber mais" e disparava a tool call sem aguardar confirmação verbal.
-
-**Solução:** Inserida regra severa na `SYSTEM_INSTRUCTION` (via `useLiveConnection.ts`):
-```
-ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE.
-É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala.
-Espere o usuário responder "Sim".
-NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.
-```
-
-**Problema 2 (Filler silenciado):** A Nadia parou de dizer "Um instante, vou buscar os dados..." antes de acionar a ferramenta.
-
-**Causa:** Na tentativa de blindar o prompt contra atropelamento, inserimos uma regra excessivamente agressiva: `"TERMINANTEMENTE PROIBIDO começar a responder a pergunta ou despejar conhecimento genérico"`. Isso "assustou" o modelo a ponto dele não dizer **absolutamente nada** antes da tool call — nem a frase preenchedora.
-
-**Solução:** Removida a regra de "PROIBIÇÃO ABSOLUTA" e substituída por uma instrução mais suave e diretiva:
-```
-Se você precisar consultar a base de dados do PIESP, você OBRIGATORIAMENTE deve avisar
-o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CURTA
-(ex: "Um instante", "Vou buscar os dados..."). Fale apenas essa frase curta e acione a ferramenta.
-```
-
-**Lição aprendida:** Prompt engineering para modelos de voz nativa exige dosagem precisa. Instruções em tom de "PROIBIÇÃO ABSOLUTA" podem causar efeitos colaterais piores que o problema original — o modelo pode se calar completamente em vez de moderar. Preferir instruções **afirmativas e específicas** ("faça X") a proibições genéricas ("NUNCA faça Y").
-
-### 3. Auto-scroll Travado no iOS Safari
-
-**Problema:** A transcrição parava de rolar automaticamente após um determinado número de linhas. O texto continuava sendo gerado (o áudio seguia), mas o container não rolava — o usuário tinha que arrastar manualmente para ver o texto novo.
-
-**Causa:** O `scrollIntoView({ behavior: 'auto', block: 'end' })` **não funciona de forma confiável** em containers com `position: absolute` no Safari/WebKit mobile. O motor do navegador ignora silenciosamente o pedido de scroll em certas geometrias de layout.
-
-**Tentativa anterior (que funcionava parcialmente):** Na sessão de 20/abr, tínhamos substituído `scrollTop` forçado pelo `scrollIntoView` com elemento âncora. Isso melhorou o conflito com o WebKit para scrolls curtos, mas falhou em transcrições longas.
-
-**Solução definitiva:** Revertemos para `el.scrollTop = el.scrollHeight` direto — a forma mais primitiva e segura de forçar scroll — mas mantendo o Smart Scroll (checagem `isNearBottom < 100px`). O `scrollIntoView` foi removido completamente.
-
-**Regra:** Em iOS Safari com containers `position: absolute`, sempre usar `scrollTop = scrollHeight`. Nunca confiar em `scrollIntoView` para scroll automático contínuo.
-
-### 4. Texto Persistente Após Encerramento da Conversa
-
-**Problema:** Ao encerrar a conversa, a esfera voltava ao centro mas o texto da transcrição ficava visível atrás dela, criando uma sobreposição visual desagradável.
-
-**Causa (camada 1 — Transcrição):** O container de transcrição tinha condição `(isConnected && !isImmersive) || (!isConnected && hasTranscript)` — a segunda parte mantinha o texto visível após desconexão. Além disso, a transição de fade era de 1000ms, deixando o texto parcialmente visível durante a animação.
-
-**Solução (camada 1):** Revertido para `isConnected && !isImmersive` (oculta ao desconectar). Adicionada limpeza instantânea do DOM: `transcriptTextRef.current.textContent = ''` no `useEffect` de desconexão. Fade-out acelerado para 200ms (era 1000ms).
-
-**Causa (camada 2 — Status "Pronta para conversar"):** Mesmo após ocultar a transcrição, o texto **"Pronta para conversar"** dos controles inferiores continuava visível atrás da esfera centralizada. A esfera não cobre 100% da viewport, então fragmentos do texto ("Pron..." e "...rsar") ficavam visíveis nas bordas.
-
-**Solução (camada 2):** Condicional no status: quando `hasTranscript` é `true` e `!isConnected`, o status mostra string vazia em vez de "Pronta para conversar".
-
-**Lição aprendida:** Bugs visuais de sobreposição em mobile têm múltiplas camadas. Resolver a camada óbvia (transcrição) pode revelar uma camada oculta (texto de status) que usa z-index diferente. Sempre testar com screenshot real do device.
-
-### 5. Botão "Salvar Conversa" Sobreposto ao Botão de Voz
-
-**Problema:** O botão "Salvar Conversa" usava `position: absolute; bottom-6; left-6` e ficava sobreposto ao botão de microfone no mobile.
-
-**Solução:** Movido para dentro do fluxo flex dos controles inferiores, renderizado condicionalmente (`!isConnected && hasTranscript`) com animação `fade-in slide-in-from-bottom-4`. Agora aparece centralizado abaixo do botão de voz, sem sobreposição.
-
-
-### 6. Status "Buscando informações..." Sumia Instantaneamente (toolProcessing Race Condition)
-
-**Problema:** Ao acionar uma ferramenta, o status mostrava "Ouvindo você..." em vez de "Buscando informações...". A Nadia ficava muda e o indicador visual não refletia que uma consulta estava em andamento.
-
-**Causa raiz:** O `toolProcessing` era gerenciado em dois locais desconectados:
-- `VoiceView.tsx` setava `toolProcessing = true` via callback `onToolCall`
-- Um `useEffect` resetava para `false` sempre que `isSpeaking` era `true`
-- Mas `isSpeaking` **já era** `true` por causa do filler ("Vou pesquisar..."), então o estado era cancelado na mesma renderização
-
-**Solução:** Migramos `toolProcessing` para dentro do hook `useLiveConnection.ts`:
-- `toolProcessing = true` → quando o `message.toolCall` chega (antes de executar)
-- `toolProcessing = false` → quando o primeiro buffer de áudio da **resposta** chega (a IA começou a falar os resultados)
-- Removido o `useEffect` que limpava `toolProcessing` baseado em `isSpeaking`
-- O hook agora exporta `toolProcessing` e o VoiceView consome diretamente
-
-**Tentativa que deu errado (Mic Mute durante Tool Processing):** Tentamos também mutar o mic com `toolProcessingRef.current` (mesmo padrão do `isSpeakingRef`). Resultado: **a conexão WebSocket caía após ~2s**. O Gemini Live API exige **fluxo de áudio contínuo** (keepalive). Ao parar de enviar pacotes de áudio por 2.5s (o timeout do tool response), o servidor interpretava como queda de conexão e fechava o socket.
-
-**Regra crítica descoberta:** O mic NUNCA deve ser completamente silenciado durante tool processing. O fluxo de áudio ambiente serve como **heartbeat** para o WebSocket. O mic só pode ser mutado quando há áudio fluindo na direção oposta (IA falando → `isSpeakingRef`), porque nesse caso o servidor sabe que a conexão está ativa.
-
-| Cenário | Mic | Por quê |
+| Branch | Canal | Foco |
 |---|---|---|
-| IA falando (filler/resposta) | 🔇 Mutado | Anti-echo — o servidor recebe áudio próprio e cancela por barge-in |
-| Tool processing (silêncio) | 🔊 Aberto | Keepalive — o servidor precisa receber pacotes para manter o WebSocket |
-| Despedida (`pendingDisconnect`) | 🔇 Mutado | Desconexão intencional — não importa se o socket cair |
+| `main` | **Nadia Ecosistema** | Versão Web Full (Desktop). Inclui Dashboards, Explorar, Perfil Municipal, Data Lab e E-mail. |
+| `nadia-mobile/0.1` | **Nadia Mobile** | Interface simplificada e otimizada para smartphones. Foca exclusivamente em **Chat** e **Voz**. |
 
-### Arquivos Modificados
-- `hooks/useLiveConnection.ts` — Half-duplex mic mute, prompt engineering, toolProcessing centralizado
-- `components/VoiceView.tsx` — Auto-scroll iOS, cleanup de transcrição, reposição do botão download, ocultação de status text
-
-### Commits (branch `nadia-mobile/0.2`)
-1. `fix(voice): desativa barge-in mutando mic enquanto a IA fala`
-2. `fix(voice): desmuta mic instantaneamente ao fim da fala da IA`
-3. `fix(voice): corrige auto-scroll iOS, esconde texto ao desconectar, reposiciona botão download`
-4. `fix(voice): limpa texto do DOM instantaneamente ao desconectar e acelera fade-out para 200ms`
-5. `fix(voice): esconde texto 'Pronta para conversar' após sessão`
-6. `fix(voice): migra toolProcessing para o hook e corrige status "Buscando informações..."`
-7. `fix(voice): remove mic mute durante tool processing — Live API exige fluxo contínuo`
+**Branding Oficial:** A versão Mobile utiliza o novo sistema de cores "Deep Ocean" e os brasões oficiais do Governo do Estado de São Paulo e Fundação Seade.
 
 ---
 
-## Correções de Estabilidade — 20/abr/2026
+## Arquitetura de Resiliência (Voz e Chat)
 
-Dois bugs identificados em revisão de código da `nadia-mobile/0.2` e corrigidos cirurgicamente, sem alterar nenhum comportamento funcional existente.
+Implementada para garantir alta disponibilidade mesmo sob falhas da API do Google Gemini.
 
-### 1. Stale Closure no `onclose` (`useLiveConnection.ts`)
-**Problema:** O callback `onclose` capturava `isConnected` como `false` permanentemente (valor do momento da criação do closure), fazendo com que a mensagem de erro de desconexão inesperada nunca fosse exibida ao usuário.
-**Solução:** Adicionado `isConnectedRef` sincronizado via `useEffect`. O `onclose` agora lê `isConnectedRef.current`, que sempre reflete o valor real do estado.
-**Regra:** Todo callback de WebSocket/EventListener criado dentro de `startConversation` deve usar refs, não state diretamente.
-
-### 2. Console.log em Produção no Loop de Áudio
-**Problema:** O `onaudioprocess` logava a cada 100 pacotes e a cada 50 pacotes com áudio — poluindo o console em sessões reais.
-**Solução:** Removidos os contadores `totalPackets`/`audioPacketCount` e seus `console.log`. Zero impacto funcional.
-
-**Não alterado intencionalmente:** o `setTimeout(2500)` no `sendToolResponse` (documentado como correção ao bug de auto-interrupção da frase filler).
-
-### 3. Fricção de DOM, WebKit e Estabilidade Visual de Voz (UX)
-**Problema:** O scroll matemático da transcrição (`scrollTop`) conflitava agressivamente com o motor WebKit do iOS, gerando saltos e travando o pipeline da Live API. Além disso, no encerramento da conversa, a Esfera gigante sobrepunha o texto gerado e o botão "Salvar" não possuía boa visibilidade.
-**Solução:** 
-- A rolagem forçada foi substituída por um elemento **âncora invisível (`scrollIntoView`)**. Um algoritmo de *Smart Scroll* foi criado para pausar o auto-scroll automaticamente se o usuário rolar para cima para consultar o histórico.
-- O bug visual de "tampão" da Esfera foi resolvido dissociando o CSS do estado de rede (`isConnected`); a posição agora respeita estritamente o `isImmersive`, permitindo a leitura pós-chamada com um clique. O botão "Salvar" foi promovido a um botão em pílula centralizado.
-**Regra Crítica (Vercel):** Nunca diagnostique sessões interativas (WebSockets/Live API) na URL de produção durante Pair Programming. A latência de propagação de cache da Vercel e Edge Networks corrompe o diagnóstico, fazendo o dev pensar que o código atual quebrou. Homologação de Voice UX deve **sempre** ocorrer via IP na rede local.
-
----
-
-## Otimização de Voice UX (Fase 2) — 19/abr/2026
-
-Aprimoramentos de latência percebida e comportamento humano na interface de voz da Nadia (`nadia-mobile/0.2`).
-
-### 1. UX Hack: Retardo do Tool Response (Anti-Self-Interrupt)
-**Problema:** A Live API sofre de auto-interrupção se ferramentas locais forem demasiadamente rápidas. O modelo começava a dizer "Vou buscar os dados...", disparava a tool que terminava em milissegundos, recebia a resposta via `sendToolResponse` e, imediatamente, começava a falar a resposta em si, "engolindo" a frase filler.
-**Solução:** No retorno das ferramentas em `useLiveConnection.ts`, foi injetado um `setTimeout` artificial de **2500ms** na devolução da promise para o `session.sendToolResponse`. Isso garante o tempo exato para o motor TTS (Text-to-Speech) finalizar a frase filler sem engasgos, conferindo extrema fluidez.
-
-### 2. Regra de Continuidade (Memória Conversacional)
-**Problema:** Ao realizar um drill-down investigativo (ex: "E quais as empresas disso?"), a Nadia repetia roboticamente o cabeçalho financeiro global respondido na frase anterior.
-**Solução:** Inserida a instrução "Memória Conversacional (Não seja redundante)" no core do sistema (`prompts.ts` e `useLiveConnection.ts`). A IA é instruída a NÃO repetir valores macro já ditos e pular direto para os detalhes, com uma **exceção explícita** para o caso de o usuário verbalizar o pedido de repetição.
-
-### 3. Blindagem Semântica nas Tools de Voz (Correção CNAE)
-**Problema:** Apesar da solução "CNAE" de 14/abr, a UI de Voz continuava inventando macro-setores errados (ex: `setor: "saúde"`) causando um *empty set* e travando as buscas.
-**Solução:** O prompt de descrição dos parâmetros `setor` e `termo_busca` em `useLiveConnection.ts` foi substituído pela mesma malha de ferro do `useChat.ts` (uma *hard-instruction* na declaração das Function Calls), obrigando o LLM a mapear demandas de subsetores para o campo `termo_busca` em branco.
-
----
-
-## Otimização de Voice UX e Igualdade Semântica — 17/abr/2026
-
-Implementação de paradigmas de VUI (Voice User Interface) para branch `nadia-mobile/0.2`:
-
-### 1. Refinamento Acústico e Multimodal
-- **Anti-Amnésia React**: Gravação do timestamp via `localStorage` para reconectar sessões e impedir que a IA se reapresente eternamente se a conexao falhar.
-- **Multimodal e Micro-Latência**: IA forçada a enviar um áudio minúsculo de delay e calar a boca temporariamente via Prompt-Lock; um `setTimeout(1500)` artificial executa o feedback ciano na tela ("Buscando informações...") garantindo alívio visual.
-- **Desocultamento Progressivo & Graceful Fallback**: A inteligência foi treinada a não "vomitar" projetos numericamente exaustivos. Entrega o valor macro seguido de pergunta-âncora. Em becos sem saída, sugere mudanças de escopo organicamente.
-
-### 3. Handshake de Encerramento e Prosódia (Autonomous Disconnect)
-A IA foi programada para assumir o controle do hardware nas despedidas ("Tchau", "É só isso").
-- **Corte de Hook**: A API engatilha *stopConversation* após um delay militar de 4s, travando micro-ouvintes.
-- **Prosódia Modelada**: A instrução força a IA a modular a voz em baixa velocidade (ritmo calmante e menos robótico) para realizar a despedida.
-- **Anti-Alucinação**: Uma trava de segurança impede que o LLM engate outro raciocínio por baixo dos panos após invocar o fechamento.
-
-
-### 2. Equalização Semântica (CNAE + Investidora)
-A busca na base **Sem Valor** era capenga se comparada à busca **Com Valor**.
-**Solução:** Todas as funções de indexação lexical em `piespDataService.ts` (Mobile) e `mcp-server/src/piespService.ts` (Servidor padrão do Chat) foram refatoradas para abraçar 100% da árvore `cnae` e, criticamente, mapear nomes descritos na coluna `investidora_s`. O sistema sabe o "nome verdadeiro da marca" através do parseamento `Empresa Alvo (Matriz Investidora)`.
-
----
-
-## Correção: Busca por Atividade Econômica (CNAE) — 14/abr/2026
-
-### Problema
-Buscas por termos como "saúde", "hospital", "educação", "turismo" retornavam zero resultados mesmo existindo investimentos relacionados na base.
-
-### Causa
-O `termo_busca` em `consultarPiespData()` e `consultarAnunciosSemValor()` pesquisava apenas três campos: empresa + setor + descrição do investimento. Porém, o PIESP classifica atividades econômicas pelo código CNAE — e "Saúde", por exemplo, aparece no campo `cnae_inv_2_desc` como "Atividades de atenção à saúde humana", nunca na descrição textual do projeto.
-
-### Estrutura do CSV (coluna CNAE)
-| CSV | Coluna | Campo |
-|---|---|---|
-| `piesp_confirmados_com_valor.csv` | col[11] | `cnae_inv_2_desc` |
-| `piesp_confirmados_com_valor.csv` | col[12] | `cnae_inv_5_cod_desc` |
-| `piesp_confirmados_com_valor.csv` | col[13] | `cnae_empresa_5_cod_desc` |
-| `piesp_confirmados_sem_valor.csv` | col[9] | `cnae_inv_2_desc` |
-| `piesp_confirmados_sem_valor.csv` | col[10] | `cnae_inv_5_cod_desc` |
-| `piesp_confirmados_sem_valor.csv` | col[11] | `cnae_empresa_5_cod_desc` |
-
-### Solução
-Adicionadas as colunas CNAE ao `textToSearch` em ambas as funções de consulta em `services/piespDataService.ts`. Buscas por "saúde", "hospital", "farmácia", "educação", "turismo", "energia" etc. agora retornam resultados corretos.
-
----
-
-## Bugs Abertos
-
-| ID | Descrição | Status |
-|---|---|---|
-| BUG-001 | Filtros de setor e região retornam 0 no Chat | Resolvido |
-
-Ver detalhes completos em [`docs/bugs-abertos.md`](docs/bugs-abertos.md).
-
----
-
-## Pendências
-
-| ID | Descrição | Status |
-|---|---|---|
-| PEND-001 | Proteção da API key do Gemini | Decidir antes do deploy |
-| PEND-002 | Cherry-pick das melhorias de voz de `nadia-mobile/0.2` para `main` | Pendente |
-
-Ver detalhes e alternativas em [`docs/pendencias.md`](docs/pendencias.md).
-
-### PEND-002: Sincronizar Voice UX entre `nadia-mobile/0.2` e `main`
-
-**Contexto:** A branch `nadia-mobile/0.2` acumulou 20+ commits de melhorias de voz (Half-Duplex, prompt engineering, auto-scroll, cleanup visual) que não existem no `main`. O assistente de voz é o mesmo componente em ambos os apps, portanto devem compartilhar as mesmas funcionalidades.
-
-**Por que NÃO fazer merge direto:**
-- O merge arrastaria **271 arquivos** (`.agent/skills/`, screenshots, `.playwright-mcp/`, imagens de branding) irrelevantes para o `main`.
-- `Header.tsx`, `LandingPage.tsx` e `App.tsx` têm navegação **mobile-only** (3 abas) que quebraria o layout do app completo (8+ abas).
-
-**Estratégia recomendada — Cherry-pick seletivo:**
-
-| Arquivo | Ação | Risco |
-|---|---|---|
-| `hooks/useLiveConnection.ts` | Cherry-pick integral | 🟢 Zero conflito (intocado no main) |
-| `components/VoiceView.tsx` | Cherry-pick integral | 🟢 Zero conflito (intocado no main) |
-| `utils/prompts.ts` | Cherry-pick integral | 🟢 Zero conflito (intocado no main) |
-| `services/piespDataService.ts` | Cherry-pick integral | 🟢 Melhoria de CNAE/região, sem conflito |
-| `hooks/useChat.ts` | Revisão manual | 🟡 Contexto de UI diferente |
-| `components/ChatView.tsx` | Revisão manual | 🟡 Melhorias úteis mas layout diferente |
-| `Header.tsx`, `LandingPage.tsx`, `App.tsx` | **Ignorar** | 🔴 Navegação incompatível |
-
-**Melhorias de voz que serão portadas:**
-1. Half-Duplex mic mute (anti echo cancellation)
-2. Prompt engineering: filler suave + trava de progressive disclosure
-3. Auto-scroll iOS Safari (`scrollTop` em vez de `scrollIntoView`)
-4. Limpeza instantânea de transcrição ao desconectar
-5. Botão "Salvar Conversa" no fluxo flex
-6. Ocultação de status text pós-sessão
-
-**Tempo estimado:** ~15-20 minutos.
-
----
-
-## Arquitetura
-
-Direções planejadas mas não implementadas:
-- Backend mínimo (proteger API key + centralizar dados)
-- MCP server como única fonte de verdade (eliminar duplicação `piespDataService` / `piespService`)
-- Nadia Mobile (branch `mobile` — Chat + Voz, mobile-first)
-
-Ver [`docs/arquitetura.md`](docs/arquitetura.md).
-
----
-
-## Decisões Técnicas
-
-Raciocínio por trás das escolhas — becos sem saída já explorados e trade-offs conscientes.
-
-Ver [`docs/decisoes-tecnicas.md`](docs/decisoes-tecnicas.md).
+1. **Retry Automático (withRetry):** O sistema realiza até 2 tentativas automáticas com backoff exponencial (2s, 4s) em caso de erro 503 (servidores sobrecarregados).
+2. **Fallback OpenRouter:** Se o Gemini falhar persistentemente no Chat, o sistema commuta silenciosamente para o OpenRouter (usando `google/gemini-2.5-flash-preview`) para evitar interrupção do serviço.
+3. **Thinking Budget Otimizado:** O budget de pensamento foi ajustado para `512` tokens para reduzir a latência e o risco de timeouts.
 
 ---
 
@@ -782,10 +397,10 @@ generateWithFallback({ prompt, systemInstruction?, thinkingBudget?, tools? })
 
 **Fluxo interno:**
 1. Tenta Gemini direto (`gemini-2.5-flash`)
-2. Se Gemini falhar (qualquer erro) e `OPENROUTER_API_KEY` configurada → tenta OpenRouter (`google/gemini-2.0-flash-001`)
+2. Se Gemini falhar (quer erro) e `OPENROUTER_API_KEY` configurada → tenta OpenRouter (`openai/gpt-4o-mini`)
 3. Se ambos falharem → relança o erro (tratado por cada view)
 
-**Modelo de fallback confirmado:** `google/gemini-2.0-flash-001` (validado em 10/abr/2026). IDs anteriores tentados e rejeitados pelo OpenRouter: `google/gemini-2.5-flash-preview`, `google/gemini-2.5-flash-preview-05-20`. O fallback dispara em **qualquer** falha do Gemini (não apenas 503), garantindo maior cobertura.
+**Fallback Model**: `openai/gpt-4o-mini` (updated for better stability when Gemini upstream is rate-limited). O fallback dispara em **qualquer** falha do Gemini (não apenas 503), garantindo maior cobertura.
 
 **Views migradas:**
 - `ExplorarDadosView` — substituiu `ai.models.generateContent()` por `generateWithFallback()`
@@ -1273,3 +888,201 @@ Então o uso normal do bot deve ser:
 
 - mandar uma mensagem comum, por exemplo `Olá Nadia`
 - usar `/sethome` apenas se quiser marcar o chat como home channel
+
+---
+
+## Trade-offs e Soluções Técnicas Adotadas
+
+*Registro histórico de escolhas arquiteturais e raciocínios de engenharia.*
+
+### Por que Function Calling em vez de contexto longo para dados tabulares
+**Tentativa:** carregar o CSV inteiro na `systemInstruction` do Gemini.
+**O que aconteceu:** com 5.000 linhas de dados tabulares densos, o modelo alucinava. Perguntado sobre "principais investimentos em 2026", inventava valores. LLMs não agem como bancos de dados SQL — a atenção se dilui com volume tabular, o modelo interpola em vez de filtrar.
+**Decisão:** Function Calling explícito (via `piespDataService.ts`). O modelo chama a ferramenta, o JavaScript filtra deterministicamente, devolve JSON compacto. O modelo só interpreta e apresenta a síntese.
+
+### Por que `piespTools` e `searchTools` não podem ser combinados
+Não é uma preferência, é uma limitação técnica profunda da API Gemini. Function declarations (Tools) e a propriedade de `Google Search Grounding` são mutuamente exclusivas na mesma chamada do pipeline `generateContent`. Essa limitação afeta views compostas (como a aba `Empresas`).
+
+### Por que a skill de design do DataLab não passa pelo `skillDetector`
+As skills na pasta `skills/` são **lentes analíticas de domínio** — ativadas pelo NLP (ex: quando falamos de inteligência empresarial, ativa-se).
+No Oposto, a skill hierárquica `datalab_design.md` é **procedimental** — controla puramente o formato de saída mecânico (JSON estruturado com blocos de gráficos UI), independentemente da temática (Assunto XYZ). Portanto, é aplicada estaticamente via Prompt Injection.
+
+### Por que prompts de gráficos usam ordens estritas em vez de sugestões
+**Tentativa:** Usar o famigerado 'Helpful AI bias' com *"se julgar visualmente útil, insira um gráfico"*.
+**O que aconteceu:** O modelo otimiza para mínimo esforço tokenizado. Ele sempre gerava apenas 1 gráfico de barras genérico e ignorava a visualização dos dados inteiros.
+**Decisão:** Adotamos Ordens Estritas ditatoriais com limites mínimos absolutos ("gere no MÍNIMO 2 gráficos de frentes diferentes").
+
+### Defesa Dupla de Renderização (Prompt + Frontend Guardrails)
+O prompt orienta a modelo: "nunca gere mais de 5 fatias de pizza". No entanto, LLMs podem quebrar diretrizes devido a anomalias de temperatura. 
+Por causa disso, o nosso `capPieData` na UI engole e reagrupa magicamente qualquer variável que passar de 5 em uma sub-fatia "Outros", sem que o usuário sinta. O Prompt define a regra social, mas é o frontend que blinda matematicamente o sistema contra LLMs voláteis.
+
+### Mudança para DuckDB-WASM e Abandono do CSV (24/04/2026)
+- **Problema:** O parser CSV local estava sofrendo com delimitações falhas (ponto e vírgula contidos nos campos de descrição textual), causando corrupção de dados e inconsistências nas colunas. Isso afetava a integridade da UI do Dashboard e da IA (geração de respostas alucinadas com descrições onde deviam haver CNAEs).
+- **Solução Implementada:** Todo o backend web da PIESP foi refatorado para utilizar `DuckDB-WASM` carregando um arquivo `piesp.parquet` diretamente na memória do navegador. 
+- **Benefícios:** Elimina 100% dos erros de parsing. Utiliza tipagem de dados SQL garantindo queries eficientes `(SELECT * FROM piesp WHERE...)`. O motor é executado de forma assíncrona, não travando a UI.
+- **Reflexo no Código:** `piespDataService.ts` centraliza a chamada SQL assíncrona com `db.all()`. O uso do `PIESP_DATA.split('\n')` foi descontinuado. Os arrays retornados `projetos`, `setores`, `municipios` etc. foram normalizados para um objeto `ResumoRelatorio` coerente em toda a aplicação (`DataLabView`, `ExplorarDadosView`, `PiespDashboardView`, `VoiceView` e `PerfilEmpresaView`).
+
+
+## Migração DuckDB-WASM e Estabilização da IA — 24/abr/2026
+
+### Migração do Engine (CSV para Parquet + DuckDB-WASM)
+O sistema foi refatorado para utilizar o DuckDB-WASM rodando diretamente no browser, consumindo o arquivo `piesp.parquet`. Isso eliminou travamentos do Event Loop que ocorriam durante o parseamento síncrono do CSV antigo e resolveu erros de parsing causados por ponto e vírgula na base.
+
+### Estabilização de Buscas e Inteligência Artificial
+**1. Tratamento de Acentos no DuckDB:**
+A função `LOWER()` do DuckDB é sensível a acentos, o que impedia a IA de encontrar termos como "saúde" se a query não fosse idêntica ao banco. Foi implementada uma rotina em `piespDataService.ts` que normaliza o `termo_busca`, substituindo vogais acentuadas pelo caractere coringa `_` (SQL wildcard). Assim, `%sa_de%` captura tanto "saude" quanto "saúde".
+
+**2. Restrições Estritas de Setor no Prompt:**
+O LLM foi proibido de classificar sub-setores não mapeados (como "Saúde", "Tecnologia", etc.) dentro do argumento `setor`. O prompt do `useChat.ts` agora instrui a IA a direcionar todas as especificidades do negócio para o argumento `termo_busca`, limitando o `setor` exclusivamente às 5 categorias macro-oficiais da Seade.
+
+**3. Ampliação do Índice de Busca:**
+A query SQL no DuckDB agora utiliza `CONCAT_WS` integrando os campos de CNAE (`cnae_inv_2_desc`, `cnae_inv_descricao`, `cnae_empresa_descricao`) ao escopo de pesquisa de texto livre (`termo_busca`), aumentando radicalmente a precisão e taxa de acerto de buscas por nichos de mercado.
+
+**4. Dossiê de Empresa ("Dados não disponíveis"):**
+Para empresas oriundas da base "sem valor divulgado", a interface e o prompt em `PerfilEmpresaView.tsx` foram corrigidos. Em vez de exibir falsos investimentos de "R$ 0 milhões", o sistema agora identifica o agrupamento de valor zerado e informa visualmente (e textualmente para a IA) como "Não divulgado" / "Dados não disponíveis".
+
+---
+
+## Animação Palavra-a-Palavra e React 18 Batching — 29/abr/2026
+
+### Sintoma
+Na branch `feature/v0.3-duckdb-streaming`, o texto de resposta da Nadia aparecia **todo de uma vez** (sem animação palavra-a-palavra), especialmente após consultas que acionavam tool calls (DuckDB). Na branch `nadia-mobile/0.2.1`, a mesma animação funcionava corretamente.
+
+### Causa Raiz: React 18 Automatic Batching
+O React 18 introduziu o **automatic batching**: todas as chamadas `setState` dentro do mesmo contexto assíncrono são agrupadas num único commit. O React aplica as atualizações em ordem — e a última vence.
+
+**Por que o mobile aparentemente funcionava:** respostas sem tool call chegam em múltiplos chunks via `for await`. Entre cada chunk há uma pausa real de rede, o React faz flush, o `useEffect` do drain dispara, e a fila de palavras é preenchida incrementalmente. **O bug existe na branch `nadia-mobile/0.2.1` também** — o código faz `setStreamingComplete(true)` seguido de `setStreamingText(null)` no mesmo batch. Ele só não se manifestava porque as consultas típicas do mobile (sem DuckDB/tool calls) sempre retornavam múltiplos chunks. Qualquer resposta que chegue em chunk único quebrará a animação no mobile também.
+
+**Por que quebrava após tool calls:** o Gemini entrega a resposta final em **um único chunk** (comum após processar uma query DuckDB). Toda a sequência abaixo acontecia no mesmo tick assíncrono:
+
+```
+setStreamingText(prev => prev + "texto inteiro")  ← acumula
+setStreamingComplete(true)                         ← sinaliza fim
+setStreamingText(null)                             ← colapsava tudo
+setIsLoading(false)
+```
+
+React aplicava em ordem: o texto acumulava, depois `null` sobrescrevia. O `useEffect` do drain disparava com `streamingText = null` — a fila nunca era preenchida.
+
+### Solução (commit `4a77cdc`)
+
+**1. `setStreamingText(null)` removido do caminho de sucesso** (`try`/`finally`)
+`streamingText` mantém o valor acumulado quando `setStreamingComplete(true)` é chamado. O drain lê o texto, preenche a fila e anima palavra por palavra — independente de quantos chunks chegaram.
+
+**2. `setStreamingText(null)` movido para o `catch`**
+No caminho de erro, o texto parcial ainda precisa ser limpo. O `catch` zera explicitamente antes de qualquer outra coisa.
+
+**3. Drain `useEffect` → `useLayoutEffect`**
+`useEffect` roda após a pintura do browser: haveria um frame em que a mensagem final já aparecia em `messages` antes do drain iniciar (flash). `useLayoutEffect` roda de forma síncrona antes da pintura, garantindo que o drain esconde a mensagem final antes do usuário ver qualquer coisa.
+
+### Erro adicional: "Incomplete JSON segment at the end"
+Erro do SDK do Gemini quando a conexão de streaming é cortada antes do último chunk JSON ser completado. Era tratado como "erro inesperado" porque `getGeminiError()` não o reconhecia. Corrigido adicionando `'incomplete json'` à detecção `is503`, fazendo o `withRetry` tentar novamente automaticamente (2x com backoff de 2s/4s).
+
+### Regra para futuras implementações de streaming
+Nunca chamar `setStreamingText(null)` no caminho de sucesso após `setStreamingComplete(true)`. O padrão correto é:
+```typescript
+// ✓ Correto — streamingText mantém o texto para o drain
+setStreamingComplete(true);
+setMessages(prev => [...prev, modelMessage]);
+
+// ✗ Errado — null colapsa o texto acumulado no mesmo batch
+setStreamingComplete(true);
+setStreamingText(null);  // ← nunca fazer isso no sucesso
+setMessages(prev => [...prev, modelMessage]);
+```
+
+---
+
+## Bug: Busca por Tipo de Empresa Retorna 0 Resultados — 29/abr/2026
+
+### Sintoma
+Ao perguntar "quais hospitais estão investindo na RM SP sem valor declarado?", a Nadia respondia "encontrei apenas um" ou "não encontrei". Ao ampliar para "saúde", encontrava vários (incluindo hospitais).
+
+### Diagnóstico: o problema não era de dados
+
+A base tem **75 registros de hospitais** na RM SP sem valor declarado. A query SQL com `termo_busca: "hospital"` retornava os 75 corretamente. O problema estava em outra camada.
+
+**Verificação com DuckDB Python:**
+```python
+import duckdb
+conn = duckdb.connect()
+conn.execute("CREATE VIEW piesp AS SELECT * FROM 'public/piesp.parquet'")
+result = conn.execute("""
+  SELECT COUNT(*) FROM piesp
+  WHERE (LOWER(regiao) LIKE '%s_o paulo%')
+  AND LOWER(CONCAT_WS(' ', empresa_alvo, setor_desc, descr_investimento,
+      cnae_inv_2_desc, cnae_inv_descricao, cnae_empresa_descricao)) LIKE '%hospital%'
+  AND (reais_milhoes IS NULL OR reais_milhoes = 0)
+""").fetchone()[0]
+# → 75
+```
+
+### Causa Raiz: Dimensionamento do universo de dados sem filtro
+
+A base sem valor tem **2.495 registros só na RM SP**. A função `consultarAnunciosSemValor` retornava `rows.slice(0, 10)` — dez registros em ordem arbitrária do DuckDB. Estatisticamente, nenhum ou apenas 1 desses 10 era um hospital.
+
+O modelo chamava a ferramenta com `{ regiao: "Região Metropolitana de São Paulo" }` **sem** `termo_busca: "hospital"`, porque a descrição do parâmetro era genérica demais ("Termo livre para buscar na descrição") e não deixava claro que era **obrigatório** para filtrar por tipo de empresa.
+
+**Por que "saúde" funcionava e "hospital" não:**
+- `cnae_inv_2_desc` = "Atividades de atenção à saúde humana" → contém "saúde" ✓
+- Sem `termo_busca`, o modelo recebia 10 registros aleatórios (restaurantes, lojas, etc.)
+- "Saúde" era passada como `setor: "Saúde"` → `normalizarArgs` redirecionava para `termo_busca: "saúde"` → a query filtrava por `cnae_inv_2_desc` que contém "saúde"
+- "Hospital" muitas vezes só aparece em `cnae_inv_descricao` = "Atividades de atendimento **hospitalar**" — campo correto, mas o modelo precisava de instrução para usá-lo
+
+### Padrão de Falha: "Ilha de Dados"
+
+Este bug exemplifica um padrão recorrente em ferramentas de AI com bases grandes:
+
+> **O modelo chama a ferramenta com filtros insuficientes → recebe uma amostra aleatória → a amostra não representa o universo real → responde incorretamente.**
+
+A ferramenta funcionava perfeitamente quando chamada com os filtros corretos. O problema estava na lacuna entre o que o usuário perguntou e o que o modelo inferiu como parâmetros da tool call.
+
+### Solução em 3 camadas
+
+**Camada 1 — System Prompt (`utils/prompts.ts`):**
+Adicionada regra explícita antes das demais regras de processo:
+```
+REGRA DE FILTRO POR TIPO DE EMPRESA (OBRIGATÓRIA): Quando o usuário
+mencionar um tipo específico de empresa ou atividade — hospital, farmácia,
+montadora, data center, escola, banco, etc. — SEMPRE passe esse tipo como
+`termo_busca` em QUALQUER chamada de ferramenta PIESP.
+```
+
+**Camada 2 — Descrição do Tool (`useLiveConnection.ts` e `useChat.ts`):**
+A descrição do `consultar_anuncios_sem_valor` ganhou aviso crítico:
+```
+REGRA CRÍTICA: Se o usuário mencionar um tipo específico de empresa
+(hospital, farmácia, montadora, data center, escola, etc.),
+OBRIGATORIAMENTE passe esse tipo como `termo_busca`.
+Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os
+resultados não representarão o tipo solicitado.
+```
+
+**Camada 3 — Output da ferramenta (`piespDataService.ts`):**
+`consultarAnunciosSemValor` agora retorna:
+- Campo `atividade` (`cnae_inv_descricao`) — o modelo vê "Atividades de atendimento hospitalar" e identifica a Rede D'Or como hospital mesmo sem "Hospital" no nome
+- Campo `regiao` — permite o modelo confirmar o contexto geográfico
+- `ORDER BY empresa_alvo` — resultado alfabético, consistente entre chamadas
+- Limite aumentado de 10 → 20 registros
+- Retorno unificado com `total_anuncios` (antes retornava array sem contagem total)
+
+### Método de Diagnóstico: Simulação SQL Direta
+
+Antes de qualquer mudança de código, a simulação com Python+DuckDB contra o parquet real provou que os **dados existiam** e a **query SQL estava correta**. Isso descartou bugs de dados/infraestrutura e direcionou a investigação para o comportamento do modelo.
+
+```bash
+python3 -c "
+import duckdb
+conn = duckdb.connect()
+conn.execute(\"CREATE VIEW piesp AS SELECT * FROM 'public/piesp.parquet'\")
+# Total sem filtro
+print(conn.execute('SELECT COUNT(*) FROM piesp WHERE reais_milhoes IS NULL').fetchone())
+# Com filtro hospital
+print(conn.execute(\"SELECT COUNT(*) FROM piesp WHERE LOWER(cnae_inv_descricao) LIKE '%hospital%' AND reais_milhoes IS NULL\").fetchone())
+"
+```
+
+**Regra derivada:** Antes de debugar a lógica de prompts ou tool descriptions, sempre simular a query SQL diretamente contra o parquet para confirmar se o problema é de dados ou de comportamento do modelo.
+
+### Branches afetados
+Aplicado em `nadia-mobile/0.2.1` (commit `5858c41`) e `feature/v0.3-duckdb-streaming` (commit `c986eae`).
