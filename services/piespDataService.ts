@@ -230,23 +230,28 @@ export async function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   const where2 = where ? where + ` AND (reais_milhoes IS NULL OR reais_milhoes = 0)` : `WHERE (reais_milhoes IS NULL OR reais_milhoes = 0)`;
   
   const query = `
-    SELECT empresa_alvo, municipio, setor_desc, anuncio_ano, periodo_original, descr_investimento 
+    SELECT empresa_alvo, municipio, regiao, setor_desc, anuncio_ano, periodo_original, descr_investimento, cnae_inv_descricao
     FROM piesp
     ${where2}
+    ORDER BY empresa_alvo
   `;
-  
+
   const stmt = await conn.prepare(query);
   const result = await stmt.query(...params);
   const rows = result.toArray().map(r => r.toJSON());
-  
-  return rows.map(r => ({
-    empresa_alvo: r.empresa_alvo,
-    municipio: r.municipio,
-    setor_desc: canonicalSetor(r.setor_desc),
-    anuncio_ano: r.anuncio_ano,
-    periodo: r.periodo_original,
-    descr_investimento: r.descr_investimento
-  }));
+
+  return {
+    total_anuncios: rows.length,
+    anuncios: rows.slice(0, 20).map(r => ({
+      empresa: r.empresa_alvo,
+      municipio: r.municipio,
+      regiao: r.regiao,
+      setor: canonicalSetor(r.setor_desc),
+      atividade: r.cnae_inv_descricao || '',
+      ano: r.anuncio_ano?.toString() || '',
+      descricao: (r.descr_investimento || '').substring(0, 150)
+    }))
+  };
 }
 
 export async function getMetadados() {
