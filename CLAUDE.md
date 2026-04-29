@@ -951,7 +951,7 @@ Na branch `feature/v0.3-duckdb-streaming`, o texto de resposta da Nadia aparecia
 ### Causa Raiz: React 18 Automatic Batching
 O React 18 introduziu o **automatic batching**: todas as chamadas `setState` dentro do mesmo contexto assíncrono são agrupadas num único commit. O React aplica as atualizações em ordem — e a última vence.
 
-**Por que o mobile funcionava:** respostas sem tool call chegam em múltiplos chunks via `for await`. Entre cada chunk há uma pausa real de rede, o React faz flush, o `useEffect` do drain dispara, e a fila de palavras é preenchida incrementalmente.
+**Por que o mobile aparentemente funcionava:** respostas sem tool call chegam em múltiplos chunks via `for await`. Entre cada chunk há uma pausa real de rede, o React faz flush, o `useEffect` do drain dispara, e a fila de palavras é preenchida incrementalmente. **O bug existe na branch `nadia-mobile/0.2.1` também** — o código faz `setStreamingComplete(true)` seguido de `setStreamingText(null)` no mesmo batch. Ele só não se manifestava porque as consultas típicas do mobile (sem DuckDB/tool calls) sempre retornavam múltiplos chunks. Qualquer resposta que chegue em chunk único quebrará a animação no mobile também.
 
 **Por que quebrava após tool calls:** o Gemini entrega a resposta final em **um único chunk** (comum após processar uma query DuckDB). Toda a sequência abaixo acontecia no mesmo tick assíncrono:
 
