@@ -940,3 +940,53 @@ A query SQL no DuckDB agora utiliza `CONCAT_WS` integrando os campos de CNAE (`c
 
 **4. Dossiê de Empresa ("Dados não disponíveis"):**
 Para empresas oriundas da base "sem valor divulgado", a interface e o prompt em `PerfilEmpresaView.tsx` foram corrigidos. Em vez de exibir falsos investimentos de "R$ 0 milhões", o sistema agora identifica o agrupamento de valor zerado e informa visualmente (e textualmente para a IA) como "Não divulgado" / "Dados não disponíveis".
+
+---
+
+## Animação Palavra-a-Palavra e React 18 Batching — 29/abr/2026
+
+### Sintoma
+Na branch `feature/v0.3-duckdb-streaming`, o texto de resposta da Nadia aparecia **todo de uma vez** (sem animação palavra-a-palavra), especialmente após consultas que acionavam tool calls (DuckDB). Na branch `nadia-mobile/0.2.1`, a mesma animação funcionava corretamente.
+
+### Causa Raiz: React 18 Automatic Batching
+O React 18 introduziu o **automatic batching**: todas as chamadas `setState` dentro do mesmo contexto assíncrono são agrupadas num único commit. O React aplica as atualizações em ordem — e a última vence.
+
+**Por que o mobile funcionava:** respostas sem tool call chegam em múltiplos chunks via `for await`. Entre cada chunk há uma pausa real de rede, o React faz flush, o `useEffect` do drain dispara, e a fila de palavras é preenchida incrementalmente.
+
+**Por que quebrava após tool calls:** o Gemini entrega a resposta final em **um único chunk** (comum após processar uma query DuckDB). Toda a sequência abaixo acontecia no mesmo tick assíncrono:
+
+```
+setStreamingText(prev => prev + "texto inteiro")  ← acumula
+setStreamingComplete(true)                         ← sinaliza fim
+setStreamingText(null)                             ← colapsava tudo
+setIsLoading(false)
+```
+
+React aplicava em ordem: o texto acumulava, depois `null` sobrescrevia. O `useEffect` do drain disparava com `streamingText = null` — a fila nunca era preenchida.
+
+### Solução (commit `4a77cdc`)
+
+**1. `setStreamingText(null)` removido do caminho de sucesso** (`try`/`finally`)
+`streamingText` mantém o valor acumulado quando `setStreamingComplete(true)` é chamado. O drain lê o texto, preenche a fila e anima palavra por palavra — independente de quantos chunks chegaram.
+
+**2. `setStreamingText(null)` movido para o `catch`**
+No caminho de erro, o texto parcial ainda precisa ser limpo. O `catch` zera explicitamente antes de qualquer outra coisa.
+
+**3. Drain `useEffect` → `useLayoutEffect`**
+`useEffect` roda após a pintura do browser: haveria um frame em que a mensagem final já aparecia em `messages` antes do drain iniciar (flash). `useLayoutEffect` roda de forma síncrona antes da pintura, garantindo que o drain esconde a mensagem final antes do usuário ver qualquer coisa.
+
+### Erro adicional: "Incomplete JSON segment at the end"
+Erro do SDK do Gemini quando a conexão de streaming é cortada antes do último chunk JSON ser completado. Era tratado como "erro inesperado" porque `getGeminiError()` não o reconhecia. Corrigido adicionando `'incomplete json'` à detecção `is503`, fazendo o `withRetry` tentar novamente automaticamente (2x com backoff de 2s/4s).
+
+### Regra para futuras implementações de streaming
+Nunca chamar `setStreamingText(null)` no caminho de sucesso após `setStreamingComplete(true)`. O padrão correto é:
+```typescript
+// ✓ Correto — streamingText mantém o texto para o drain
+setStreamingComplete(true);
+setMessages(prev => [...prev, modelMessage]);
+
+// ✗ Errado — null colapsa o texto acumulado no mesmo batch
+setStreamingComplete(true);
+setStreamingText(null);  // ← nunca fazer isso no sucesso
+setMessages(prev => [...prev, modelMessage]);
+```
