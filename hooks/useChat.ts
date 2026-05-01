@@ -103,6 +103,108 @@ async function executarFerramenta(nome: string, args: any): Promise<any> {
   return { error: 'Ferramenta não reconhecida' };
 }
 
+// Rótulos legíveis para as skills — usados no prompt de crítica
+const SKILL_LABELS: Record<string, string> = {
+  comercio_exterior:        'Comércio Exterior e Exportações',
+  emprego_empregabilidade:  'Emprego e Empregabilidade',
+  qualificacao_profissional:'Qualificação Profissional',
+  logistica_infraestrutura: 'Logística e Infraestrutura',
+  inovacao_tecnologia:      'Inovação e Tecnologia',
+  desenvolvimento_regional: 'Desenvolvimento Regional',
+  cadeias_produtivas:       'Cadeias Produtivas',
+  transicao_energetica:     'Transição Energética e Sustentabilidade',
+};
+
+const CRITIQUE_SYSTEM_INSTRUCTION = `Você é um editor sênior de análises econômicas da Fundação Seade. Recebeu uma pergunta, a lente analítica ativa e uma resposta candidata. Sua tarefa: aplicar 5 testes de qualidade analítica e corrigir a resposta se necessário.
+
+Regras: não invente dados, não altere valores ou nomes de empresas, preserve o nível de detalhe e o estilo de escrita. Retorne APENAS o texto da resposta — corrigido ou aprovado como está. Sem introduções nem comentários sobre o processo.`;
+
+async function critiqueCandidateResponse(
+  ai: GoogleGenAI,
+  originalQuestion: string,
+  candidateResponse: string,
+  skillName: string
+): Promise<string | null> {
+  const skillLabel = SKILL_LABELS[skillName] ?? skillName;
+
+  const prompt = `PERGUNTA: ${originalQuestion}
+
+LENTE ANALÍTICA ATIVA: ${skillLabel}
+
+RESPOSTA CANDIDATA:
+${candidateResponse}
+
+---
+
+TESTE 1 — OMISSÃO POR RESSALVA (CRÍTICO — tolerância zero)
+Localize CADA investimento na resposta. Para cada um, verifique se aparece junto com qualquer uma destas expressões (ou equivalentes):
+• "sem impacto direto", "não diretamente ligado", "não contribui diretamente"
+• "embora seja predominantemente doméstico", "voltado ao mercado interno", "foco no mercado doméstico"
+• "sem vínculo com exportação", "impacto indireto", "pode ter impactos indiretos"
+• "primariamente para atender a demanda doméstica"
+• "pode haver um potencial exportador, mas é preciso analisar"
+• "dependendo do tipo específico", "para determinar sua competitividade"
+• qualquer formulação que admite que o investimento NÃO passa no filtro da lente ativa
+AÇÃO OBRIGATÓRIA: Remova COMPLETAMENTE esses investimentos e todos os parágrafos que os mencionam. Não os referencie nem com ressalva. Se remover um investimento criar uma frase solta, remova a frase também.
+
+TESTE 2 — CLUSTER DOMINANTE E ERROS FACTUAIS
+Verifique com seu conhecimento de treinamento:
+
+a) O cluster exportador dominante da região está identificado na análise (não em nota de rodapé — no corpo principal)?
+• RA Franca → calçados de couro bovino são a identidade exportadora histórica da região (maior polo de footwear do Brasil); se presente nos dados, deve abrir ou dominar a análise
+• RA São José dos Campos → aeroespacial (Embraer, Tier 1)
+• RA Ribeirão Preto, RA Araçatuba, RA Bauru → sucroenergético
+• RA Campinas → petroquímica, TI
+• RMSP/ABC → automotivo
+Se o cluster está ausente ou relegado ao final como nota: AÇÃO: reescreva para colocá-lo na abertura ou no corpo principal.
+
+b) A análise comete o erro de tratar CBAM como risco para etanol de segunda geração (E2G)?
+• CBAM é RISCO para etanol E1G (convencional, alta intensidade de carbono)
+• CBAM é VANTAGEM COMPETITIVA para etanol E2G (celulósico, 70-90% menos carbono que gasolina)
+Se a análise diz "monitorar o CBAM" ou "impacto do CBAM" para um investimento E2G: AÇÃO: corrija para explicar que E2G tem vantagem competitiva frente ao CBAM.
+
+TESTE 3 — ESTRUTURA DE LISTA: REESCRITA OBRIGATÓRIA
+Faça este diagnóstico: conte quantos parágrafos começam com o nome de uma empresa ou de um setor/categoria.
+Se 3 ou mais parágrafos começam com nome de empresa/setor → a resposta FALHOU neste teste.
+AÇÃO OBRIGATÓRIA quando falhar: NÃO faça edições incrementais. DESCARTE a estrutura atual e REESCREVA a análise completa seguindo este esquema:
+  Parágrafo 1 — Padrão dominante: "O conjunto de investimentos de [região] revela [padrão não-óbvio]..."
+  Parágrafo 2 — Hipótese e evidência: use empresas específicas como PROVA do argumento, não como assunto
+  Parágrafo 3 — Tensão ou contradição (se houver)
+  Parágrafo 4 — Insight conclusivo específico (não genérico)
+Comprimento: 3 a 5 parágrafos. Sem subtítulos em negrito separando empresas.
+
+TESTE 4 — CONCLUSÃO GENÉRICA
+A conclusão usa: "desenvolvimento contínuo", "tem potencial", "é dinâmica", "perspectivas positivas", "crescimento expressivo", "foco produtivo com forte inserção"?
+AÇÃO: Substitua por insight específico desta região e desta lente.
+
+TESTE 5 — CONTAMINAÇÃO DE LENTE
+Há análises de lentes diferentes da ativa ("${skillLabel}")? Ex: parágrafos sobre emprego, inovação tecnológica, desenvolvimento regional sem vínculo com exportação ou comércio externo?
+AÇÃO: Remova completamente.
+
+---
+Se PASSOU em todos os 5 testes: retorne o texto EXATAMENTE como está.
+Se FALHOU em qualquer teste: retorne a versão corrigida.
+Retorne APENAS o texto da resposta. Nenhum comentário sobre o processo.`;
+
+  try {
+    const result = await (ai.models as any).generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction: CRITIQUE_SYSTEM_INSTRUCTION,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    });
+
+    const refined = (result.text as string | undefined)?.trim();
+    if (!refined || refined.length < 50) return null;
+    return refined;
+  } catch (e) {
+    console.warn('⚠️ [Critique] Falhou silenciosamente:', e);
+    return null;
+  }
+}
+
 interface UseChatOptions {
   selectedSkillName?: string | null;
 }
@@ -273,6 +375,26 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
             { role: 'model' as const, parts: [{ functionCall: { name: fc.name!, args: fc.args || {} } }] },
             { role: 'user' as const, parts: [{ functionResponse: { name: fc.name!, response: resultado } }] }
           ];
+        }
+      }
+
+      // Critique pass: revisa a resposta antes de apresentá-la ao usuário.
+      // Roda enquanto isLoading ainda é true (bloqueia nova mensagem).
+      // streamingText continua com a 1ª resposta (cursor piscando) — UX de "ainda processando".
+      // O drain animará o texto da 1ª resposta; quando terminar, a mensagem refinada revela.
+      const activeSkillForCritique = selectedSkillName || detectedSkill?.name;
+      if (activeSkillForCritique && !usarPesquisa && finalText && finalText.length > 300 && mode === 'complete') {
+        try {
+          console.log(`✏️ [Critique] Revisando com lente "${activeSkillForCritique}"...`);
+          const refined = await critiqueCandidateResponse(ai, text, finalText, activeSkillForCritique);
+          if (refined && refined !== finalText) {
+            console.log('✏️ [Critique] Resposta refinada.');
+            finalText = refined;
+          } else {
+            console.log('✓ [Critique] Aprovada sem modificações.');
+          }
+        } catch (critiqueErr) {
+          console.warn('⚠️ [Critique] Falhou silenciosamente — mantendo resposta original:', critiqueErr);
         }
       }
 

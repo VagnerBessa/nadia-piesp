@@ -1173,3 +1173,125 @@ Se o CDN ainda falhar após o warm-up, o `withRetry` tenta mais 2 vezes (2s / 4s
 **3. Bug colateral corrigido:** `useChat.ts` do v0.3 ainda usava `.length` no retorno de `consultarAnunciosSemValor` (que mudou para `{ total_anuncios, anuncios[] }` em abril). Corrigido para `.total_anuncios`.
 
 **Branches afetados:** `nadia-mobile/0.2.1` (commit `47c0de9`) e `feature/v0.3-duckdb-streaming` (commit `1e4e61e`).
+
+---
+
+## Reescrita das Skills Analíticas com Linguagem Técnica de Domínio — mai/2026
+
+### Motivação
+
+As 8 skills analíticas (`skills/*.md`) foram reescritas para produzir análises com linguagem técnica de domínio em vez de descrições genéricas de setor. O problema identificado: o modelo descrevia cada empresa individualmente em vez de sintetizar o padrão do conjunto.
+
+### Mudanças por skill
+
+| Skill | Conteúdo técnico adicionado |
+|---|---|
+| `qualificacao_profissional.md` | Mapeamento CNAE→CBO (14 setores), tempo de formação por nível, gap estrutural vs incremental |
+| `emprego_empregabilidade.md` | Multiplicadores direto/indireto por setor, taxa de formalidade, passivo de serviços públicos (1000 trabalhadores = ~300 crianças em idade escolar) |
+| `logistica_infraestrutura.md` | Capacidade modal por tipo de carga, specs Porto de Santos (5M TEUs, calado 13,2m), quantificação de energia (50–500 MW data centers) e água (300–800k L/dia) |
+| `inovacao_tecnologia.md` | Tabela de intensidade tecnológica OCDE por CNAE, Lei do Bem/FAPESP PIPE como sinais de P&D, paradoxo do spillover (data centers = zero spillover local) |
+| `desenvolvimento_regional.md` | Teoria da base econômica, ilusão fiscal da Lei Kandir, passivo de serviços públicos quantificado |
+| `cadeias_produtivas.md` | Arquétipo Tier 0/1/2/3, coeficientes de encadeamento frente/trás, "ilha industrial" como padrão de risco |
+| `transicao_energetica.md` | Classificação GHG Protocol Escopo 1/2/3, intensidade tCO₂e por setor, SBCE/CBAM/CBIOs, risco de stranded asset |
+| `comercio_exterior.md` | Regimes DRAWBACK/ex-tarifário/CBAM, distinção E1G vs E2G para CBAM (E2G = vantagem competitiva, não risco), propensão exportadora por setor, barreiras anti-dumping/SPS |
+
+### Padrão anti-lista adicionado a todas as skills
+
+Cada skill ganhou uma seção "Como estruturar a síntese (anti-lista)" com:
+- Instrução para identificar padrão do conjunto antes de citar empresas
+- Regras específicas da especialidade (ex: comércio exterior: verificar produto real antes de classificar propensão exportadora)
+- Exemplos de anti-padrões a evitar
+
+### Mudanças no `SYSTEM_INSTRUCTION` (`utils/prompts.ts`)
+
+Seis regras novas foram adicionadas:
+
+1. **Anti-narração cronológica** (Seção 2): nunca narrar empresa por empresa; estrutura obrigatória em 5 passos (padrão dominante → hipótese → evidência → tensões → insight não-óbvio)
+2. **Regra de omissão por ressalva** (Seção 2): se o modelo escreveu "embora seja predominantemente doméstico" → omitir o investimento, não ressalvá-lo
+3. **Expressões temporais vagas não geram filtro de ano** (Seção 3): "nos últimos anos", "recentemente" nunca viram `ano: "2024"`
+4. **Cidades que nomeiam RA usam `regiao`, não `municipio`** (Seção 3): "Campinas" → `regiao: "RA Campinas"`
+5. **Exclusividade de lente** (Seção 5): quando uma lente está ativa, as outras 7 ficam suspensas
+6. **Conhecimento de treinamento como contexto** (Seção 5): cluster sub-representado nos dados é insight analítico, não lacuna a ignorar
+7. **Auto-revisão** (Seção 6 — nova): 5 testes de qualidade que o modelo deve aplicar antes de responder
+
+---
+
+## Arquitetura de Crítica em Duas Chamadas no Chat — mai/2026
+
+### Problema
+
+Mesmo com as regras no `SYSTEM_INSTRUCTION`, a primeira chamada ao modelo produzia respostas que:
+- Listavam investimentos um por um (narração por empresa)
+- Incluíam investimentos com ressalvas ("Magazine Luiza, embora focado no mercado interno...")
+- Omitiam o cluster dominante da região (ex: calçados em Franca)
+- Concluíam de forma genérica ("desenvolvimento contínuo", "tem potencial")
+
+O prompt-only tem um teto de confiabilidade. O modelo segue as regras parcialmente, não integralmente.
+
+### Solução: `critiqueCandidateResponse` em `hooks/useChat.ts`
+
+Após a primeira chamada produzir `finalText`, uma segunda chamada roda silenciosamente antes de `setStreamingComplete(true)`:
+
+```typescript
+const activeSkillForCritique = selectedSkillName || detectedSkill?.name;
+if (activeSkillForCritique && !usarPesquisa && finalText && finalText.length > 300 && mode === 'complete') {
+  const refined = await critiqueCandidateResponse(ai, text, finalText, activeSkillForCritique);
+  if (refined) finalText = refined;
+}
+```
+
+**Configuração da chamada de crítica:**
+- Modelo: `gemini-2.5-flash` (mesmo)
+- `thinkingBudget: 0` (rápida, sem raciocínio profundo)
+- Sem tools (processamento de texto puro)
+- ~4–6s adicionais de latência
+
+### Mecânica de UX (sem flash visível)
+
+A arquitetura do drain em `ChatView.tsx` garante que a troca é imperceptível:
+
+1. Primeira resposta acumula em `streamingText` → `displayText` anima palavra por palavra
+2. Crítica roda enquanto `isLoading = true` (bloqueia novo envio)
+3. Se refinada: `finalText` é substituído antes de `setStreamingComplete(true)`
+4. `setStreamingComplete(true)` → drain anima o texto da 1ª resposta
+5. Quando drain termina: a mensagem em `messages` revela — já com a versão refinada
+6. Para respostas longas (>400 palavras): drain leva ~9s; crítica leva ~5s → crítica termina durante o drain → mensagem refinada revela ao final sem jump visível
+
+**Por que o drain esconde o jump:** linha 443 de `ChatView.tsx`:
+```tsx
+if (displayText && streamingComplete && index === messages.length - 1 && msg.role === 'model') return null;
+```
+A última mensagem fica oculta enquanto `displayText` está ativo.
+
+### Os 5 testes da crítica
+
+| Teste | O que verifica | Ação quando falha |
+|---|---|---|
+| 1 — Omissão por ressalva | Investimentos com "sem impacto direto", "pode haver um potencial, mas..." | Remove o investimento completamente |
+| 2 — Cluster dominante | Cluster da região está no corpo principal (não como nota de rodapé) + E2G/CBAM correto | Reescreve abertura com cluster em destaque; corrige E2G = vantagem |
+| 3 — Estrutura de lista | ≥3 parágrafos começando com nome de empresa/setor | Reescrita completa em 4 parágrafos (padrão → hipótese → evidência → insight) |
+| 4 — Conclusão genérica | Frases como "tem potencial", "desenvolvimento contínuo" | Substitui por insight específico |
+| 5 — Contaminação de lente | Análises de outras especialidades presentes | Remove trechos de outras lentes |
+
+### Condições de ativação
+
+A crítica só roda quando:
+- Skill ativa (`selectedSkillName` ou auto-detectada)
+- NÃO é pesquisa web (`!usarPesquisa`) — Google Search não entra na crítica
+- Resposta substantiva (`finalText.length > 300`)
+- Modo `complete` (não `fast`)
+
+### Fallback silencioso
+
+Se a crítica falhar (503, quota, timeout), `finalText` original é usado sem interrupção da UX. O erro é logado como `⚠️ [Critique] Falhou silenciosamente`.
+
+### Logs no console
+
+```
+✏️ [Critique] Revisando com lente "comercio_exterior"...
+✏️ [Critique] Resposta refinada.
+— ou —
+✓ [Critique] Aprovada sem modificações.
+```
+
+**Branch afetado:** `feature/v0.3-duckdb-streaming`
