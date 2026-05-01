@@ -440,7 +440,6 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
           tools: tools || await (async () => {
             const rd = await getRegiaoDesc();
             return [
-            { googleSearch: {} },
             {
               functionDeclarations: [
                 {
