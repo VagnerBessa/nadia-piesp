@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { getDbConnection } from '../services/duckdbService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
 import { SwitchModeIcon } from './Icons';
@@ -10,6 +11,8 @@ interface VoiceViewProps {
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
+  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
+  useEffect(() => { getDbConnection().catch(() => {}); }, []);
   const {
     isConnected,
     isSpeaking,

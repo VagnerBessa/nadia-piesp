@@ -94,11 +94,11 @@ async function executarFerramenta(nome: string, args: any): Promise<any> {
   }
   if (nome === 'consultar_anuncios_sem_valor') {
     let resultados = await consultarAnunciosSemValor({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    if (resultados.length === 0 && args.ano) {
+    if (resultados.total_anuncios === 0 && args.ano) {
       const semAno = await consultarAnunciosSemValor({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.length > 0) resultados = semAno;
+      if (semAno.total_anuncios > 0) resultados = semAno;
     }
-    return { sucesso: true, total_projetos: resultados.length, projetos: resultados };
+    return { sucesso: true, ...resultados };
   }
   return { error: 'Ferramenta não reconhecida' };
 }
@@ -112,7 +112,7 @@ function getGeminiError(e: any) {
   const status = e?.status ?? e?.statusCode ?? e?.code ?? 0;
   const msg = (e?.message || JSON.stringify(e) || '').toLowerCase();
   
-  const is503 = status === 503 || msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('fetch failed') || msg.includes('incomplete json');
+  const is503 = status === 503 || msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('fetch failed') || msg.includes('incomplete json') || msg.includes('load failed');
   const is429 = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') || msg.includes('resource_exhausted');
   const is500 = status === 500 || msg.includes('500') || msg.includes('internal');
   

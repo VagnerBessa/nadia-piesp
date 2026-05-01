@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useChat, ResponseMode } from '../hooks/useChat';
+import { getDbConnection } from '../services/duckdbService';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useAutoResizeTextArea } from '../hooks/useAutoResizeTextArea';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
@@ -110,6 +111,9 @@ const AGENTS: AgentConfig[] = [
 ];
 
 const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
+  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
+  useEffect(() => { getDbConnection().catch(() => {}); }, []);
+
   const [activeAgent, setActiveAgent] = useState<AgentConfig | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
