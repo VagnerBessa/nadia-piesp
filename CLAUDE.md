@@ -1086,3 +1086,90 @@ print(conn.execute(\"SELECT COUNT(*) FROM piesp WHERE LOWER(cnae_inv_descricao) 
 
 ### Branches afetados
 Aplicado em `nadia-mobile/0.2.1` (commit `5858c41`) e `feature/v0.3-duckdb-streaming` (commit `c986eae`).
+
+---
+
+## Correções de Qualidade de Resposta — 01/mai/2026
+
+### Verbos de Investimento e Referências Temporais
+
+**Problema:** A Nadia usava "investiu" como verbo padrão e chamava 2025 de "futuro próximo" ao analisar em 2026.
+
+**Causa:** A PIESP registra *anúncios* de intenção, não execuções confirmadas. O modelo não tinha regra explícita sobre verbos, e não sabia a data atual.
+
+**Solução em `utils/prompts.ts` (Seção 6):**
+- Injeção dinâmica da data atual: `${new Date().toLocaleDateString('pt-BR', ...)}` na Seção 1 do system prompt. Avaliado no carregamento do módulo — sempre reflete a data do dia.
+- Verbo padrão obrigatório: "anunciou", "prevê", "planeja", "destinou". "Investiu" só permitido quando a descrição mencionar explicitamente inauguração ou conclusão de obra.
+- Anos passados tratados como histórico, nunca como "futuro próximo".
+
+**Branches afetados:** `nadia-mobile/0.2.1` (commit `2fb6867`) e `feature/v0.3-duckdb-streaming` (commit `bf8f5a5`).
+
+---
+
+## Remoção do Google Search do Gemini Live — 01/mai/2026
+
+### Problema
+
+`{ googleSearch: {} }` estava ativo nas tools do Gemini Live (`useLiveConnection.ts`). Quando o usuário fazia perguntas analíticas sem resposta no PIESP (ex: "existe infraestrutura de qualificação para atender a demanda?"), o modelo tentava usar o grounding nativo do Google. No **Safari/iOS**, essa requisição ao CDN/rede falhava com `TypeError: Load failed sending request`, derrubando o WebSocket inteiro.
+
+O erro se manifestava tanto no chat de voz quanto no chat escrito (onde o mesmo `TypeError` aparecia como "Erro inesperado").
+
+### Distinção entre os dois tipos de Google Search
+
+| Uso | Onde | Mecanismo | Status |
+|---|---|---|---|
+| Live API (voz) | `useLiveConnection.ts` | Grounding nativo — modelo ativa espontaneamente | **Removido** |
+| REST API (aba Empresas) | `PerfilEmpresaView.tsx` via `generateWithFallback` | Passado explicitamente por requisição | **Mantido** |
+| REST API (chat escrito) | `useChat.ts` via `searchTools` | Ativado só quando skill `inteligencia_empresarial` detectada | **Mantido** |
+
+### Por que o Live API é diferente
+
+No Live API, `{ googleSearch: {} }` é um grounding built-in — o modelo decide sozinho quando ativá-lo, sem controle do código. A instrução no system prompt ("use somente para inteligência empresarial") é comportamental, não técnica. Para perguntas analíticas sem dados no PIESP, o modelo ignorava a restrição e ativava o grounding, quebrando o WebSocket.
+
+No REST API (`generateContent`), a busca ocorre apenas quando o código passa `tools: [{ googleSearch: {} }]` — é controlada pelo desenvolvedor, não pelo modelo.
+
+### Solução
+
+- `{ googleSearch: {} }` removido das tools do Live API (`useLiveConnection.ts`)
+- System prompt atualizado: seção de Google Search substituída por instrução de Inteligência Empresarial baseada em conhecimento de treinamento
+- Para company intelligence no chat de voz, o modelo usa seu próprio conhecimento de treinamento — se não souber, declara explicitamente
+
+**Branches afetados:** `nadia-mobile/0.2.1` (commit `8b20519`) e `feature/v0.3-duckdb-streaming` (commit `0d9c45c`).
+
+---
+
+## Bug: DuckDB Warm-up Lazy Causa "Load Failed" na Primeira Pergunta — 01/mai/2026
+
+### Sintoma
+
+Ao fazer a primeira pergunta que exigia consulta ao banco (especialmente perguntas analíticas que o modelo decidia responder com dados), o chat retornava "Erro inesperado: exception TypeError: Load failed sending request". Na segunda tentativa (após perguntas que carregavam o DuckDB com sucesso), a mesma pergunta funcionava.
+
+### Causa Raiz: Inicialização Lazy + Falha Transiente de CDN
+
+O `duckdbService.ts` carrega o worker WASM do DuckDB a partir do **jsDelivr CDN** (`getJsDelivrBundles()`):
+
+```typescript
+const workerResponse = await fetch(workerUrl);  // ← CDN externo
+```
+
+A inicialização era **lazy** — só ocorria no primeiro tool call. Se o CDN falhasse transientemente nesse momento preciso (Safari com Private Relay, flutuação de rede, CDN cold start), toda a query falhava com `TypeError: Load failed`. Como `initPromise` era zerado no erro (permite retry), a próxima tentativa carregava o DuckDB com sucesso.
+
+O padrão de falha: "funciona na segunda vez" é diagnóstico clássico de inicialização lazy com recurso externo instável.
+
+### Solução
+
+**1. Warm-up eager em `ChatView.tsx` e `VoiceView.tsx`:**
+```typescript
+useEffect(() => { getDbConnection().catch(() => {}); }, []);
+```
+DuckDB começa a carregar imediatamente ao montar a view, antes de qualquer interação do usuário. O catch vazio é intencional — erros de init serão tratados quando a primeira ferramenta for chamada.
+
+**2. "load failed" como erro retentável em `useChat.ts` e `withRetry`:**
+```typescript
+const isRetryable = ... || msg.includes('load failed');
+```
+Se o CDN ainda falhar após o warm-up, o `withRetry` tenta mais 2 vezes (2s / 4s) em vez de exibir "Erro inesperado" imediatamente.
+
+**3. Bug colateral corrigido:** `useChat.ts` do v0.3 ainda usava `.length` no retorno de `consultarAnunciosSemValor` (que mudou para `{ total_anuncios, anuncios[] }` em abril). Corrigido para `.total_anuncios`.
+
+**Branches afetados:** `nadia-mobile/0.2.1` (commit `47c0de9`) e `feature/v0.3-duckdb-streaming` (commit `1e4e61e`).

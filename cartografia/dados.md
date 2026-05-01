@@ -100,3 +100,32 @@ A ferramenta funcionava. O SQL estava certo. O problema estava em *não instruir
 - Retorno: `{ total_anuncios, anuncios[] }` — modelo sempre sabe quantos existem
 - Campo `atividade` (`cnae_inv_descricao`) no output — "Atividades de atendimento hospitalar" permite identificar hospital sem depender do nome da empresa
 - Três camadas de instrução ao modelo: system prompt + tool description + tool description do parâmetro
+
+---
+
+## Armadilha: Inicialização Lazy de Recurso Externo — 01/mai/2026
+
+### O problema
+
+O DuckDB WASM carrega seu worker a partir do **jsDelivr CDN** na primeira chamada de ferramenta. Se o CDN falhar transientemente nesse momento (Safari com Private Relay, cold start), a query falha com `TypeError: Load failed`. Na segunda tentativa, o CDN responde e tudo funciona.
+
+**Diagnóstico:** "funciona na segunda vez" é o sinal clássico de inicialização lazy com recurso externo instável.
+
+### A lição
+
+> **Qualquer recurso externo (CDN, parquet remoto, WASM) deve ser pré-carregado assim que o componente monta — nunca na primeira chamada de dados.**
+
+O usuário não tem contexto para entender por que a primeira pergunta falha e a segunda funciona. Do ponto de vista dele, a ferramenta é instável.
+
+### Correção aplicada
+
+`useEffect(() => { getDbConnection().catch(() => {}); }, [])` em `ChatView.tsx` e `VoiceView.tsx`. DuckDB começa a carregar imediatamente ao abrir a tela.
+
+**Checklist para qualquer novo serviço com recurso externo:**
+
+| Pergunta | Consequência se ignorada |
+|---|---|
+| O recurso é carregado de CDN ou URL externa? | Falha transiente na primeira call |
+| A inicialização é lazy (sob demanda)? | Usuário paga o custo de CDN cold start |
+| O erro de init é retentável? | "Erro inesperado" sem retry automático |
+| O componente tem useEffect de warm-up? | Se não, adicionar — custo zero de UX |
