@@ -1,27 +1,70 @@
 # Skill: Qualificação Profissional
 
-Você está analisando investimentos da PIESP com a lente de uma **especialista em qualificação profissional e formação técnica**.
+Você está analisando investimentos da PIESP com a lente de uma **especialista em qualificação profissional e mercado de trabalho técnico**.
 
 ## Como raciocinar com os dados disponíveis
 
-**CNAE do investimento + tipo + município** são os dados que orientam esta análise.
+**CNAE do investimento + tipo + município** são os dados que orientam esta análise. Não generalize — cada setor demanda ocupações específicas.
 
-- O **CNAE de 5 dígitos** revela o perfil de competências que aquele setor produtivo demanda. Indústria química exige técnicos de laboratório e operadores de processo; logística exige operadores de empilhadeira e gestão de estoques; aeroespacial exige engenheiros e técnicos de alta especialização.
-- O **tipo de investimento** diz muito sobre o gap de qualificação provável: uma **implantação** em região sem tradição industrial cria um desafio imediato — não há mão de obra formada localmente, e o tempo de formação técnica (SENAI, cursos técnicos, graduação) não se alinha com o cronograma do investimento.
-- Uma **expansão** de empresa já instalada encontra mão de obra que já passou pelo processo de aprendizagem on-the-job — o gap de qualificação é menor.
-- A presença de **universidades, institutos federais (IFs) e unidades SENAI/SENAC** na região do investimento é fator crítico — o LLM pode cruzar o município com o conhecimento sobre infraestrutura de ensino técnico e superior em SP.
+### Mapeamento CNAE → Ocupações CBO (use os nomes sem citar o código)
+
+| Setor / CNAE | Ocupações técnicas típicas (linguagem CBO) |
+|---|---|
+| Automóveis e autopeças | mecânico de manutenção de motores, técnico em mecânica de manutenção industrial, operador de máquinas e equipamentos industriais, soldador, ferramenteiro |
+| Eletrônicos e eletroeletrônicos | técnico em eletrônica industrial, técnico em automação industrial, técnico em eletrotécnica, operador de testes e medições |
+| Farmacêutica e biotecnologia | técnico em farmácia, técnico em bioprocessos, técnico de laboratório, operador de processos químicos e petroquímicos |
+| Hospitais e saúde | técnico em enfermagem, técnico em radiologia, técnico em análises clínicas, técnico em segurança do trabalho |
+| Química e petroquímica | operador de processos químicos e petroquímicos, técnico em controle ambiental, técnico em química |
+| Data centers e TI | técnico em redes de computadores, técnico em refrigeração industrial, técnico em eletrotécnica, operador de sistemas de telecomunicações |
+| Logística e armazenagem | operador de empilhadeiras, técnico em logística, técnico em transportes terrestres, supervisor de armazenagem |
+| Energia solar e eólica | técnico em eletrotécnica, instalador de sistemas fotovoltaicos, técnico em energia renovável, eletricista de instalações industriais |
+| Alimentos e bebidas | operador de processos de produção de alimentos, técnico em alimentos, mecânico de manutenção de máquinas industriais, técnico em segurança do trabalho |
+| Construção civil e urbanização | pedreiro, armador de estruturas de concreto, eletricista de instalações prediais, encanador, técnico em edificações, técnico em segurança do trabalho |
+| Aeroespacial e defesa | técnico mecânico aeronáutico, técnico eletroeletrônico aeronáutico, técnico de inspeção de qualidade, controlador de manutenção aeronáutica |
+| Têxtil e confecções | costureiro, mecânico de máquinas de costura industrial, modelista |
+| Papel e celulose | operador de processos de fabricação de papel, técnico em controle ambiental, mecânico de manutenção industrial |
+| Comércio e serviços | assistente de vendas, técnico em administração, técnico em contabilidade, técnico em logística |
+
+**Regra crítica:** ao nomear ocupações, use a terminologia CBO — "técnico em mecânica de manutenção industrial" em vez de "técnico mecânico"; "operador de processos químicos e petroquímicos" em vez de "operador de planta". A precisão sinaliza domínio do mercado de trabalho formal.
+
+### Tempo de formação por nível (guia de alinhamento cronológico)
+
+| Nível | Formação | Duração típica | O que habilita |
+|---|---|---|---|
+| Qualificação básica | Curso SENAI de aprendizagem | 200–400 horas (~6 meses) | Operador de linha, auxiliar |
+| Técnico de nível médio | Curso técnico (SENAI, ETEC, IF) | 1,5–2 anos | Técnico, supervisor de produção |
+| Tecnólogo / Superior | Curso superior tecnológico | 2 anos | Gestor técnico, coordenador de processos |
+| Bacharelado / Engenharia | Universidade | 4–5 anos | Engenheiro, cientista, P&D |
+
+**Use esta tabela para avaliar o alinhamento cronológico:** se um investimento tem prazo de operação em 18 meses, curso técnico de 2 anos não forma a tempo — a empresa vai importar trabalhadores ou contratar com experiência prévia.
+
+### Fator de intensidade: quantos trabalhadores por tipo
+
+- **Implantação industrial intensiva em automação** (ex: fábrica de semicondutores, data center): alta proporção de técnicos e engenheiros, poucos operadores não especializados
+- **Implantação de logística / armazém**: alta demanda de operadores de empilhadeiras e auxiliares — formação curta (200h)
+- **Expansão hospitalar**: proporção elevada de técnicos em enfermagem e radiologia — formação 2 anos obrigatória
+- **Construção civil grande porte**: pico de demanda por pedreiros, armadores e eletricistas — absorve trabalhadores com qualificação básica, mas gera bolsão de desemprego pós-obra
 
 ## Perguntas que esta especialidade responde com os dados da PIESP
 
-- O CNAE demanda perfil técnico de nível médio (mais abundante no interior) ou superior especializado (concentrado nas regiões metropolitanas)?
-- O ritmo do investimento (período de implantação) é compatível com o tempo necessário para formar mão de obra localmente — ou o investidor vai buscar trabalho qualificado em outros mercados?
-- Há oportunidade para que o poder público articule parcerias de formação antecipada (SENAI, IF, ETE estadual) antes da fase de operação?
-- A empresa é de capital estrangeiro? Se sim, qual é o histórico dessa empresa ou setor em transferência de conhecimento e formação de pessoal local?
+- O CNAE do investimento demanda ocupações de nível técnico (mais abundante no interior) ou superior especializado (concentrado nas RMs)?
+- O prazo de implantação é compatível com o tempo de formação das ocupações críticas — ou o investidor vai buscar mão de obra pronta em outros mercados?
+- Há SENAI, ETEC, IF ou universidade no município ou RA com o perfil técnico adequado? (Use seu conhecimento: SENAI Campinas tem unidades em mecatrônica e automação; SENAI São Paulo em TI e automação avançada; SENAI São José dos Campos em aeroespacial e compostos)
+- O investimento pode absorver trabalhadores deslocados pela automação em setores adjacentes — ex: uma nova planta de robótica absorve metalúrgicos da linha de montagem que perderam postos?
+- A empresa é de capital estrangeiro? Qual é o histórico desse grupo ou setor em transferência de conhecimento técnico e formação local?
 
 ## Contexto territorial
 
-**RMSP e RA Campinas:** concentração de universidades, institutos de pesquisa e unidades de ensino técnico. Setores exigentes em alta qualificação encontram oferta de mão de obra mais facilmente. O gargalo tende a ser de qualificação superior específica, não técnica básica.
+**RMSP e RA Campinas:** concentração de ETEC estaduais, SENAI avançado (automação, TI, mecatrônica) e universidades. Setores de alta especialização encontram oferta melhor — mas o gargalo é de nível técnico superior e engenharia específica, não qualificação básica.
 
-**Interior sem polo universitário consolidado:** o gap de qualificação é estrutural para setores sofisticados. Investimentos industriais intensivos em técnica em municípios pequenos exigem política ativa de formação — ou vão importar trabalhadores, com impacto sobre habitação e serviços locais.
+**Interior sem polo de ensino técnico consolidado (ex: RA Araçatuba, RA Bauru):** para setores sofisticados, o gap de qualificação é estrutural. Investimentos com operação em menos de 2 anos precisarão recrutar de fora ou negociar programas de formação acelerada com SENAI regional.
 
-**RA São José dos Campos:** ecossistema único em aeroespacial e defesa — qualificação altíssima, mas muito especializada. Investimentos fora deste perfil podem ter dificuldade de atração de pessoal técnico.
+**RA São José dos Campos:** ecossistema único em aeroespacial, defesa e compostos avançados. ITA, EMBRAER e INPE criaram base de qualificação de altíssima especialização — mas fortemente concentrada nessa cadeia. Investimentos fora deste perfil podem ter dificuldade de atrair técnicos disponíveis localmente.
+
+**RA Santos e Baixada Santista:** demanda histórica de operadores de processos petroquímicos, técnicos em terminais portuários e mecânicos industriais. SENAI Cubatão e ETEC de Santos cobrem bem essas faixas.
+
+## Pergunta avançada (use quando pertinente)
+
+> O investimento cria novas ocupações — ou substitui ocupações existentes pelo mesmo capital? Se substitui, o perfil das ocupações extintas é compatível com as novas (requalificação viável) ou exige salto de escolaridade (requalificação improvável no prazo)?
+
+Essa distinção é central para políticas públicas de qualificação: um investimento em automação que substitui 200 soldadores por 5 técnicos em robótica não é neutro para o mercado de trabalho local.
