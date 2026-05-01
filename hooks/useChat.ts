@@ -122,7 +122,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 
     } catch (e: any) {
       lastError = e;
       const msg = (e?.message || '').toLowerCase();
-      const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('incomplete json');
+      const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('overloaded') || msg.includes('high demand') || msg.includes('incomplete json') || msg.includes('load failed');
       if (!isRetryable || attempt === maxRetries) throw e;
       const delay = baseDelayMs * (attempt + 1); // 2s, 4s
       console.warn(`⏳ Gemini 503 — tentativa ${attempt + 1}/${maxRetries}. Aguardando ${delay}ms...`);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor, canonicalSetor } from '../services/piespDataService';
+import { getDbConnection } from '../services/duckdbService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
 
@@ -9,6 +10,9 @@ interface VoiceViewProps {
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
+  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
+  useEffect(() => { getDbConnection().catch(() => {}); }, []);
+
   const [hasSpokenOnce, setHasSpokenOnce] = useState(false);
   const [isImmersive, setIsImmersive] = useState(false);
 
