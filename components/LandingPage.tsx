@@ -1,6 +1,7 @@
 import React from 'react';
 import SoundWaveIcon from './SoundWaveIcon';
 import { NadiaSphere } from './NadiaSphere';
+import { NadiaCapivara } from './NadiaCapivara';
 
 interface LandingPageProps {
   onNavigateToVoice: () => void;
@@ -43,9 +44,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
           </div>
         </div>
 
-        {/* Right Column: Nadia Sphere */}
+        {/* Right Column: Nadia Sphere + Capivara mascote */}
         <div className="flex-shrink-0 flex flex-col items-center gap-4">
            <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} />
+           <NadiaCapivara size={128} state="idle" className="opacity-80 hover:opacity-100 transition-opacity duration-300" />
         </div>
 
       </main>
