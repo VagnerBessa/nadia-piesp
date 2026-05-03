@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import SoundWaveIcon from './SoundWaveIcon';
 import { NadiaSphere } from './NadiaSphere';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface LandingPageProps {
   onNavigateToVoice: () => void;
@@ -8,8 +9,19 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigateToChat }) => {
+  const [petState, setPetState] = useState<PetState>('idle');
+
+  // Ao tocar em Voz: pet olha para cima (attention) → navega 350ms depois
+  const handleVoiceClick = useCallback(() => {
+    setPetState('attention');
+    setTimeout(() => {
+      onNavigateToVoice();
+      setPetState('idle');
+    }, 350);
+  }, [onNavigateToVoice]);
+
   return (
-    <div className="flex flex-col w-full h-full px-6 py-6 md:py-10">
+    <div className="relative flex flex-col w-full h-full px-6 py-6 md:py-10">
 
       {/* Seção Superior: Nome e Identidade */}
       <div className="flex flex-col items-center text-center mt-0 sm:mt-2 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -33,7 +45,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
 
       {/* Seção Inferior: Controles Ergonomicamente Posicionados (Bottom Sheet Style) */}
       <div className="flex-shrink-0 w-full max-w-sm mx-auto bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] border border-white/5 p-6 mb-2 shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
-        
+
         <div className="space-y-4">
           <div className="text-center">
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium">
@@ -46,14 +58,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
 
           <div className="flex flex-col w-full gap-3 pt-2">
             <button
-              onClick={onNavigateToVoice}
+              onClick={handleVoiceClick}
               className="group relative flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl bg-slate-800/50 hover:bg-rose-500/10 active:scale-95 border border-white/5 hover:border-rose-500/30 text-slate-200 transition-all duration-300 focus:outline-none shadow-lg overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/5 to-rose-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
               <SoundWaveIcon className="h-5 w-5 text-rose-500 group-hover:scale-110 transition-transform" />
               <span className="text-base font-semibold">Conversar por Voz</span>
             </button>
-            
+
             <button
               onClick={onNavigateToChat}
               className="group flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl bg-white/[0.03] hover:bg-sky-500/10 active:scale-95 border border-white/5 hover:border-sky-500/30 text-slate-300 transition-all duration-300 focus:outline-none text-base font-medium"
@@ -73,6 +85,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
             Nadia-Mobile · v{__APP_VERSION__}
           </span>
         </div>
+      </div>
+
+      {/* Pet — canto inferior esquerdo, fora do bottom sheet */}
+      <div
+        className="absolute bottom-5 left-4 pointer-events-none select-none"
+        aria-hidden="true"
+      >
+        <CapivaraPet state={petState} size={60} />
       </div>
 
     </div>
