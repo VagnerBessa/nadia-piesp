@@ -4,6 +4,7 @@ import { consultarPiespData, consultarAnunciosSemValor, canonicalSetor } from '.
 import { getDbConnection } from '../services/duckdbService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface VoiceViewProps {
   onNavigateHome: () => void;
@@ -19,6 +20,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   const {
     isConnected,
     isSpeaking,
+    isNadiaSpeaking,
     isConnecting,
     error,
     audioLevel,
@@ -145,6 +147,8 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   const isListening = isConnected && !isSpeaking && !toolProcessing;
   const hasTranscript = currentTranscript.trim().length > 0;
 
+  const petState: PetState = isNadiaSpeaking ? 'speaking' : isListening ? 'listening' : 'idle';
+
   const handleDownload = () => {
     const date = new Date().toLocaleDateString('pt-BR');
     const text = segments
@@ -217,7 +221,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           className={`absolute z-20 transition-all duration-[1000ms] ease-[cubic-bezier(0.23,1,0.32,1)]
             ${isConnected && !isImmersive
               ? 'top-0 right-0 translate-x-0 translate-y-0 scale-[0.25] origin-top-right opacity-80'
-              : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-center opacity-100'
+              : 'top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 scale-100 origin-top-right opacity-100'
             }
             ${isConnected ? 'cursor-pointer' : ''}
           `}
@@ -303,6 +307,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
             <span className="text-xs uppercase tracking-widest font-bold">Salvar conversa</span>
           </button>
         )}
+      </div>
+
+      {/* Pet — canto inferior esquerdo */}
+      <div className="absolute bottom-5 left-4 pointer-events-none select-none" aria-hidden="true">
+        <CapivaraPet state={petState} size={56} />
       </div>
     </div>
   );

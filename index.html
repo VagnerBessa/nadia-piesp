@@ -50,6 +50,43 @@
   .pb-safe {
     padding-bottom: max(2rem, env(safe-area-inset-bottom));
   }
+  @keyframes capivara-breathe {
+    0%, 100% { transform: scaleY(1) translateY(0); }
+    50%       { transform: scaleY(0.975) translateY(1px); }
+  }
+  @keyframes capivara-tilt {
+    0%, 55%, 100% { transform: rotate(0deg); }
+    62%           { transform: rotate(5deg); }
+    75%           { transform: rotate(-3deg); }
+    88%           { transform: rotate(2deg); }
+  }
+  @keyframes capivara-blink {
+    0%, 87%, 100% { opacity: 0; }
+    90%, 92%      { opacity: 1; }
+  }
+  @keyframes capivara-blink-slow {
+    0%, 93%, 100% { opacity: 0; }
+    95%, 97%      { opacity: 1; }
+  }
+  @keyframes capivara-look-up {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  @keyframes capivara-eye-dart {
+    0%, 55%, 100% { transform: translateX(0); }
+    60%           { transform: translateX(5px); }
+    70%           { transform: translateX(-5px); }
+    85%           { transform: translateX(0); }
+  }
+  @keyframes capivara-listen {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(10deg); }
+  }
+  @keyframes capivara-bob {
+    0%, 100% { transform: translateY(0); }
+    25%      { transform: translateY(-6px); }
+    60%      { transform: translateY(2px); }
+  }
 </style>
 </head>
   <body>

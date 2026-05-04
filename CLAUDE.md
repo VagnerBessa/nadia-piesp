@@ -72,6 +72,38 @@ MCP Server (independente)
 
 ---
 
+## Mascote CapivaraPet — Mai/2026
+
+Componente `components/CapivaraPet.tsx` — pixel art SVG (viewBox 96×112) presente em todas as views.
+
+### Estados (`PetState`)
+
+| Estado | Quando | Corpo | Olhos |
+|---|---|---|---|
+| `idle` | Sem conversa ativa | `breathe` + `tilt` | `eye-dart` aleatório |
+| `listening` | Usuário falando (voz) | `breathe` apenas | Pupilas centradas (olha para frente) |
+| `speaking` | Nadia respondendo (voz) | `breathe` apenas | Pupilas direita+cima (olha para a esfera) |
+| `attention` | Chat carregando/respondendo | `look-up` | Pupilas para cima (olha para o chat) |
+
+### Decisão: dois estados de `isSpeaking` no `useLiveConnection`
+
+`isSpeaking` (React state) tem debounce de 2500ms ao final do áudio — mantém a animação da esfera visível por mais tempo.
+
+`isNadiaSpeaking` (React state) **sem debounce** — atualiza imediatamente quando o último `AudioBufferSourceNode` termina. Usado exclusivamente pelo `CapivaraPet` para que os olhos virem para o usuário sem delay perceptível.
+
+**Regra:** nunca usar `isSpeaking` para lógica de pet. Usar sempre `isNadiaSpeaking`.
+
+### Keyframes
+
+Todos os keyframes vivem em `index.html` (seção `<style>`) para evitar re-injeção em cada re-render do React:
+`capivara-breathe`, `capivara-tilt`, `capivara-blink`, `capivara-blink-slow`, `capivara-look-up`, `capivara-eye-dart`, `capivara-listen`, `capivara-bob`
+
+### Tamanho e escala
+
+O pet é renderizado com `size={56}` nas três views. O viewBox é 96px, portanto 1px no viewBox ≈ 0.58px na tela. Animações de translação e rotação devem usar valores grandes (≥ 4px de translação, ≥ 5° de rotação) para serem visíveis.
+
+---
+
 ## Estrutura de Views
 
 | View | Rota | Descrição |

@@ -4,6 +4,44 @@ Este documento serve para registrarmos conversas informais, alinhamentos arquite
 
 ---
 
+### A Capivara que Observa — Mascote Expressivo da Nadia
+**Data:** 04 de maio de 2026
+
+Nesta sessão nasceu a **CapivaraPet**: um mascote pixel art em SVG que convive com o usuário em todas as telas da Nadia (LandingPage, VoiceView e ChatView). A escolha da capivara — animal reconhecidamente calmo, curioso e empático — reflete a personalidade que queremos para a Nadia: presença acolhedora, nunca intrusiva.
+
+O mascote foi construído como puro SVG declarativo (sem canvas, sem WebGL), com animações em CSS (@keyframes) para manter a leveza. Cada estado da conversa tem uma expressão diferente:
+
+- **Idle:** respira suavemente, inclina levemente a cabeça, olhos vagam com curiosidade
+- **Listening:** postura firme, olhos direto para o usuário ("estou ouvindo você")
+- **Speaking:** olhos voltados para a esfera luminosa no canto ("Nadia está lá")
+- **Attention:** corpo se inclina levemente para cima, olhos sobem ("o chat está respondendo")
+
+A decisão mais importante desta sessão foi **não usar movimentos de corpo durante a conversa**. A tentação inicial era fazer o pet "pular de alegria" ou "se agitar" quando ativado — mas isso gerava ruído visual. A solução elegante: apenas os olhos reagem. O corpo respira. A expressão é facial, não gestual. Essa restrição resultou numa presença mais suave e profissional, adequada ao contexto analítico da ferramenta.
+
+**Aprendizado técnico — O Paradoxo do Debounce e a Dupla Temporalidade:**
+
+O Gemini Live API entrega áudio em chunks sequenciais. Quando o último chunk termina, precisamos de dois comportamentos simultâneos e contraditórios:
+
+1. A **esfera animada** deve permanecer ativa por ~2,5 segundos após o silêncio — tempo para o usuário perceber visualmente que Nadia terminou
+2. Os **olhos da capivara** devem virar imediatamente para o usuário — sem nenhum delay, para criar a ilusão de atenção genuína
+
+Resolver isso com um único `isSpeaking: boolean` era impossível. A solução foi criar dois estados paralelos no `useLiveConnection`:
+
+- `isSpeaking` — React state com debounce de 2500ms (para a esfera)
+- `isNadiaSpeaking` — React state sem debounce, atualizado imediatamente no evento `'ended'` do `AudioBufferSourceNode` (para os olhos)
+
+Essa separação revela um princípio geral: **diferentes camadas visuais de um mesmo evento podem ter temporalidades distintas**. A interface gráfica "macro" (a esfera) e a interface "emocional" (os olhos do mascote) medem o mesmo fato — Nadia parou de falar — mas o usuário espera latências diferentes de cada uma.
+
+**Outros bugs resolvidos nesta sessão:**
+
+- **Esfera que "ia e voltava":** animação CSS com `transform-origin` mudando entre dois estados durante `transition-all`. A mudança de origem criava um caminho de interpolação não-linear — a esfera seguia uma curva estranha em vez de um vetor direto. Corrigido fixando `origin-top-right` nos dois estados (minimizado e expandido).
+- **API key não encontrada:** o projeto `/tmp/nadia-pet` não tinha `.env`. O `config.ts` leia `import.meta.env.VITE_GEMINI_API_KEY` mas o `.env` original ficava em `Nadia-PIESP/`. Corrigido copiando o `.env` e adicionando cadeia de fallback em `config.ts`.
+- **`session.send is not a function`:** o SDK Google GenAI v1.29 não expõe `session.send()`. O método correto é `session.sendClientContent({ turns, turnComplete })`. Descoberto via console log após depuração direta.
+- **Animações invisíveis no tamanho 56px:** o viewBox do SVG é 96px. Uma translação de 2px no viewBox resulta em ~1px na tela — imperceptível. Todos os valores de animação foram aumentados (4–6px de translação, 5–10° de rotação) para ficarem visíveis na escala real.
+- **React warning `animationDelay` + `animation`:** misturar a propriedade shorthand `animation` com `animationDelay` separado gera warning. Corrigido mesclando o delay diretamente na string shorthand: `animation: 'nome 4.5s ease-in-out 0.3s infinite'`.
+
+---
+
 ### A Síndrome do "Aluno Desesperado para Agradar" (Helpful Bias)
 **Data:** 08 de abril de 2026
 

@@ -10,6 +10,6 @@
 // NUNCA commite o arquivo .env nem este arquivo com chaves hardcoded.
 // =================================================================================
 
-export const GEMINI_API_KEY       = import.meta.env.VITE_GEMINI_API_KEY       || '';
-export const GOOGLE_MAPS_API_KEY  = import.meta.env.VITE_GOOGLE_MAPS_API_KEY  || '';
-export const OPENROUTER_API_KEY   = import.meta.env.VITE_OPENROUTER_API_KEY   || '';
+export const GEMINI_API_KEY       = (import.meta.env.VITE_GEMINI_API_KEY      || process.env.GEMINI_API_KEY      || process.env.API_KEY             || '') as string;
+export const GOOGLE_MAPS_API_KEY  = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '') as string;
+export const OPENROUTER_API_KEY   = (import.meta.env.VITE_OPENROUTER_API_KEY  || process.env.OPENROUTER_API_KEY  || '') as string;

@@ -8,6 +8,7 @@ import { SendIcon, SwitchModeIcon } from './Icons';
 import SoundWaveIcon from './SoundWaveIcon';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import CapivaraPet from './CapivaraPet';
 
 interface ChatViewProps {
   onNavigateHome: () => void;
@@ -415,7 +416,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
       `}</style>
 
       {/* Layout: left spacer | chat column | agent sidebar */}
-      <div className="w-full h-full flex">
+      <div className="relative w-full h-full flex">
 
         {/* Left spacer — mirrors sidebar width on XL to keep chat centered */}
         <div className="hidden xl:block xl:w-56 flex-shrink-0" />
@@ -596,6 +597,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
             })}
           </div>
         </aside>
+
+      {/* Pet — canto inferior esquerdo */}
+      <div className="absolute bottom-5 left-4 pointer-events-none select-none" aria-hidden="true">
+        <CapivaraPet state={isListening ? 'listening' : (isLoading || !!streamingText) ? 'attention' : 'idle'} size={56} />
+      </div>
 
       </div>
     </>

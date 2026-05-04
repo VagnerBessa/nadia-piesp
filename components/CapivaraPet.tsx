@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type PetState = 'idle' | 'attention';
+export type PetState = 'idle' | 'attention' | 'listening' | 'speaking';
 
 interface CapivaraPetProps {
   state?: PetState;
@@ -16,50 +16,37 @@ const W  = '#f4f4f4'; // branco dos olhos
 const N  = '#1a1f30'; // azul-escuro das pupilas
 const M  = '#7a1020'; // marrom escuro das narinas
 
-// Animações CSS — separadas por comportamento
-const STYLES = `
-  @keyframes capivara-breathe {
-    0%, 100% { transform: scaleY(1) translateY(0); }
-    50%       { transform: scaleY(0.975) translateY(1px); }
-  }
-  @keyframes capivara-tilt {
-    0%, 55%, 100% { transform: rotate(0deg); }
-    62%           { transform: rotate(2.5deg); }
-    75%           { transform: rotate(-1.5deg); }
-    88%           { transform: rotate(1deg); }
-  }
-  @keyframes capivara-blink {
-    0%, 87%, 100% { opacity: 0; }
-    90%, 92%      { opacity: 1; }
-  }
-  @keyframes capivara-blink-slow {
-    0%, 93%, 100% { opacity: 0; }
-    95%, 97%      { opacity: 1; }
-  }
-  @keyframes capivara-look-up {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-1.5px); }
-  }
-`;
 
 const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) => {
+  const isListening = state === 'listening';
+  const isSpeaking  = state === 'speaking';
   const isAttention = state === 'attention';
 
-  // Pupila sobe levemente no estado attention
-  const pupilDY = isAttention ? -1.5 : 0;
+  // listening: olha para frente (pupilas centradas)
+  // speaking:  olha para a esfera no canto superior direito (pupilas direita+cima)
+  // attention: olha para cima (chat acima do pet)
+  const pupilDX = isSpeaking ? 5 : 0;
+  const pupilDY = isAttention ? -3 : isSpeaking ? -2 : 0;
+
+  let wrapperAnim: string;
+  if (isAttention)      wrapperAnim = 'capivara-look-up 1.2s ease-in-out infinite';
+  else if (isListening) wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
+  else if (isSpeaking)  wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
+  else                  wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite, capivara-tilt 6s ease-in-out 1s infinite';
 
   const wrapperStyle: React.CSSProperties = {
     width: size,
     height: size,
     transformOrigin: 'center 90%',
     imageRendering: 'pixelated',
-    animation: isAttention
-      ? 'capivara-look-up 1.2s ease-in-out infinite'
-      : 'capivara-breathe 3.5s ease-in-out infinite, capivara-tilt 9s ease-in-out 2s infinite',
+    animation: wrapperAnim,
   };
 
-  const blinkAnim = isAttention ? 'capivara-blink-slow' : 'capivara-blink';
+  const blinkAnim     = isAttention ? 'capivara-blink-slow' : 'capivara-blink';
   const blinkDuration = isAttention ? '8s' : '4.5s';
+  const eyeDartStyle  = state === 'idle'
+    ? { animation: 'capivara-eye-dart 5s ease-in-out 1s infinite' }
+    : undefined;
 
   /*
    * ViewBox: 0 0 96 112  (12 cols × 14 rows, cada célula = 8px)
@@ -75,9 +62,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
    */
 
   return (
-    <>
-      <style>{STYLES}</style>
-      <div style={wrapperStyle}>
+    <div style={wrapperStyle}>
         <svg
           viewBox="0 0 96 112"
           width={size}
@@ -103,25 +88,13 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
           <rect x={88} y={10} width={8}  height={70} fill={Rd} />
 
           {/* ── OLHOS ─────────────────────────────────── */}
-          {/* Branco — olho esquerdo */}
           <rect x={12} y={26} width={22} height={22} fill={W} />
-          {/* Pupila esquerda */}
-          <rect
-            x={18} y={30 + pupilDY}
-            width={12} height={14}
-            fill={N}
-            style={isAttention ? { transition: 'y 0.4s ease' } : undefined}
-          />
-
-          {/* Branco — olho direito */}
           <rect x={62} y={26} width={22} height={22} fill={W} />
-          {/* Pupila direita */}
-          <rect
-            x={66} y={30 + pupilDY}
-            width={12} height={14}
-            fill={N}
-            style={isAttention ? { transition: 'y 0.4s ease' } : undefined}
-          />
+          {/* Pupilas agrupadas — eye dart no idle */}
+          <g style={eyeDartStyle}>
+            <rect x={18 + pupilDX} y={30 + pupilDY} width={12} height={14} fill={N} />
+            <rect x={66 + pupilDX} y={30 + pupilDY} width={12} height={14} fill={N} />
+          </g>
 
           {/* Pálpebra esquerda (sobreposição vermelha — piscar) */}
           <rect
@@ -129,8 +102,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
             fill={R}
             style={{
               opacity: 0,
-              animation: `${blinkAnim} ${blinkDuration} ease-in-out infinite`,
-              animationDelay: '0.3s',
+              animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.3s infinite`,
             }}
           />
           {/* Pálpebra direita */}
@@ -139,8 +111,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
             fill={R}
             style={{
               opacity: 0,
-              animation: `${blinkAnim} ${blinkDuration} ease-in-out infinite`,
-              animationDelay: '0.42s',
+              animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.42s infinite`,
             }}
           />
 
@@ -167,7 +138,6 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
           <rect x={88} y={88} width={8}  height={24} fill={Rd} />
         </svg>
       </div>
-    </>
   );
 };
 

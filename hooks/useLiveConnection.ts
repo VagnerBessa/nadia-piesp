@@ -32,6 +32,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isNadiaSpeaking, setIsNadiaSpeaking] = useState(false);
   const isSpeakingRef = useRef<boolean>(false);
   const [toolProcessing, setToolProcessing] = useState(false);
   const toolProcessingRef = useRef<boolean>(false);
@@ -268,11 +269,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             // forçamos a Nadia a se apresentar de imediato sem latência perceptível.
             sessionPromiseRef.current?.then((session) => {
                try {
-                 session.send({
-                   clientContent: {
-                     turns: [{ role: 'user', parts: [{ text: 'Oi' }] }],
-                     turnComplete: true
-                   }
+                 session.sendClientContent({
+                   turns: [{ role: 'user', parts: [{ text: 'Oi' }] }],
+                   turnComplete: true
                  });
                } catch(err) {
                  console.error('[Nadia] Erro ao enviar trigger inicial:', err);
@@ -378,6 +377,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 }
                 
                 setIsSpeaking(true);
+                setIsNadiaSpeaking(true);
                 isSpeakingRef.current = true;
                 const currentOutputContext = outputAudioContextRef.current;
                 if (currentOutputContext.state === 'suspended') {
@@ -395,6 +395,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                     if (audioSourcesRef.current.size === 0) {
                         // Desmuta o mic INSTANTANEAMENTE para que o usuário possa responder
                         isSpeakingRef.current = false;
+                        setIsNadiaSpeaking(false);
 
                         // Aplica um debounce visual de 2500ms antes de recolher a animação da UI
                         isSpeakingTimeoutRef.current = setTimeout(() => {
@@ -421,6 +422,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                   isSpeakingTimeoutRef.current = null;
                 }
                 setIsSpeaking(false);
+                setIsNadiaSpeaking(false);
                 isSpeakingRef.current = false;
              }
           },
@@ -513,5 +515,5 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
     }
   }, [stopConversation, cleanup, analysisLoop, systemInstruction, tools]);
 
-  return { isConnected, isSpeaking, isConnecting, error, audioLevel, currentTranscript, toolProcessing, startConversation, stopConversation };
+  return { isConnected, isSpeaking, isNadiaSpeaking, isConnecting, error, audioLevel, currentTranscript, toolProcessing, startConversation, stopConversation };
 };

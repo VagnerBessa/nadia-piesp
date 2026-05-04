@@ -287,9 +287,10 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       console.error('❌ Chat error — raw:', e?.message || e);
 
       const is503 = rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('unavailable') || rawMsg.includes('overloaded');
+      const isApiKeyError = rawMsg.includes('api_key') || rawMsg.includes('api key') || rawMsg.includes('invalid') || rawMsg.includes('401') || rawMsg.includes('403');
 
-      // Fallback OpenRouter: tenta quando Gemini retorna 503 e a chave está configurada
-      if (is503 && OPENROUTER_API_KEY) {
+      // Fallback OpenRouter: tenta quando Gemini retorna 503 ou erro de chave de API
+      if ((is503 || isApiKeyError) && OPENROUTER_API_KEY) {
         console.warn('🔀 Gemini 503 persistente — ativando fallback OpenRouter...');
         try {
           const result = await callOpenRouter(
