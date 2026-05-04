@@ -311,7 +311,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
 
       {/* Pet — canto inferior esquerdo */}
       <div className="absolute bottom-5 left-4 pointer-events-none select-none" aria-hidden="true">
-        <CapivaraPet state={petState} size={56} />
+        <CapivaraPet state={petState} size={80} audioLevel={audioLevel} />
       </div>
     </div>
   );
