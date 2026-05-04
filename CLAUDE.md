@@ -74,33 +74,59 @@ MCP Server (independente)
 
 ## Mascote CapivaraPet — Mai/2026
 
-Componente `components/CapivaraPet.tsx` — pixel art SVG (viewBox 96×112) presente em todas as views.
+Componente `components/CapivaraPet.tsx` — pixel art SVG (viewBox 96×128) presente em todas as views.
 
 ### Estados (`PetState`)
 
-| Estado | Quando | Corpo | Olhos |
-|---|---|---|---|
-| `idle` | Sem conversa ativa | `breathe` + `tilt` | `eye-dart` aleatório |
-| `listening` | Usuário falando (voz) | `breathe` apenas | Pupilas centradas (olha para frente) |
-| `speaking` | Nadia respondendo (voz) | `breathe` apenas | Pupilas direita+cima (olha para a esfera) |
-| `attention` | Chat carregando/respondendo | `look-up` | Pupilas para cima (olha para o chat) |
+| Estado | Quando | Corpo | Olhos | Posição no ChatView |
+|---|---|---|---|---|
+| `idle` | Sem conversa ativa | `breathe` + `tilt` | `eye-dart` aleatório | Acima da caixa de input |
+| `listening` | Usuário falando (voz) | `breathe` apenas | Pupilas centradas (frente) | Acima da caixa de input |
+| `speaking` | Nadia respondendo (voz) | `breathe` apenas | Pupilas direita+cima (esfera) | Acima da caixa de input |
+| `attention` | "Pensando..." no chat | `look-up` | Pupilas para cima | Ao lado da bolha "Pensando..." |
+| `typing` | IA renderizando texto | `breathe` rápido | Pupilas para baixo | Ao lado da bolha de streaming |
+
+### Animação `typing` — patinhas no teclado
+
+No estado `typing`, as pernas normais somem e são substituídas por:
+- **Dois braços** (`<g>` com Rd + R + P) que alternam para cima/baixo via `capivara-paw-left` / `capivara-paw-right` em `0.28s`
+- **Teclado** com 5 teclas azul-acinzentado claro (`#8898e0`) — contraste alto no fundo escuro
+- Movimento: `translateY(-18px)` — braços sobem 18px para cima no viewBox (~9.5px na tela a 52px)
+
+O pet some do rodapé durante o streaming e aparece **inline na linha da mensagem** (ao lado da bolha de texto):
+```tsx
+// No row de streaming:
+<div className="flex-shrink-0 pointer-events-none self-end mb-1">
+  <CapivaraPet state="typing" size={52} />
+</div>
+// No rodapé: oculto enquanto IA responde
+{!isLoading && !displayText && <CapivaraPet state={petState} size={52} />}
+```
+
+### Lógica de estado no ChatView
+
+```tsx
+const petState: PetState = isListening ? 'listening'
+  : (isLoading || !!streamingText) ? 'attention'   // ← IA respondendo → olha para cima
+  : inputValue.length > 0 ? 'typing'               // ← usuário digitando → olha para baixo
+  : 'idle';
+```
 
 ### Decisão: dois estados de `isSpeaking` no `useLiveConnection`
 
 `isSpeaking` (React state) tem debounce de 2500ms ao final do áudio — mantém a animação da esfera visível por mais tempo.
 
-`isNadiaSpeaking` (React state) **sem debounce** — atualiza imediatamente quando o último `AudioBufferSourceNode` termina. Usado exclusivamente pelo `CapivaraPet` para que os olhos virem para o usuário sem delay perceptível.
+`isNadiaSpeaking` (React state) **sem debounce** — atualiza imediatamente quando o último `AudioBufferSourceNode` termina. Usado exclusivamente pelo `CapivaraPet` no `VoiceView` para que os olhos virem para o usuário sem delay perceptível.
 
 **Regra:** nunca usar `isSpeaking` para lógica de pet. Usar sempre `isNadiaSpeaking`.
 
-### Keyframes
+### Keyframes (todos em `index.html`)
 
-Todos os keyframes vivem em `index.html` (seção `<style>`) para evitar re-injeção em cada re-render do React:
-`capivara-breathe`, `capivara-tilt`, `capivara-blink`, `capivara-blink-slow`, `capivara-look-up`, `capivara-eye-dart`, `capivara-listen`, `capivara-bob`
+`capivara-breathe`, `capivara-tilt`, `capivara-blink`, `capivara-blink-slow`, `capivara-look-up`, `capivara-eye-dart`, `capivara-listen`, `capivara-bob`, `capivara-paw-left`, `capivara-paw-right`
 
 ### Tamanho e escala
 
-O pet é renderizado com `size={56}` nas três views. O viewBox é 96px, portanto 1px no viewBox ≈ 0.58px na tela. Animações de translação e rotação devem usar valores grandes (≥ 4px de translação, ≥ 5° de rotação) para serem visíveis.
+O pet é renderizado com `size={52}` no ChatView e `size={56-60}` nas demais views. O viewBox é 96×128px. Animações devem usar valores grandes (≥ 14px translateY, ≥ 5° rotação) para serem visíveis na escala renderizada.
 
 ---
 

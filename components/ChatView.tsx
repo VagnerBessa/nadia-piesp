@@ -8,7 +8,7 @@ import { SendIcon, SwitchModeIcon } from './Icons';
 import SoundWaveIcon from './SoundWaveIcon';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import CapivaraPet from './CapivaraPet';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface ChatViewProps {
   onNavigateHome: () => void;
@@ -256,6 +256,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
     setPickerOpen(false);
   };
 
+  const petState: PetState = isListening ? 'listening'
+    : (isLoading || !!streamingText) ? 'attention'
+    : inputValue.length > 0 ? 'typing'
+    : 'idle';
+
   // Caixa de input — reutilizada nos dois estados (centrada e bottom)
   const InputBox = (
     <div className="relative w-full">
@@ -474,6 +479,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
 
               {/* Input fixo na base (ergonômico) */}
               <div className="w-full max-w-2xl mt-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500">
+                <div className="pointer-events-none select-none mb-1" aria-hidden="true">
+                  <CapivaraPet state={petState} size={52} />
+                </div>
                 {InputBox}
               </div>
             </div>
@@ -530,6 +538,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                       <span className="whitespace-pre-wrap leading-relaxed">{displayText}</span>
                       <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
                     </div>
+                    {/* Pet aparece ao lado do texto enquanto responde */}
+                    <div className="flex-shrink-0 pointer-events-none select-none self-end mb-1" aria-hidden="true">
+                      <CapivaraPet state="typing" size={52} />
+                    </div>
                   </div>
                 )}
                 {isLoading && !displayText && (
@@ -539,12 +551,22 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                       <SmallNadiaSphere />
                       <span className="text-slate-400 animate-pulse">Pensando...</span>
                     </div>
+                    {/* Pet ao lado enquanto "Pensando..." */}
+                    <div className="flex-shrink-0 pointer-events-none select-none self-end mb-1" aria-hidden="true">
+                      <CapivaraPet state="attention" size={52} />
+                    </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
               </main>
 
-              <footer className="flex-shrink-0 px-4 pt-3 pb-safe border-t border-slate-700/50">
+              <footer className="flex-shrink-0 px-4 pt-2 pb-safe border-t border-slate-700/50">
+                {/* Pet some do rodapé quando a IA está respondendo (já aparece ao lado do texto) */}
+                {!isLoading && !displayText && (
+                  <div className="pointer-events-none select-none mb-0.5" aria-hidden="true">
+                    <CapivaraPet state={petState} size={52} />
+                  </div>
+                )}
                 {InputBox}
               </footer>
             </>
@@ -598,10 +620,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
           </div>
         </aside>
 
-      {/* Pet — canto inferior esquerdo */}
-      <div className="absolute bottom-5 left-4 pointer-events-none select-none" aria-hidden="true">
-        <CapivaraPet state={isListening ? 'listening' : (isLoading || !!streamingText) ? 'attention' : 'idle'} size={56} />
-      </div>
 
       </div>
     </>

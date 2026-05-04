@@ -126,6 +126,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
     setIsConnected(false);
     setIsConnecting(false);
     setIsSpeaking(false);
+    setIsNadiaSpeaking(false);
   }, [cleanup]);
 
   useEffect(() => {

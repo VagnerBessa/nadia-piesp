@@ -32,6 +32,16 @@ Resolver isso com um único `isSpeaking: boolean` era impossível. A solução f
 
 Essa separação revela um princípio geral: **diferentes camadas visuais de um mesmo evento podem ter temporalidades distintas**. A interface gráfica "macro" (a esfera) e a interface "emocional" (os olhos do mascote) medem o mesmo fato — Nadia parou de falar — mas o usuário espera latências diferentes de cada uma.
 
+**Evolução da expressividade — do olho ao corpo inteiro:**
+
+A primeira iteração tentou comunicar o estado "digitando" apenas com movimento de olhos (`pupilDY = +4`). O feedback do usuário foi imediato: "quase imperceptível". A lição foi clara: **numa interface de chat, o mascote precisa de expressividade física, não apenas ocular**.
+
+A solução foi dupla: (1) mover o pet para junto do texto em renderização — saindo do rodapé e aparecendo ao lado da bolha de resposta — e (2) substituir as pernas por braços animados batendo num teclado pixel art.
+
+O primeiro protótipo do teclado tinha teclado escuro (`#2a3050`) e braços de `16×10px` no viewBox de 96px — que a ~52px de renderização resultavam em elementos de ~8×5px, invisíveis no fundo dark. A correção foi triplicar os tamanhos e usar cores de alto contraste: teclado azul-acinzentado claro (`#8898e0`), braços com três layers de cor (sombra Rd + corpo R + ponta P), e movimento de `18px translateY` (≈9.5px na tela) em `0.28s`.
+
+**Regra derivada:** em pixel art renderizado em tamanho pequeno (< 64px), qualquer elemento menor que `12×8px` no viewBox é praticamente invisível. Cores escuras próximas ao background (`#0b2231`) somem completamente. Sempre usar contraste mínimo de 40% de luminância entre elementos de destaque e o fundo.
+
 **Outros bugs resolvidos nesta sessão:**
 
 - **Esfera que "ia e voltava":** animação CSS com `transform-origin` mudando entre dois estados durante `transition-all`. A mudança de origem criava um caminho de interpolação não-linear — a esfera seguia uma curva estranha em vez de um vetor direto. Corrigido fixando `origin-top-right` nos dois estados (minimizado e expandido).

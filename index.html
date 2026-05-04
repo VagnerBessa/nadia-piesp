@@ -87,6 +87,14 @@
     25%      { transform: translateY(-6px); }
     60%      { transform: translateY(2px); }
   }
+  @keyframes capivara-paw-left {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-18px); }
+  }
+  @keyframes capivara-paw-right {
+    0%, 100% { transform: translateY(-18px); }
+    50%      { transform: translateY(0); }
+  }
 </style>
 </head>
   <body>
@@ -108,11 +116,15 @@
     </div>
     <script type="module" src="/index.tsx"></script>
     <script>
-      // Registrar Service Worker para cache offline (PWA)
+      // Em dev (localhost) desregistra qualquer SW antigo para evitar cache stale
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+        } else {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+          });
+        }
       }
     </script>
   </body>
