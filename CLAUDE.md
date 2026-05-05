@@ -1295,3 +1295,71 @@ Se a crítica falhar (503, quota, timeout), `finalText` original é usado sem in
 ```
 
 **Branch afetado:** `feature/v0.3-duckdb-streaming`
+
+---
+
+## Busca por Múltiplos Sinônimos em termo_busca — mai/2026
+
+### Problema
+
+O parâmetro `termo_busca` aceitava apenas um termo por chamada. Quando o usuário perguntava sobre "saneamento", o modelo passava literalmente `"saneamento"` — termo que não existe nos CNAEs da base (que usa "captação, tratamento e distribuição de água" e "esgoto e atividades relacionadas"). A instrução de tradução de vocabulário no system prompt era comportamental e não escalável: precisaria de uma lista infinita de exemplos para cobrir todas as formas que usuários usam para se referir a setores.
+
+### Solução
+
+**`services/piespDataService.ts` — `buildWhereClause`:**
+
+`termo_busca` agora aceita múltiplos termos separados por vírgula. Cada termo passa pela mesma normalização de acentos (`_` wildcard) e o DuckDB gera cláusulas OR:
+
+```sql
+-- termo_busca: "agua,esgoto,abastecimento"
+(LOWER(CONCAT_WS(...)) LIKE '%agua%' OR LOWER(CONCAT_WS(...)) LIKE '%esgoto%' OR LOWER(CONCAT_WS(...)) LIKE '%abastecimento%')
+```
+
+**Descrição do parâmetro nas tools (`useChat.ts` e `useLiveConnection.ts`):**
+
+Atualizada para instruir o modelo a usar seu conhecimento de CNAE para gerar os sinônimos equivalentes sem depender de exemplos fixos:
+
+> *"Termos separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos."*
+
+### Por que essa abordagem é superior à lista de exemplos no prompt
+
+A lista de mapeamentos no system prompt (`"saneamento" → "agua,esgoto"`) é:
+- **Infinita**: qualquer setor pode ser referenciado de dezenas de formas
+- **Estática**: não cobre termos que ninguém previu
+- **Redundante**: o modelo já tem conhecimento de CNAE no treinamento
+
+Com o multi-termo, o modelo usa esse conhecimento diretamente na chamada da ferramenta — sem intermediário comportamental.
+
+**Branches afetados:** `nadia-mobile/0.2.1`, `feature/v0.3-duckdb-streaming`, `feature/nadia-pet`
+
+---
+
+## Mascote CapivaraPet — mai/2026
+
+### Componente
+
+`components/CapivaraPet.tsx` — mascote pixel art em SVG puro da Nadia. Adicionado ao branch `feature/nadia-pet`.
+
+**Estados:**
+
+| Estado | Comportamento visual |
+|---|---|
+| `idle` | Respiração suave + inclinação periódica + olhos vagando |
+| `attention` | Movimento vertical lento (olhando para cima) |
+| `listening` | Fone de ouvido aparece, orelhas pulsam |
+| `speaking` | Fone de ouvido aparece, cups escalam com `audioLevel`, olhos ligeiramente desviados |
+| `typing` | Patas animadas sobre teclado pixel art, pernas escondidas |
+
+**Fone de ouvido (modo voz):**
+- Banda no topo da cabeça + braços laterais
+- Cups ovais que **extrapolam os limites do SVG** (`overflow: visible`) para simular fones reais posicionados nas laterais
+- Cup esquerdo: x=-18 a x=2 (18px fora do SVG à esquerda)
+- Cup direito: x=94 a x=114 (18px fora do SVG à direita)
+- LED rosa (`#f43f5e`) como detalhe de reconhecimento visual
+- Escala com `audioLevel` durante `speaking`; oscilação suave durante `listening`
+
+**`VoiceView.tsx`:** usa `isNadiaSpeaking` (sem debounce) para reação imediata dos olhos. Pet renderizado em `absolute bottom-5 left-4`, `size={80}`.
+
+**Keyframes CSS** em `index.html`: `capivara-breathe`, `capivara-tilt`, `capivara-blink`, `capivara-blink-slow`, `capivara-look-up`, `capivara-eye-dart`, `capivara-ear-hear`, `capivara-paw-left`, `capivara-paw-right`.
+
+**Branch afetado:** `feature/v0.3-duckdb-streaming`
