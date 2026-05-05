@@ -50,7 +50,7 @@ const piespTools = [
             municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             setor: { type: Type.STRING, description: 'Macro-setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". NUNCA invente variações. Se for um sub-setor (ex: "saúde", "tecnologia"), deixe isso vazio e use termo_busca.' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição, CNAE ou sub-setor (ex: "saúde", "tecnologia", "carro elétrico"). Use isso sempre que o usuário referir-se a uma área de negócio que não seja um dos 5 macro-setores.' }
+            termo_busca: { type: Type.STRING, description: 'Termos livres separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
           }
         }
       },
@@ -66,7 +66,7 @@ const piespTools = [
             municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
             regiao: { type: Type.STRING, description: regiaoDesc },
             setor: { type: Type.STRING, description: 'Macro-setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". NUNCA invente variações. Se for um sub-setor (ex: "saúde", "tecnologia"), deixe isso vazio e use termo_busca.' },
-            termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição, CNAE ou sub-setor (ex: "saúde", "tecnologia", "carro elétrico"). Use isso sempre que o usuário referir-se a uma área de negócio que não seja um dos 5 macro-setores.' }
+            termo_busca: { type: Type.STRING, description: 'Termos livres separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
           }
         }
       }
