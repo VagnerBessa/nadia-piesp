@@ -452,7 +452,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
                       regiao: { type: Type.STRING, description: rd },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
+                      termo_busca: { type: Type.STRING, description: 'Termos separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
                     }
                   }
                 },
@@ -466,7 +466,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
                       regiao: { type: Type.STRING, description: rd },
                       setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-                      termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
+                      termo_busca: { type: Type.STRING, description: 'Termos separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
                     }
                   }
                 },
