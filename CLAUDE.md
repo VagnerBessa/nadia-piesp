@@ -1410,6 +1410,29 @@ Combinado com o suporte a multi-termos no `piespDataService.ts` (OR logic no Duc
 - **Expressão temporal vaga** ("recentemente", "nos últimos anos"): **não consulta a ferramenta** — pergunta ao usuário qual período exato ele quer antes de prosseguir.
 - **Sem referência temporal**: consulta sem o campo `ano`, retorna o histórico completo.
 
-**Branches afetados:** `nadia-mobile/0.2.2`, `feature/v0.4`, `feature/nadia-pet`
+### Gap de Vocabulário — Resultados Aproximados com Ressalva
 
-**Branch afetado:** `feature/v0.3-duckdb-streaming`
+**Contexto:** Temas emergentes como "inteligência artificial" não existem como strings na base PIESP. Verificação direta no parquet confirmou: `"inteligencia artificial"` → 0 registros; `"machine learning"` → 0; `"deep learning"` → 0. Os projetos de TI estão categorizados como "desenvolvimento de software", "atividades de TI", "telecomunicações" etc.
+
+**Problema anterior:** O modelo mapeava "inteligência artificial" → `"software,dados,cloud,datacenter"` e retornava 143 registros sem avisar que eram aproximações — ou retornava zero resultados sem oferecer alternativas.
+
+**Solução (`utils/prompts.ts`):** Instrução adicionada ao final da regra TEMAS TRANSVERSAIS: quando os resultados forem aproximações (o vocabulário do usuário não existe literalmente na base), Nadia apresenta os dados normalmente **e** sinaliza o gap de forma natural antes da análise. Exemplo de resposta correta: *"A PIESP não categoriza investimentos como 'inteligência artificial' — o que a base registra são investimentos em software, dados e TI que podem incluir projetos de IA, mas sem esse rótulo específico. Dito isso, aqui está o que encontrei nessas categorias: [análise]."* Nunca omitir os resultados aproximados — eles são a melhor resposta disponível.
+
+**Resultado verificado no parquet:**
+
+| Tema | Termos que batem na base | Total |
+|---|---|---|
+| energia limpa | solar (95), biomassa (8) | 103 |
+| mobilidade elétrica | bateria (19), recarga (11), eletrico (1) | 31 |
+| transformação digital | dados (111), software (32), cloud (4), datacenter (1) | 143 |
+| inteligência artificial | nenhum termo específico | 0 |
+
+### CapivaraPet — Estado `user_typing` e Remoção do Toggle de Modo
+
+**Estado `user_typing` (`components/CapivaraPet.tsx`):** Novo estado adicionado para diferenciar quem está digitando:
+- Usuário digitando → `user_typing`: pupilas deslocadas para baixo (`pupilDY=5`), corpo normal com pernas — sem teclado/patas
+- Nadia respondendo → `typing`: patas animadas no teclado pixel art (comportamento anterior mantido)
+
+**Toggle Rápido/Completo removido (`hooks/useChat.ts`, `components/ChatView.tsx`):** O `thinkingBudget` foi fixado em `0`. Para o caso de uso analítico com dados PIESP (onde a qualidade depende das ferramentas e do prompt, não de raciocínio interno do modelo), a diferença era imperceptível. `ResponseMode` type e toda a UI do toggle foram removidos.
+
+**Branches afetados:** `nadia-mobile/0.2.2`, `feature/v0.4`, `feature/nadia-pet`
