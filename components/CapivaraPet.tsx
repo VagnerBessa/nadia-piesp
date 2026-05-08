@@ -16,21 +16,15 @@ const W  = '#f4f4f4';
 const N  = '#1a1f30';
 const M  = '#7a1020';
 
-// Fone de ouvido — cores claras para contraste no fundo dark
-const HP  = '#b0bcd8'; // shell externo (cinza-azul claro)
-const HPm = '#7888b8'; // superfície do cup (azul médio)
-const HPi = '#5060a0'; // anel interno (azul)
-const HPc = '#303868'; // almofada (azul escuro visível)
-
-const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, audioLevel = 0 }) => {
+const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) => {
   const isListening  = state === 'listening';
   const isSpeaking   = state === 'speaking';
   const isAttention  = state === 'attention';
   const isTyping     = state === 'typing';
-  const isVoiceMode  = isListening || isSpeaking;
 
+  // listening → olha para frente; speaking → olha para a esfera (canto superior direito)
   const pupilDX = isSpeaking ? 5 : 0;
-  const pupilDY = isAttention ? -3 : isSpeaking ? -2 : isTyping ? 3 : 0;
+  const pupilDY = isAttention ? -3 : isSpeaking ? -4 : isTyping ? 3 : 0;
 
   let wrapperAnim: string;
   if (isAttention)      wrapperAnim = 'capivara-look-up 1.2s ease-in-out infinite';
@@ -53,21 +47,6 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, au
     ? { animation: 'capivara-eye-dart 5s ease-in-out 1s infinite' }
     : undefined;
 
-  // Pulso das orelhas do fone com o áudio de saída da Nadia
-  const earScale = isSpeaking ? 1 + Math.min(audioLevel * 0.6, 0.45) : 1;
-  const leftCupStyle: React.CSSProperties  = {
-    transform: `scale(${earScale})`,
-    transformOrigin: '-8px 22px',
-  };
-  const rightCupStyle: React.CSSProperties = {
-    transform: `scale(${earScale})`,
-    transformOrigin: '104px 22px',
-  };
-  // Quando usuário fala: orelhas oscilam levemente (ouvindo)
-  const cupListenAnim: React.CSSProperties = isListening
-    ? { animation: 'capivara-ear-hear 1.1s ease-in-out infinite' }
-    : {};
-
   return (
     <div style={wrapperStyle}>
       <svg
@@ -75,7 +54,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, au
         width={size}
         height={size}
         xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block', imageRendering: 'pixelated', overflow: 'visible' }}
+        style={{ display: 'block', imageRendering: 'pixelated' }}
       >
         {/* ── ORELHAS ───────────────────────────────── */}
         <rect x={10} y={0}  width={20} height={20} fill={Rd} />
@@ -117,46 +96,6 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, au
             <rect x={4}  y={88} width={18} height={24} fill={R}  />
             <rect x={74} y={88} width={18} height={24} fill={R}  />
             <rect x={88} y={88} width={8}  height={24} fill={Rd} />
-          </>
-        )}
-
-        {/* ── FONE DE OUVIDO (modo voz) ─────────────── */}
-        {isVoiceMode && (
-          <>
-            {/* Banda fina sobre a cabeça */}
-            <rect x={8}   y={0}  width={80} height={6}  fill={HP}  />
-            <rect x={12}  y={1}  width={72} height={4}  fill={HPm} />
-            {/* Braços descem da banda até os cups laterais */}
-            <rect x={-2}  y={2}  width={14} height={14} fill={HP}  />
-            <rect x={84}  y={2}  width={14} height={14} fill={HP}  />
-
-            {/* Cup esquerdo — protrui além da borda esquerda da cabeça */}
-            <g style={{ ...leftCupStyle, ...cupListenAnim }}>
-              {/* Oval HP (visível contra fundo escuro) */}
-              <rect x={-15} y={10} width={14} height={4}  fill={HP}  />
-              <rect x={-18} y={14} width={20} height={16} fill={HP}  />
-              <rect x={-15} y={30} width={14} height={4}  fill={HP}  />
-              {/* HPm ring */}
-              <rect x={-16} y={18} width={16} height={8}  fill={HPm} />
-              <rect x={-12} y={14} width={8}  height={16} fill={HPm} />
-              {/* HPc pad */}
-              <rect x={-12} y={20} width={8}  height={4}  fill={HPc} />
-              <rect x={-10} y={17} width={4}  height={10} fill={HPc} />
-              {/* LED */}
-              <rect x={-5}  y={11} width={4}  height={3}  fill="#f43f5e" />
-            </g>
-
-            {/* Cup direito — espelhado, protrui além da borda direita */}
-            <g style={{ ...rightCupStyle, ...cupListenAnim }}>
-              <rect x={97}  y={10} width={14} height={4}  fill={HP}  />
-              <rect x={94}  y={14} width={20} height={16} fill={HP}  />
-              <rect x={97}  y={30} width={14} height={4}  fill={HP}  />
-              <rect x={96}  y={18} width={16} height={8}  fill={HPm} />
-              <rect x={100} y={14} width={8}  height={16} fill={HPm} />
-              <rect x={100} y={20} width={8}  height={4}  fill={HPc} />
-              <rect x={102} y={17} width={4}  height={10} fill={HPc} />
-              <rect x={97}  y={11} width={4}  height={3}  fill="#f43f5e" />
-            </g>
           </>
         )}
 
