@@ -29,6 +29,7 @@ import {
 import { SwitchModeIcon } from './Icons';
 import SoundWaveIcon from './SoundWaveIcon';
 import { NadiaSphere } from './NadiaSphere';
+import CapivaraPet, { PetState } from './CapivaraPet';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
@@ -177,6 +178,8 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
   });
 
   const isListening = isConnected && !isSpeaking;
+
+  const petState: PetState = isConnecting ? 'waiting' : isSpeaking ? 'speaking' : isListening ? 'listening' : 'reading';
 
   // Consolidar "RMSP vs Interior" para o donut de concentração
   const concentracaoData = [
@@ -504,6 +507,10 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
           </Container>
         </Box>
       </Box>
+
+      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-50" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
+      </div>
     </ThemeProvider>
   );
 };

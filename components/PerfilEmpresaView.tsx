@@ -3,6 +3,7 @@ import { generateWithFallback } from '../services/geminiService';
 import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
+import CapivaraPet, { PetState } from './CapivaraPet';
 import { EmbeddedChart } from './EmbeddedChart';
 
 interface SourceItem {
@@ -509,6 +510,8 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
     }
   };
 
+  const petState: PetState = isLoading ? 'supervising' : dossie ? 'reading' : 'idle';
+
   return (
     <>
       <style>{`
@@ -725,6 +728,10 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
             </div>
           )}
         </main>
+      </div>
+
+      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-10" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
       </div>
     </>
   );

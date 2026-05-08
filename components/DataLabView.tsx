@@ -3,6 +3,7 @@ import { generateWithFallback } from '../services/geminiService';
 import { filtrarParaRelatorio, getMetadados, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
 import { DynamicDashboard, DashboardData, parseDashboard } from './DynamicDashboard';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
+import CapivaraPet, { PetState } from './CapivaraPet';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import DESIGN_SKILL from '../skills/datalab_design.md?raw';
@@ -311,6 +312,8 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
     else startListening();
   };
 
+  const petState: PetState = isLoading ? 'supervising' : dashboard ? 'reading' : 'idle';
+
   return (
     <>
       <style>{`
@@ -469,6 +472,10 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
             )}
           </div>
         </main>
+      </div>
+
+      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-10" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
       </div>
     </>
   );

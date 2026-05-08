@@ -4,6 +4,7 @@ import { getMetadados, filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } 
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface ExplorarDadosViewProps {
   onNavigateHome: () => void;
@@ -227,6 +228,8 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
   const labelClass = 'block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5';
 
+  const petState: PetState = isLoading ? 'supervising' : relatorio ? 'found' : 'idle';
+
   return (
     <>
       <style>{`
@@ -448,6 +451,10 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
             )}
           </main>
         </div>
+      </div>
+
+      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-10" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
       </div>
     </>
   );

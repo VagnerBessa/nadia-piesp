@@ -8,6 +8,7 @@ import { SendIcon, SwitchModeIcon } from './Icons';
 import SoundWaveIcon from './SoundWaveIcon';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface ChatViewProps {
   onNavigateHome: () => void;
@@ -124,6 +125,8 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const { text: speechText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
   const [inputValue, setInputValue] = useState('');
   const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
+
+  const petState: PetState = isLoading ? 'typing' : inputValue.length > 0 ? 'user_typing' : 'idle';
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const prevIsListening = useRef(isListening);
@@ -498,6 +501,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
             </footer>
           </>
         )}
+      </div>
+
+      {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
+      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-10" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
       </div>
     </>
   );

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import SoundWaveIcon from './SoundWaveIcon';
 import { NadiaSphere } from './NadiaSphere';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface LandingPageProps {
   onNavigateToVoice: () => void;
@@ -8,6 +9,16 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigateToChat }) => {
+  const [petState, setPetState] = useState<PetState>('idle');
+
+  const handleVoiceClick = useCallback(() => {
+    setPetState('attention');
+    setTimeout(() => {
+      onNavigateToVoice();
+      setPetState('idle');
+    }, 350);
+  }, [onNavigateToVoice]);
+
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full p-4 sm:p-6">
        <main className="flex flex-col-reverse md:flex-row items-center justify-center md:justify-between gap-12 md:gap-16 w-full max-w-6xl mx-auto">
@@ -25,7 +36,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
           <p className="mt-8 text-slate-400">Selecione o modo de interação:</p>
           <div className="mt-4 flex flex-col sm:flex-row items-center gap-4">
             <button
-              onClick={onNavigateToVoice}
+              onClick={handleVoiceClick}
               className="flex items-center justify-center gap-3 px-6 py-3 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-200 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg text-lg w-64"
             >
               <SoundWaveIcon className="h-6 w-6 text-rose-400" />
@@ -50,6 +61,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
 
       </main>
       
+      {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
+      <div className="absolute bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
+      </div>
+
       <footer className="absolute bottom-4 left-0 right-0 flex flex-col items-center justify-center gap-y-2 px-4">
           <p className="font-bold text-white text-base">Fundação Seade</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-x-4 gap-y-1 text-sm text-slate-300 text-center">

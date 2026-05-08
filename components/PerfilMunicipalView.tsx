@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { 
   Box, 
@@ -14,6 +13,7 @@ import { NadiaSphere } from './NadiaSphere';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import GoogleMaps3DView, { MapHandles } from './GoogleMaps3DView';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 const cryptoTheme = createTheme({
   palette: {
@@ -135,6 +135,8 @@ const PerfilMunicipalView: React.FC<PerfilMunicipalViewProps> = ({ onNavigateHom
 
   const isListening = isConnected && !isSpeaking;
 
+  const petState: PetState = isConnecting ? 'waiting' : isSpeaking ? 'speaking' : isListening ? 'listening' : 'reading';
+
   return (
     <ThemeProvider theme={cryptoTheme}>
       <Box sx={{ position: 'relative', height: '100%', width: '100%', overflow: 'hidden', bgcolor: '#0f172a' }}>
@@ -197,6 +199,10 @@ const PerfilMunicipalView: React.FC<PerfilMunicipalViewProps> = ({ onNavigateHom
             </Box>
         </Box>
       </Box>
+
+      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-50" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
+      </div>
     </ThemeProvider>
   );
 };

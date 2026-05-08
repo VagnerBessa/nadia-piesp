@@ -5,6 +5,7 @@ import { getDbConnection } from '../services/duckdbService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
 import { SwitchModeIcon } from './Icons';
+import CapivaraPet, { PetState } from './CapivaraPet';
 
 interface VoiceViewProps {
   onNavigateHome: () => void;
@@ -40,6 +41,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   });
 
   const isListening = isConnected && !isSpeaking;
+
+  let petState: PetState = 'idle';
+  if (isConnecting) petState = 'waiting';
+  else if (isSpeaking) petState = 'speaking';
+  else if (isListening) petState = 'listening';
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full p-4 sm:p-6">
@@ -108,6 +114,11 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
             </div>
         </div>
       </main>
+
+      {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
+      <div className="absolute bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none" aria-hidden="true">
+        <CapivaraPet state={petState} size={72} />
+      </div>
     </div>
   );
 };
