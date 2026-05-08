@@ -130,6 +130,18 @@ A chave do Gemini está em `config.ts`. No deploy, o Vite a embute no bundle Jav
 *   **Opção 1 (Simples):** No Google AI Studio, restringir a chave para funcionar apenas no domínio de deploy (Adequado para fase de testes).
 *   **Opção 2 (Backend Proxy):** O frontend chama o backend, que chama o Gemini. (Adequado para adoção do MCP Centralizado Corporativo).
 
+### BUG-002 — Consultas de temas transversais retornam resultados incompletos
+**Status: Identificado | Solução Definida | Pendente de Implementação**
+Ao perguntar sobre temas transversais não-estruturados (ex: "mobilidade elétrica", "sustentabilidade", "transformação digital"), a Nádia retorna poucos resultados na primeira resposta. Ao insistir, ela encontra mais casos.
+
+**Causa raiz:** O modelo faz uma única chamada à tool `consultar_projetos_piesp` com o termo mais óbvio (ex: `termo_busca: "mobilidade elétrica"`), recebe resultados parciais, considera a tarefa concluída e responde. Não itera com variantes semânticas (ex: "veículo elétrico", "ônibus elétrico", "frota elétrica", "eletrificação") nem cruza setores relacionados. O `maxIterations = 3` existe no loop de function calling, mas o modelo para antes de atingi-lo — não recebe feedback de que os resultados foram insuficientes.
+
+**Soluções propostas (em ordem de esforço):**
+1. **Tool description** (curto prazo): Adicionar instrução explícita na `description` da tool em `useChat.ts` orientando o modelo a executar múltiplas chamadas com variantes semânticas para temas transversais antes de responder.
+2. **Expansão de queries** (médio prazo): Adicionar um passo de pré-processamento (chamada rápida ao Gemini com `thinkingBudget: 0`) que transforma o tema livre em lista de `termo_busca` candidatos; executa todas em sequência dentro do loop e une os resultados antes de gerar a resposta — mesmo padrão já usado no `DataLabView`.
+
+---
+
 ### BUG-001 — Filtros de setor e região retornam 0 no Chat (Problema de Encoding Latin-1 vs UTF-8)
 **Status: Diagnóstico Concluído | Solução Pendente**
 O CSV local (`piesp_confirmados_com_valor.csv`) está em _Latin-1_ e o sistema Vite injeta como _UTF-8_. No chat, o Gemini gera os nomes em português impecável ("Região Metropolitana"), que esbarram com os nomes distorcidos importados da base (Ex: `"RA S\uFFFDo Paulo"`). Isso faz as Tools retornarem 0 projetos na busca cruzada.
