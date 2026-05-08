@@ -21,25 +21,25 @@ function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string 
     filtros.tipo ? `Tipo de investimento: ${filtros.tipo}` : null,
   ].filter(Boolean).join(' | ') || 'Sem filtros específicos (base completa)';
 
-  const totalBi = (resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',');
+  const totalBi = (resumo.total_investimentos / 1000).toFixed(1).replace('.', ',');
 
   const projetosTexto = resumo.projetos.slice(0, 15).map((p, i) =>
     `${i + 1}. ${p.empresa} — ${p.municipio} (${p.regiao}), ${p.ano}, Setor: ${p.setor}, Tipo: ${p.tipo || 'N/I'}, Valor: R$ ${p.valor_milhoes_reais} mi — "${p.descricao}"`
   ).join('\n');
 
-  const porSetorTexto = resumo.porSetor.map(s =>
+  const porSetorTexto = resumo.setores.map(s =>
     `- ${s.nome}: R$ ${s.valor} mi em ${s.count} projeto(s)`
   ).join('\n');
 
-  const porMunicipioTexto = resumo.porMunicipio.map(m =>
+  const porMunicipioTexto = resumo.municipios.map(m =>
     `- ${m.nome}: R$ ${m.valor} mi em ${m.count} projeto(s)`
   ).join('\n');
 
-  const porRegiaoTexto = resumo.porRegiao.map(r =>
+  const porRegiaoTexto = resumo.regioes.map(r =>
     `- ${r.nome}: R$ ${r.valor} mi em ${r.count} projeto(s)`
   ).join('\n');
 
-  const porAnoTexto = resumo.porAno.map(a =>
+  const porAnoTexto = resumo.evolucao_anual.map(a =>
     `- ${a.nome}: R$ ${a.valor} mi em ${a.count} projeto(s)`
   ).join('\n');
 
@@ -49,8 +49,8 @@ O usuário solicitou um relatório analítico com o seguinte recorte:
 **${filtroDesc}**
 
 DADOS FILTRADOS DO PIESP:
-- Total de projetos encontrados: ${resumo.total}
-- Valor total: R$ ${resumo.totalMilhoes} milhões (R$ ${totalBi} bilhões)
+- Total de projetos encontrados: ${resumo.total_projetos}
+- Valor total: R$ ${resumo.total_investimentos} milhões (R$ ${totalBi} bilhões)
 
 PRINCIPAIS PROJETOS (top 15 por valor):
 ${projetosTexto}
@@ -190,7 +190,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
       ano_inicio: anoInicio || undefined,
       ano_fim: anoFim || undefined,
     };
-    filtrarParaRelatorio(filtro).then(r => setPreviewCount(r.total)).catch(() => setPreviewCount(0));
+    filtrarParaRelatorio(filtro).then(r => setPreviewCount(r.total_projetos)).catch(() => setPreviewCount(0));
   }, [setor, regiao, anosSelecionados, tipo, anoInicio, anoFim]);
 
   const handleGerarRelatorio = async () => {
@@ -209,9 +209,9 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
       };
 
       const resumo = await filtrarParaRelatorio(filtro);
-      setResumoStats({ total: resumo.total, totalMilhoes: resumo.totalMilhoes });
+      setResumoStats({ total: resumo.total_projetos, totalMilhoes: resumo.total_investimentos });
 
-      if (resumo.total === 0) {
+      if (resumo.total_projetos === 0) {
         setError('Nenhum projeto encontrado com os filtros selecionados. Tente ampliar o recorte.');
         setIsLoading(false);
         return;
@@ -436,12 +436,12 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
                   <div className="flex gap-4 mb-6 flex-wrap">
                     <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                       <p className="text-xs text-slate-400">Projetos analisados</p>
-                      <p className="text-xl font-bold text-white">{resumoStats.total.toLocaleString('pt-BR')}</p>
+                      <p className="text-xl font-bold text-white">{resumoStats.total?.toLocaleString('pt-BR')}</p>
                     </div>
                     <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                       <p className="text-xs text-slate-400">Valor total</p>
                       <p className="text-xl font-bold text-rose-400">
-                        R$ {(resumoStats.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi
+                        R$ {((resumoStats.totalMilhoes ?? 0) / 1000).toFixed(1).replace('.', ',')} bi
                       </p>
                     </div>
                   </div>
