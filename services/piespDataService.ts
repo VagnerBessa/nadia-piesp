@@ -98,15 +98,18 @@ function buildWhereClause(filtro: FiltroPiesp): { where: string; params: any[] }
   }
   
   if (filtro.termo_busca) {
-    let t = filtro.termo_busca.toLowerCase()
+    const normalize = (s: string) => s.toLowerCase()
       .replace(/[áàãâä]/g, '_')
       .replace(/[éèêë]/g, '_')
       .replace(/[íìîï]/g, '_')
       .replace(/[óòõôö]/g, '_')
       .replace(/[úùûü]/g, '_')
       .replace(/[ç]/g, '_');
-    conditions.push(`LOWER(CONCAT_WS(' ', empresa_alvo, setor_desc, descr_investimento, cnae_inv_2_desc, cnae_inv_descricao, cnae_empresa_descricao)) LIKE ?`);
-    params.push(`%${t}%`);
+    const termos = filtro.termo_busca.split(',').map(s => normalize(s.trim())).filter(Boolean);
+    const campo = `LOWER(CONCAT_WS(' ', empresa_alvo, setor_desc, descr_investimento, cnae_inv_2_desc, cnae_inv_descricao, cnae_empresa_descricao))`;
+    const termClauses = termos.map(() => `${campo} LIKE ?`).join(' OR ');
+    conditions.push(`(${termClauses})`);
+    termos.forEach(t => params.push(`%${t}%`));
   }
   
   if (filtro.ano_inicio || filtro.ano_fim) {

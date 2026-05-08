@@ -25,7 +25,6 @@ interface HistoryItem {
   parts: { text?: string; functionCall?: any; functionResponse?: any }[];
 }
 
-export type ResponseMode = 'fast' | 'complete';
 
 const initialMessage: Message = {
     role: 'model',
@@ -143,7 +142,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
     { role: 'model', parts: [{ text: initialMessage.text }] }
   ]);
 
-  const sendMessage = async (text: string, mode: ResponseMode = 'complete') => {
+  const sendMessage = async (text: string) => {
     if (isLoading) return;
 
     setIsLoading(true);
@@ -174,9 +173,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
       const modelName = 'gemini-2.5-flash';
-      const thinkingConfig = mode === 'complete'
-        ? { thinkingConfig: { thinkingBudget: 512 } }
-        : { thinkingConfig: { thinkingBudget: 0 } };
+      const thinkingConfig = { thinkingConfig: { thinkingBudget: 0 } };
 
       if (selectedSkillName) {
         console.log(`🎯 [Agente manual] Skill "${selectedSkillName}" injetada. System instruction: ${systemInstructionWithSkill.length} chars.`);

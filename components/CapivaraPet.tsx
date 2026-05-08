@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type PetState = 'idle' | 'attention' | 'listening' | 'speaking' | 'typing';
+export type PetState = 'idle' | 'attention' | 'listening' | 'speaking' | 'typing' | 'user_typing';
 
 interface CapivaraPetProps {
   state?: PetState;
@@ -21,16 +21,18 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
   const isSpeaking   = state === 'speaking';
   const isAttention  = state === 'attention';
   const isTyping     = state === 'typing';
+  const isUserTyping = state === 'user_typing';
 
-  // listening → olha para frente; speaking → olha para a esfera (canto superior direito)
+  // listening → frente; speaking → esfera (sup. direita); user_typing/typing → baixo
   const pupilDX = isSpeaking ? 5 : 0;
-  const pupilDY = isAttention ? -3 : isSpeaking ? -4 : isTyping ? 3 : 0;
+  const pupilDY = isAttention ? -3 : isSpeaking ? -4 : (isTyping || isUserTyping) ? 5 : 0;
 
   let wrapperAnim: string;
   if (isAttention)      wrapperAnim = 'capivara-look-up 1.2s ease-in-out infinite';
   else if (isListening) wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
   else if (isSpeaking)  wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
   else if (isTyping)    wrapperAnim = 'capivara-breathe 2s ease-in-out infinite';
+  else if (isUserTyping) wrapperAnim = 'capivara-breathe 3s ease-in-out infinite';
   else                  wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite, capivara-tilt 6s ease-in-out 1s infinite';
 
   const wrapperStyle: React.CSSProperties = {

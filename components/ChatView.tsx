@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { useChat, ResponseMode } from '../hooks/useChat';
+import { useChat } from '../hooks/useChat';
 import { getDbConnection } from '../services/duckdbService';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useAutoResizeTextArea } from '../hooks/useAutoResizeTextArea';
@@ -124,7 +124,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const { messages, sendMessage, isLoading, streamingText, streamingComplete } = useChat({ selectedSkillName: activeAgent?.name });
   const { text: speechText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
   const [inputValue, setInputValue] = useState('');
-  const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const prevIsListening = useRef(isListening);
@@ -207,12 +206,12 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   const handleSend = useCallback(() => {
     const textToSend = inputValue.trim();
     if (textToSend && !isLoading) {
-      sendMessage(textToSend, responseMode);
+      sendMessage(textToSend);
       setInputValue('');
       setChatStarted(true);
       if (isListening) stopListening();
     }
-  }, [inputValue, isLoading, isListening, sendMessage, stopListening, responseMode]);
+  }, [inputValue, isLoading, isListening, sendMessage, stopListening]);
 
   useEffect(() => {
     if (speechText) setInputValue(speechText);
@@ -258,7 +257,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
 
   const petState: PetState = isListening ? 'listening'
     : (isLoading || !!streamingText) ? 'attention'
-    : inputValue.length > 0 ? 'typing'
+    : inputValue.length > 0 ? 'user_typing'
     : 'idle';
 
   // Caixa de input — reutilizada nos dois estados (centrada e bottom)
@@ -380,27 +379,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
             <span>Agentes</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Modo:</span>
-            <div className="flex items-center bg-slate-800 rounded-full p-0.5 border border-slate-700 text-xs">
-              <button
-                onClick={() => setResponseMode('fast')}
-                className={`px-2.5 py-0.5 rounded-full transition-colors ${
-                  responseMode === 'fast' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Rápido
-              </button>
-              <button
-                onClick={() => setResponseMode('complete')}
-                className={`px-2.5 py-0.5 rounded-full transition-colors ${
-                  responseMode === 'complete' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Completo
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
