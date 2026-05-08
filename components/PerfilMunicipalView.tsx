@@ -200,7 +200,7 @@ const PerfilMunicipalView: React.FC<PerfilMunicipalViewProps> = ({ onNavigateHom
         </Box>
       </Box>
 
-      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-50" aria-hidden="true">
+      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-50" aria-hidden="true">
         <CapivaraPet state={petState} size={72} />
       </div>
     </ThemeProvider>

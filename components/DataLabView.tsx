@@ -474,7 +474,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         </main>
       </div>
 
-      <div className="fixed bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none z-10" aria-hidden="true">
+      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-10" aria-hidden="true">
         <CapivaraPet state={petState} size={72} />
       </div>
     </>

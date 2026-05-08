@@ -62,7 +62,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
       </main>
       
       {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
-      <div className="absolute bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none" aria-hidden="true">
+      <div className="absolute bottom-5 left-4 pointer-events-none select-none" aria-hidden="true">
         <CapivaraPet state={petState} size={72} />
       </div>
 
