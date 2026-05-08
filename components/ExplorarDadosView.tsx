@@ -119,7 +119,13 @@ Se (e somente se) houver dados suficientes para comparação, procure incluir 2 
 }
 
 const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome }) => {
-  const metadados = useMemo(() => getMetadados(), []);
+  const [metadados, setMetadados] = useState<{
+    setores: string[]; regioes: string[]; anos: string[]; tipos: string[];
+  }>({ setores: [], regioes: [], anos: [], tipos: [] });
+
+  useEffect(() => {
+    getMetadados().then(setMetadados).catch(console.error);
+  }, []);
 
   const [setor, setSetor] = useState('');
   const [regiao, setRegiao] = useState('');
@@ -132,6 +138,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resumoStats, setResumoStats] = useState<{ total: number; totalMilhoes: number } | null>(null);
+  const [previewCount, setPreviewCount] = useState(0);
 
   const [anoDropdownOpen, setAnoDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -173,8 +180,8 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
     return metadados.anos.filter(a => minAnoAnuncio ? Number(a) >= minAnoAnuncio : true);
   }, [metadados.anos, minAnoAnuncio]);
 
-  // Preview count as filters change
-  const previewCount = useMemo(() => {
+  // Preview count — atualiza sempre que os filtros mudam
+  useEffect(() => {
     const filtro: FiltroRelatorio = {
       setor: setor || undefined,
       regiao: regiao || undefined,
@@ -183,9 +190,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
       ano_inicio: anoInicio || undefined,
       ano_fim: anoFim || undefined,
     };
-    // Quick count without full aggregation
-    const r = filtrarParaRelatorio(filtro);
-    return r.total;
+    filtrarParaRelatorio(filtro).then(r => setPreviewCount(r.total)).catch(() => setPreviewCount(0));
   }, [setor, regiao, anosSelecionados, tipo, anoInicio, anoFim]);
 
   const handleGerarRelatorio = async () => {
@@ -203,7 +208,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
         ano_fim: anoFim || undefined,
       };
 
-      const resumo = filtrarParaRelatorio(filtro);
+      const resumo = await filtrarParaRelatorio(filtro);
       setResumoStats({ total: resumo.total, totalMilhoes: resumo.totalMilhoes });
 
       if (resumo.total === 0) {
