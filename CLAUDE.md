@@ -1330,7 +1330,7 @@ A lista de mapeamentos no system prompt (`"saneamento" → "agua,esgoto"`) é:
 
 Com o multi-termo, o modelo usa esse conhecimento diretamente na chamada da ferramenta — sem intermediário comportamental.
 
-**Branches afetados:** `nadia-mobile/0.2.1`, `feature/v0.3-duckdb-streaming`, `feature/nadia-pet`
+**Branches afetados:** `nadia-mobile/0.2.2`, `feature/v0.4`, `feature/nadia-pet`
 
 ---
 
@@ -1346,20 +1346,70 @@ Com o multi-termo, o modelo usa esse conhecimento diretamente na chamada da ferr
 |---|---|
 | `idle` | Respiração suave + inclinação periódica + olhos vagando |
 | `attention` | Movimento vertical lento (olhando para cima) |
-| `listening` | Fone de ouvido aparece, orelhas pulsam |
-| `speaking` | Fone de ouvido aparece, cups escalam com `audioLevel`, olhos ligeiramente desviados |
+| `listening` | Olha para frente (interlocutor fala) |
+| `speaking` | Olha para a esfera no canto superior direito |
 | `typing` | Patas animadas sobre teclado pixel art, pernas escondidas |
 
-**Fone de ouvido (modo voz):**
-- Banda no topo da cabeça + braços laterais
-- Cups ovais que **extrapolam os limites do SVG** (`overflow: visible`) para simular fones reais posicionados nas laterais
-- Cup esquerdo: x=-18 a x=2 (18px fora do SVG à esquerda)
-- Cup direito: x=94 a x=114 (18px fora do SVG à direita)
-- LED rosa (`#f43f5e`) como detalhe de reconhecimento visual
-- Escala com `audioLevel` durante `speaking`; oscilação suave durante `listening`
+**Remoção do fone de ouvido — mai/2026:**
+O fone de ouvido foi removido do mascote. O estado de voz agora é comunicado exclusivamente pela direção do olhar:
+- `listening` → pupilas centradas (olha para frente, para o interlocutor)
+- `speaking` → pupilas deslocadas para direita+cima (`pupilDX=5`, `pupilDY=-4`) em direção à esfera
+
+Constantes removidas: `HP`, `HPm`, `HPi`, `HPc`, `isVoiceMode`, `earScale`, `leftCupStyle`, `rightCupStyle`, `cupListenAnim`. `overflow: visible` também removido do SVG.
 
 **`VoiceView.tsx`:** usa `isNadiaSpeaking` (sem debounce) para reação imediata dos olhos. Pet renderizado em `absolute bottom-5 left-4`, `size={80}`.
 
-**Keyframes CSS** em `index.html`: `capivara-breathe`, `capivara-tilt`, `capivara-blink`, `capivara-blink-slow`, `capivara-look-up`, `capivara-eye-dart`, `capivara-ear-hear`, `capivara-paw-left`, `capivara-paw-right`.
+**Keyframes CSS** em `index.html`: `capivara-breathe`, `capivara-tilt`, `capivara-blink`, `capivara-blink-slow`, `capivara-look-up`, `capivara-eye-dart`, `capivara-paw-left`, `capivara-paw-right`.
+
+---
+
+## Versionamento de Branches — mai/2026
+
+Os branches foram renomeados para refletir o estado atual de maturidade:
+
+| Branch anterior | Branch atual | Canal |
+|---|---|---|
+| `nadia-mobile/0.2.1` | `nadia-mobile/0.2.2` | Mobile (Vercel) |
+| `feature/v0.3-duckdb-streaming` | `feature/v0.4` | Web full (desenvolvimento) |
+| `feature/nadia-pet` | `feature/nadia-pet` | Sem alteração |
+
+Os branches antigos (`0.2.1` e `v0.3`) foram mantidos no GitHub. O Vercel aponta para `nadia-mobile/0.2.2` via deploy CLI (`npx vercel --prod` a partir do worktree `/private/tmp/nadia-mobile-021`).
+
+---
+
+## Melhorias de Qualidade de Resposta — mai/2026
+
+### Temas Transversais e Mapeamento CNAE
+
+**Problema:** Termos transversais como "energia limpa", "mobilidade elétrica" ou "descarbonização" não existem como strings na base PIESP. O modelo os passava literalmente como `termo_busca` e encontrava zero resultados.
+
+**Solução (`utils/prompts.ts`):** Nova regra TEMAS TRANSVERSAIS instrui o modelo a mapear o termo coloquial do usuário para os equivalentes CNAE antes de qualquer chamada, passando todos os termos técnicos como `termo_busca` separados por vírgula em uma única chamada.
+
+Exemplos de mapeamento:
+- "mobilidade elétrica" → `"eletrico,hibrido,hidrogenio,bateria,recarga"`
+- "energia limpa" → `"solar,eolica,hidroeletrica,biomassa,biogas,renovavel"`
+- "economia circular" → `"reciclagem,residuos,reaproveitamento,logistica reversa"`
+- "transformação digital" → `"software,dados,inteligencia artificial,automacao,cloud,datacenter"`
+
+Combinado com o suporte a multi-termos no `piespDataService.ts` (OR logic no DuckDB), uma única chamada cobre todos os CNAEs relevantes do tema.
+
+### Disciplina no Uso de Skills (Agentes)
+
+**Problema:** Mesmo sem skill ativa, a Nadia oferecia espontaneamente perspectivas analíticas especializadas ("quer que eu analise pelo ângulo de qualificação profissional?"). Com skill ativa, ainda cruzava com outras lentes.
+
+**Solução (`utils/prompts.ts`):**
+1. **EXCLUSIVIDADE DE LENTE reforçada:** com skill ativa, a análise é exclusivamente pela lente escolhida — sem menção a outras perspectivas, nem como sugestão.
+2. **MODO GERAL:** sem skill ativa, resposta analítica direta. As 8 lentes são ferramentas sob demanda acionadas pelo menu de agentes — não são conteúdo a ser promovido espontaneamente.
+
+### Controle de Filtro Temporal
+
+**Problema:** O modelo adicionava filtros de ano por iniciativa própria (ex: "2022-2025") sem o usuário ter pedido nenhum período.
+
+**Solução (`utils/prompts.ts`):** Três comportamentos distintos e explícitos:
+- **Ano explícito** ("em 2024"): usa o campo `ano` diretamente.
+- **Expressão temporal vaga** ("recentemente", "nos últimos anos"): **não consulta a ferramenta** — pergunta ao usuário qual período exato ele quer antes de prosseguir.
+- **Sem referência temporal**: consulta sem o campo `ano`, retorna o histórico completo.
+
+**Branches afetados:** `nadia-mobile/0.2.2`, `feature/v0.4`, `feature/nadia-pet`
 
 **Branch afetado:** `feature/v0.3-duckdb-streaming`
