@@ -128,6 +128,38 @@
   @keyframes capivara-eye-graph {
     0%, 100% { transform: translateY(4px); }
   }
+  /* passos de caminhada — walking state */
+  @keyframes capivara-leg-step {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+  }
+  /* leve solavanco ao caminhar */
+  @keyframes capivara-walk-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+  }
+  /* dança — double bounce suave */
+  @keyframes capivara-dance {
+    0%        { transform: translateY(0px); }
+    20%       { transform: translateY(-4px); }
+    32%       { transform: translateY(-2px); }
+    44%       { transform: translateY(-4px); }
+    62%, 100% { transform: translateY(0px); }
+  }
+  /* onda sonora — aparece e some, tamanhos crescentes criam propagação */
+  @keyframes capivara-sound-wave {
+    0%        { opacity: 0;    }
+    12%       { opacity: 0.85; }
+    80%       { opacity: 0.2;  }
+    100%      { opacity: 0;    }
+  }
+  /* fone descendo sobre a cabeça — toca uma vez */
+  @keyframes capivara-headphones-on {
+    0%   { transform: translateY(-28px); opacity: 0; }
+    55%  { transform: translateY(5px);   opacity: 1; }
+    78%  { transform: translateY(-3px);  opacity: 1; }
+    100% { transform: translateY(0px);   opacity: 1; }
+  }
   @keyframes pet-float-a {
     0%, 100% { transform: translateY(0px);   opacity: 0.85; }
     50%      { transform: translateY(-14px); opacity: 1;    }

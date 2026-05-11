@@ -4,7 +4,7 @@ import { filtrarParaRelatorio, getMetadados, FiltroRelatorio, ResumoRelatorio } 
 import { DynamicDashboard, DashboardData, parseDashboard } from './DynamicDashboard';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import CapivaraPet, { PetState } from './CapivaraPet';
-import { SmallNadiaSphere } from './SmallNadiaSphere';
+import { LoadingPetOverlay, MiniLineSVG, MiniDocSVG, MiniPieSVG } from './LoadingPetOverlay';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import DESIGN_SKILL from '../skills/datalab_design.md?raw';
 
@@ -16,12 +16,12 @@ interface DataLabViewProps {
 // Prompts
 // ───────────────────────────────────────────────
 
-// Carregado uma vez — metadados não mudam durante a sessão
-const _metadadosDataLab = getMetadados();
+type MetadadosDataLab = { regioes: string[]; setores: string[]; anos: string[]; tipos: string[] };
+const METADADOS_FALLBACK: MetadadosDataLab = { regioes: [], setores: [], anos: [], tipos: [] };
 
-function buildExtractFiltersPrompt(query: string): string {
-  const regioesList = _metadadosDataLab.regioes.length > 0
-    ? _metadadosDataLab.regioes.join(', ')
+function buildExtractFiltersPrompt(query: string, metadados: MetadadosDataLab): string {
+  const regioesList = metadados.regioes.length > 0
+    ? metadados.regioes.join(', ')
     : 'Região Metropolitana de São Paulo, Região Administrativa de Campinas, Região Administrativa de Sorocaba';
 
   return `Você é um extrator de filtros para a base de dados PIESP (investimentos no Estado de SP).
@@ -47,25 +47,25 @@ Omita campos não mencionados. Retorne apenas o JSON.`;
 }
 
 function buildDashboardPrompt(query: string, resumo: ResumoRelatorio, filtros: FiltroRelatorio): string {
-  const totalBi = (resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',');
+  const totalBi = (resumo.total_investimentos / 1000).toFixed(1).replace('.', ',');
 
   const projetosTexto = resumo.projetos.slice(0, 12).map((p, i) => {
     const periodo = p.ano_inicio ? `Execução: ${p.ano_inicio}-${p.ano_fim || '...'}` : `Anúncio: ${p.ano}`;
     return `${i + 1}. ${p.empresa} | ${p.municipio} | ${p.setor} | ${periodo} | R$ ${p.valor_milhoes_reais} mi`;
   }).join('\n');
 
-  const porSetorTexto  = resumo.porSetor.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} proj)`).join(' | ');
-  const porMunicipioTexto = resumo.porMunicipio.slice(0, 8).map(m => `${m.nome}: R$ ${m.valor} mi (${m.count} proj)`).join(' | ');
-  const porAnoTexto    = resumo.porAno.map(a => `${a.nome}: R$ ${a.valor} mi`).join(' | ');
-  const porRegiaoTexto = resumo.porRegiao.slice(0, 5).map(r => `${r.nome}: R$ ${r.valor} mi (${r.count} proj)`).join(' | ');
+  const porSetorTexto     = resumo.setores.map(s => `${s.nome}: R$ ${s.valor} mi (${s.count} proj)`).join(' | ');
+  const porMunicipioTexto = resumo.municipios.slice(0, 8).map(m => `${m.nome}: R$ ${m.valor} mi (${m.count} proj)`).join(' | ');
+  const porAnoTexto       = resumo.evolucao_anual.map(a => `${a.nome}: R$ ${a.valor} mi`).join(' | ');
+  const porRegiaoTexto    = resumo.regioes.slice(0, 5).map(r => `${r.nome}: R$ ${r.valor} mi (${r.count} proj)`).join(' | ');
 
   return `Você é a Nadia, analista de dados da Fundação Seade. O usuário pediu no Data Lab:
 "${query}"
 
 DADOS DO PIESP FILTRADOS:
 - Filtros Ativos: ${JSON.stringify(filtros)}
-- Total de projetos: ${resumo.total}
-- Valor total: R$ ${resumo.totalMilhoes} mi (R$ ${totalBi} bi)
+- Total de projetos: ${resumo.total_projetos}
+- Valor total: R$ ${resumo.total_investimentos} mi (R$ ${totalBi} bi)
 - Por setor: ${porSetorTexto || '(sem dados)'}
 - Por município (top 8): ${porMunicipioTexto || '(sem dados)'}
 - Por região: ${porRegiaoTexto || '(sem dados)'}
@@ -87,7 +87,7 @@ Você pode usar qualquer combinação dos seguintes tipos de seção:
    → Use tendencia "up" para crescimento, "down" para queda, omita se não aplicável
 
 2. "chart" — gráficos visuais (escolha o tipo mais adequado):
-   { "tipo": "chart", "data_source": "porSetor|porRegiao|porAno|porMunicipio", "chart": { "type": "TIPO", "title": "texto" }}
+   { "tipo": "chart", "data_source": "setores|regioes|evolucao_anual|municipios", "chart": { "type": "TIPO", "title": "texto" }}
 
    Tipos disponíveis:
    • "bar"            → barras verticais — ranking de setores, regiões, tipos
@@ -99,7 +99,7 @@ Você pode usar qualquer combinação dos seguintes tipos de seção:
                         (adicione campo "linha": número nos itens de data para a linha)
 
 3. "bar-list" — ranking textual com barra de proporção (sem eixos, mais limpo que chart)
-   { "tipo": "bar-list", "titulo": "opcional", "data_source": "porSetor|porRegiao|porAno|porMunicipio" }
+   { "tipo": "bar-list", "titulo": "opcional", "data_source": "setores|regioes|evolucao_anual|municipios" }
    → Ideal para top 5-10 empresas ou municípios
 
 4. "tabela" — tabela detalhada de projetos
@@ -178,6 +178,64 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
   const [error, setError] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
+  const [metadados, setMetadados] = useState<MetadadosDataLab>(METADADOS_FALLBACK);
+
+  useEffect(() => {
+    getMetadados().then(setMetadados).catch(() => {});
+  }, []);
+
+  type EntrancePhase = 'outside' | 'peeking' | 'walking' | 'settled';
+  const [entrancePhase, setEntrancePhase] = useState<EntrancePhase>('outside');
+  const [petPostLoad, setPetPostLoad] = useState(false);
+  const [revealedCount, setRevealedCount] = useState(0);
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setEntrancePhase('peeking'),  2800);
+    const t2 = setTimeout(() => setEntrancePhase('walking'),  6300);
+    const t3 = setTimeout(() => setEntrancePhase('settled'),  9600);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
+  // Revela seções uma a uma e transiciona pet typing → dancing
+  useEffect(() => {
+    if (!dashboard || isLoading) return;
+    const total = dashboard.secoes.length;
+    setRevealedCount(0);
+    setPetPostLoad(false);
+    let count = 0;
+    const iv = setInterval(() => {
+      count++;
+      setRevealedCount(count);
+      if (count >= total) {
+        clearInterval(iv);
+        setTimeout(() => setPetPostLoad(true), 900);
+      }
+    }, 420);
+    return () => clearInterval(iv);
+  }, [dashboard, isLoading]);
+
+  // Auto-scroll à medida que novas seções aparecem
+  useEffect(() => {
+    if (mainRef.current && revealedCount > 0) {
+      mainRef.current.scrollTop = mainRef.current.scrollHeight;
+    }
+  }, [revealedCount]);
+
+  // Componente interno: cicla 3 SVGs com fade
+  function CyclingCharts() {
+    const [idx, setIdx] = useState(0);
+    const [visible, setVisible] = useState(true);
+    const icons = [<MiniLineSVG key="l" />, <MiniDocSVG key="d" />, <MiniPieSVG key="p" />];
+    useEffect(() => {
+      const iv = setInterval(() => {
+        setVisible(false);
+        setTimeout(() => { setIdx(i => (i + 1) % 3); setVisible(true); }, 280);
+      }, 1800);
+      return () => clearInterval(iv);
+    }, []);
+    return <div style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.28s ease' }}>{icons[idx]}</div>;
+  }
 
   const { text: speechText, isListening, startListening, stopListening, hasRecognitionSupport } = useSpeechRecognition();
   const prevIsListening = useRef(false);
@@ -209,7 +267,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       // ── Passo 1: extrai filtros da linguagem natural ──
       setLoadingStep('Interpretando sua solicitação...');
       const filterResponse = await generateWithFallback({
-        prompt: buildExtractFiltersPrompt(query),
+        prompt: buildExtractFiltersPrompt(query, metadados),
         thinkingBudget: 0,
       });
 
@@ -224,16 +282,16 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
 
       // ── Passo 2: consulta determinística no CSV ──
       setLoadingStep('Consultando a base PIESP...');
-      const resumo = filtrarParaRelatorio(filtros);
+      const resumo = await filtrarParaRelatorio(filtros);
 
-      if (resumo.total === 0) {
+      if (resumo.total_projetos === 0) {
         setError('Nenhum projeto encontrado com esses critérios. Tente uma busca mais ampla.');
         setIsLoading(false);
         return;
       }
 
       // ── Passo 3: gera o json-dashboard ──
-      setLoadingStep(`Analisando ${resumo.total} projetos (R$ ${(resumo.totalMilhoes / 1000).toFixed(1).replace('.', ',')} bi)...`);
+      setLoadingStep(`Analisando ${resumo.total_projetos} projetos (R$ ${(resumo.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi)...`);
       const dashResponse = await generateWithFallback({
         prompt: buildDashboardPrompt(query, resumo, filtros),
         thinkingBudget: 1024,
@@ -251,20 +309,24 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         if (sec.tipo === 'kpi-cards') {
           sec.cards.forEach((card: any) => {
             if (card.valor === '[INJETAR_TOTAL]' || (card.label && card.label.toLowerCase().includes('projeto'))) {
-              card.valor = resumo.total.toString();
+              card.valor = resumo.total_projetos.toString();
             } else if (card.valor === '[INJETAR_VALOR_BI]' || (card.label && card.label.toLowerCase().includes('investimento'))) {
-              card.valor = `R$ ${(resumo.totalMilhoes / 1000).toFixed(2).replace('.', ',')} bi`;
+              card.valor = `R$ ${(resumo.total_investimentos / 1000).toFixed(2).replace('.', ',')} bi`;
             }
           });
         } else if (sec.tipo === 'chart' && sec.data_source) {
-          const ds = (resumo as any)[sec.data_source];
+          const dsAlias: Record<string, string> = { porSetor: 'setores', porRegiao: 'regioes', porAno: 'evolucao_anual', porMunicipio: 'municipios' };
+          const dsKey = dsAlias[sec.data_source] ?? sec.data_source;
+          const ds = (resumo as any)[dsKey];
           if (Array.isArray(ds)) {
             sec.chart.data = ds.map((d: any) => ({ name: d.nome, value: d.valor }));
           } else {
             sec.chart.data = [];
           }
         } else if (sec.tipo === 'bar-list' && sec.data_source) {
-          const ds = (resumo as any)[sec.data_source];
+          const dsAlias: Record<string, string> = { porSetor: 'setores', porRegiao: 'regioes', porAno: 'evolucao_anual', porMunicipio: 'municipios' };
+          const dsKey = dsAlias[sec.data_source] ?? sec.data_source;
+          const ds = (resumo as any)[dsKey];
           if (Array.isArray(ds)) {
             sec.items = ds.map((d: any) => {
                const nome = d.nome || d.empresa || 'Desconhecido';
@@ -312,7 +374,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
     else startListening();
   };
 
-  const petState: PetState = isLoading ? 'supervising' : dashboard ? 'reading' : 'idle';
+  const petState: PetState = isLoading ? 'supervising' : dashboard ? 'reading' : entrancePhase === 'settled' ? 'dancing' : 'idle';
 
   return (
     <>
@@ -414,7 +476,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
         </div>
 
         {/* Área do dashboard */}
-        <main className="flex-grow overflow-y-auto custom-scrollbar px-6 py-6">
+        <main ref={mainRef} className="flex-grow overflow-y-auto custom-scrollbar px-6 py-6">
           <div className="max-w-4xl mx-auto">
 
             {/* Estado vazio */}
@@ -448,10 +510,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
 
             {/* Loading */}
             {isLoading && (
-              <div className="flex flex-col items-center justify-center gap-4 pt-16">
-                <SmallNadiaSphere />
-                <p className="text-slate-400 animate-pulse text-sm">{loadingStep || 'Processando...'}</p>
-              </div>
+              <LoadingPetOverlay label={loadingStep || 'Processando...'} svgIcon={<CyclingCharts />} />
             )}
 
             {/* Erro */}
@@ -463,20 +522,75 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
 
             {/* Dashboard gerado */}
             {dashboard && !isLoading && (
-              <div className="bg-slate-800/20 rounded-2xl border border-slate-700/40 p-6">
-                <DynamicDashboard data={dashboard} />
-                <p className="text-xs text-slate-500 text-center pt-6 mt-4 border-t border-slate-700/30">
-                  Dashboard gerado pela Nadia com dados do PIESP. Valide informações críticas na fonte oficial.
-                </p>
+              <div className="flex gap-4 items-start">
+                <div className="flex-1 min-w-0 bg-slate-800/20 rounded-2xl border border-slate-700/40 p-6">
+                  <DynamicDashboard data={{ ...dashboard, secoes: dashboard.secoes.slice(0, revealedCount) }} />
+                  {revealedCount < dashboard.secoes.length && (
+                    <span className="inline-block w-1.5 h-4 bg-rose-400/70 animate-pulse ml-0.5 rounded-sm mt-2" />
+                  )}
+                  {revealedCount >= dashboard.secoes.length && (
+                    <p className="text-xs text-slate-500 text-center pt-6 mt-4 border-t border-slate-700/30">
+                      Dashboard gerado pela Nadia com dados do PIESP. Valide informações críticas na fonte oficial.
+                    </p>
+                  )}
+                </div>
+                {/* Pet à direita — typing → dancing, sticky no topo para seguir o scroll */}
+                <div
+                  className="flex-shrink-0 pointer-events-none select-none"
+                  style={{ position: 'sticky', top: '5rem', alignSelf: 'flex-start' }}
+                  aria-hidden="true"
+                >
+                  <CapivaraPet
+                    state={petPostLoad ? 'dancing' : 'typing'}
+                    size={80}
+                    withHeadphones={petPostLoad}
+                  />
+                </div>
               </div>
             )}
           </div>
         </main>
       </div>
 
-      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-10" aria-hidden="true">
-        <CapivaraPet state={petState} size={72} />
-      </div>
+      {/* Pet — entrada em cena (só aparece no estado vazio) */}
+      {!isLoading && !dashboard && <div
+        aria-hidden="true"
+        className="pointer-events-none select-none z-10"
+        style={(() => {
+          const base: React.CSSProperties = { position: 'fixed', bottom: '20px' };
+          if (entrancePhase === 'outside') {
+            return { ...base, left: '-90px', transform: 'none', transition: 'none' };
+          }
+          if (entrancePhase === 'peeking') {
+            return {
+              ...base,
+              left: '-22px',
+              transform: 'rotate(22deg)',
+              transformOrigin: 'bottom right',
+              transition: 'left 0.55s ease-out, transform 0.55s ease-out',
+            };
+          }
+          if (entrancePhase === 'walking') {
+            return {
+              ...base,
+              left: 'calc(14vw)',
+              transform: 'none',
+              transformOrigin: 'bottom center',
+              transition: 'left 3.2s linear, transform 0.25s ease-out',
+            };
+          }
+          // settled
+          return { ...base, left: 'calc(14vw)', transform: 'none', transition: 'none' };
+        })()}
+      >
+        <CapivaraPet
+          state={entrancePhase === 'peeking' ? 'attention' : entrancePhase === 'walking' ? 'walking' : petState}
+          size={72}
+          still={entrancePhase === 'peeking'}
+          withHeadphones={entrancePhase === 'settled'}
+          pupilOffset={entrancePhase === 'peeking' ? { dx: 0, dy: 0 } : undefined}
+        />
+      </div>}
     </>
   );
 };

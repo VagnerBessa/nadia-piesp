@@ -12,7 +12,9 @@ export type PetState =
   | 'waiting'       // IA processando — pestanejo lento, paciente
   | 'found'         // resultado chegou — olhar sobe brevemente
   | 'empty'         // zero resultados — olhar desce
-  | 'reading';      // dashboard/perfil carregando — olhos da esq. p/ dir.
+  | 'reading'       // dashboard/perfil carregando — olhos da esq. p/ dir.
+  | 'walking'       // entrando em cena — pernas alternadas, deslocamento externo
+  | 'dancing';      // dança discreta com fone de ouvido
 
 interface CapivaraPetProps {
   state?: PetState;
@@ -20,6 +22,10 @@ interface CapivaraPetProps {
   audioLevel?: number;
   eyeAnim?: string;
   withGlasses?: boolean;
+  withBook?: boolean;
+  withHeadphones?: boolean;
+  pupilOffset?: { dx: number; dy: number };
+  still?: boolean;
 }
 
 const R  = '#e03848';
@@ -29,7 +35,7 @@ const W  = '#f4f4f4';
 const N  = '#1a1f30';
 const M  = '#7a1020';
 
-const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, eyeAnim, withGlasses = false }) => {
+const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, eyeAnim, withGlasses = false, withBook = false, withHeadphones = false, pupilOffset, still = false }) => {
   const isListening    = state === 'listening';
   const isSpeaking     = state === 'speaking';
   const isAttention    = state === 'attention';
@@ -41,6 +47,8 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
   const isFound        = state === 'found';
   const isEmpty        = state === 'empty';
   const isReading      = state === 'reading';
+  const isWalking      = state === 'walking';
+  const isDancing      = state === 'dancing';
 
   // Direção das pupilas por estado
   let pupilDX = 0;
@@ -50,6 +58,8 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
   else if (isReading)                           { pupilDX = 0; pupilDY = 4; }
   else if (isTyping || isUserTyping || isEmpty) { pupilDX = 0; pupilDY = 5; }
   else if (isAnalyzing)                        { pupilDX = 0; pupilDY = 4; }
+  else if (isWalking)                          { pupilDX = 4; pupilDY = 0; }
+  if (pupilOffset) { pupilDX = pupilOffset.dx; pupilDY = pupilOffset.dy; }
 
   // Animação do wrapper
   let wrapperAnim: string;
@@ -64,7 +74,10 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
   else if (isFound)     wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
   else if (isEmpty)     wrapperAnim = 'capivara-breathe 4s ease-in-out infinite';
   else if (isReading)   wrapperAnim = 'capivara-breathe 4s ease-in-out infinite';
+  else if (isWalking)   wrapperAnim = 'capivara-walk-bob 0.6s ease-in-out infinite';
+  else if (isDancing)   wrapperAnim = 'capivara-dance 1.6s ease-in-out infinite';
   else wrapperAnim = 'capivara-breathe 4.3s ease-in-out infinite, capivara-tilt 11.7s ease-in-out 2.1s infinite';
+  if (still) wrapperAnim = 'none';
 
   const wrapperStyle: React.CSSProperties = {
     width: size,
@@ -99,7 +112,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
         width={size}
         height={size}
         xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block', imageRendering: 'pixelated' }}
+        style={{ display: 'block', imageRendering: 'pixelated', overflow: 'visible' }}
       >
         {/* ── ORELHAS ─────────────────────────────── */}
         <rect x={10} y={0}  width={20} height={20} fill={Rd} />
@@ -122,7 +135,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
         <rect x={12} y={26} width={22} height={22} fill={R}
           style={{ opacity: 0, animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.3s infinite` }} />
         <rect x={62} y={26} width={22} height={22} fill={R}
-          style={{ opacity: 0, animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.55s infinite` }} />
+          style={{ opacity: 0, animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.3s infinite` }} />
 
         {/* ── ÓCULOS (fade-in via opacity) ────────── */}
         <g style={{ opacity: withGlasses ? 1 : 0, transition: 'opacity 0.45s ease-in' }}>
@@ -132,6 +145,48 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
           <rect x={0}  y={33} width={10} height={4}  fill="#111827"/>
           <rect x={86} y={33} width={10} height={4}  fill="#111827"/>
         </g>
+
+        {/* ── FONE DE OUVIDO branco — desce sobre a cabeça ao aparecer ── */}
+        {withHeadphones && (
+          <g style={{ animation: 'capivara-headphones-on 0.65s cubic-bezier(0.22,1,0.36,1) forwards' }}>
+            {/* tiara */}
+            <rect x={20} y={1}  width={56} height={6}  rx={3} fill="#e2e8f0" />
+            <rect x={26} y={2}  width={44} height={4}  rx={2} fill="#f8fafc" />
+            {/* copo esquerdo */}
+            <rect x={0}  y={11} width={16} height={26} rx={4} fill="#cbd5e1" />
+            <rect x={2}  y={13} width={12} height={22} rx={3} fill="#e2e8f0" />
+            <rect x={4}  y={15} width={8}  height={18} rx={2} fill="#f8fafc" />
+            {/* LED esquerdo */}
+            <rect x={5}  y={30} width={5}  height={5}  rx={1} fill="#f43f5e" />
+            {/* copo direito */}
+            <rect x={80} y={11} width={16} height={26} rx={4} fill="#cbd5e1" />
+            <rect x={82} y={13} width={12} height={22} rx={3} fill="#e2e8f0" />
+            <rect x={84} y={15} width={8}  height={18} rx={2} fill="#f8fafc" />
+            {/* LED direito */}
+            <rect x={86} y={30} width={5}  height={5}  rx={1} fill="#f43f5e" />
+          </g>
+        )}
+        {/* ── ONDAS SONORAS — 3 arcos crescentes por lado, aparecem em sequência ── */}
+        {withHeadphones && isDancing && (
+          <>
+            {/* Direito: centro do copo em (88, 24), semicírculo sweep=1 (direita) */}
+            {([7, 14, 21] as const).map((r, i) => (
+              <path key={`r${i}`}
+                d={`M 88,${24 - r} A ${r} ${r} 0 0 1 88,${24 + r}`}
+                fill="none" stroke="white" strokeWidth={2.2 - i * 0.4} strokeLinecap="round"
+                style={{ opacity: 0, animation: `capivara-sound-wave 1.2s ease-out ${i * 0.4}s infinite` }}
+              />
+            ))}
+            {/* Esquerdo: centro do copo em (8, 24), semicírculo sweep=0 (esquerda) */}
+            {([7, 14, 21] as const).map((r, i) => (
+              <path key={`l${i}`}
+                d={`M 8,${24 - r} A ${r} ${r} 0 0 0 8,${24 + r}`}
+                fill="none" stroke="white" strokeWidth={2.2 - i * 0.4} strokeLinecap="round"
+                style={{ opacity: 0, animation: `capivara-sound-wave 1.2s ease-out ${i * 0.4}s infinite` }}
+              />
+            ))}
+          </>
+        )}
 
         {/* ── FOCINHO ─────────────────────────────── */}
         <rect x={8}  y={52} width={80} height={26} fill={P} />
@@ -144,12 +199,25 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
         <rect x={88} y={76} width={8}  height={22} fill={Rd} />
 
         {/* ── PERNAS ──────────────────────────────── */}
-        {!isTyping && !isAnalyzing && (
+        {!isTyping && !isAnalyzing && !isWalking && (
           <>
             <rect x={0}  y={88} width={8}  height={24} fill={Rd} />
             <rect x={4}  y={88} width={18} height={24} fill={R}  />
             <rect x={74} y={88} width={18} height={24} fill={R}  />
             <rect x={88} y={88} width={8}  height={24} fill={Rd} />
+          </>
+        )}
+        {/* ── PERNAS CAMINHANDO (walking) ────────── */}
+        {isWalking && (
+          <>
+            <g style={{ animation: 'capivara-leg-step 0.6s ease-in-out infinite' }}>
+              <rect x={0}  y={88} width={8}  height={24} fill={Rd} />
+              <rect x={4}  y={88} width={18} height={24} fill={R}  />
+            </g>
+            <g style={{ animation: 'capivara-leg-step 0.6s ease-in-out 0.3s infinite' }}>
+              <rect x={74} y={88} width={18} height={24} fill={R}  />
+              <rect x={88} y={88} width={8}  height={24} fill={Rd} />
+            </g>
           </>
         )}
 
@@ -175,8 +243,8 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, ey
             </g>
           </>
         )}
-        {/* ── BRAÇOS + LIVRO (estado reading) ─────── */}
-        {isReading && (
+        {/* ── BRAÇOS + LIVRO (estado reading ou withBook) ─────── */}
+        {(isReading || withBook) && (
           <>
             {/* lombada do livro */}
             <rect x={44} y={105} width={8}  height={23} fill="#4a1e0a" />

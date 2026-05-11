@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { generateWithFallback } from '../services/geminiService';
 import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
-import { LoadingPetOverlay } from './LoadingPetOverlay';
 import { EmbeddedChart } from './EmbeddedChart';
+import { LoadingPetOverlay, MiniDocSVG } from './LoadingPetOverlay';
 import CapivaraPet from './CapivaraPet';
 
 interface SourceItem {
@@ -400,6 +400,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [isStreaming, setIsStreaming]     = useState(false);
   const [petPostStream, setPetPostStream] = useState(false);
   const [glassesActive, setGlassesActive] = useState(false);
+  const [idlePetState, setIdlePetState]   = useState<'reading' | 'attention'>('reading');
   const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mainRef    = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLInputElement>(null);
@@ -444,6 +445,18 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
       mainRef.current.scrollTop = mainRef.current.scrollHeight;
     }
   }, [streamedText, isStreaming]);
+
+  // Ciclo de estado do pet na tela vazia: lendo → atenção → lendo ...
+  useEffect(() => {
+    if (dossie || isLoading) return;
+    let t: ReturnType<typeof setTimeout>;
+    function cycle(s: 'reading' | 'attention') {
+      setIdlePetState(s);
+      t = setTimeout(() => cycle(s === 'reading' ? 'attention' : 'reading'), s === 'reading' ? 10000 : 1500);
+    }
+    cycle('reading');
+    return () => clearTimeout(t);
+  }, [dossie, isLoading]);
 
   // Filtra sugestões pelo que o usuário digitou
   const sugestoesFiltradas = useMemo(() => {
@@ -648,19 +661,24 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         {/* Área do dossiê */}
         <main ref={mainRef} className="flex-grow overflow-y-auto custom-scrollbar p-6">
           {!dossie && !isLoading && !error && (
-            <div className="h-full flex flex-col items-center justify-center text-center gap-4 opacity-50">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 text-slate-500">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
-              </svg>
-              <div>
-                <p className="text-slate-400 font-medium">Nenhum dossiê gerado ainda</p>
-                <p className="text-slate-500 text-sm mt-1">Busque uma empresa pelo nome acima</p>
+            <div className="h-full relative">
+              <div
+                className="absolute bottom-4 left-3 pointer-events-none select-none"
+                aria-hidden="true"
+              >
+                <CapivaraPet
+                  state={idlePetState}
+                  size={80}
+                  withBook
+                  still
+                  pupilOffset={idlePetState === 'attention' ? { dx: 5, dy: -3 } : undefined}
+                />
               </div>
             </div>
           )}
 
           {isLoading && (
-            <LoadingPetOverlay label={`Pesquisando ${empresaPesquisada}`} />
+            <LoadingPetOverlay label={`Pesquisando ${empresaPesquisada}`} svgIcon={<MiniDocSVG />} />
           )}
 
           {error && (
@@ -670,15 +688,61 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
           )}
 
           {dossie && !isLoading && (
-            <div className="max-w-6xl mx-auto flex gap-5 items-start">
+            <div className="max-w-6xl mx-auto space-y-4">
 
-              {/* Coluna direita: painel de fontes (sticky, menor) — renderizado depois no DOM mas posicionado à direita via order */}
-              {sources.length > 0 && (
-                <div ref={sourcesRef} className="w-48 flex-shrink-0 sticky top-4" style={{ order: 2 }}>
+              {/* Stats rápidos */}
+              {piespStats && (
+                <div className="flex gap-4 flex-wrap">
+                  <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                    <p className="text-xs text-slate-400">Projetos no PIESP</p>
+                    <p className="text-xl font-bold text-white">{piespStats.total_projetos}</p>
+                  </div>
+                  <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                    <p className="text-xs text-slate-400">Valor total investido em SP</p>
+                    <p className={`text-xl font-bold ${piespStats.total_investimentos > 0 ? 'text-rose-400' : 'text-slate-500 text-lg'}`}>
+                      {piespStats.total_investimentos > 0
+                        ? (piespStats.total_investimentos >= 1000
+                          ? `R$ ${(piespStats.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi`
+                          : `R$ ${piespStats.total_investimentos.toFixed(0)} mi`)
+                        : 'Não divulgado'}
+                    </p>
+                  </div>
+                  <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
+                    <p className="text-xs text-slate-400">Empresa pesquisada</p>
+                    <p className="text-base font-bold text-white truncate max-w-48">{empresaPesquisada}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Dossiê + pet digitando à direita */}
+              <div className="flex gap-4 items-start">
+                <div className="flex-1 min-w-0 bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
+                  <DossieRenderer content={isStreaming ? streamedText : (dossie ?? '')} sources={sources} />
+                  {isStreaming && (
+                    <span className="inline-block w-1.5 h-[1.1em] bg-rose-400/70 animate-pulse ml-0.5 align-middle rounded-sm" />
+                  )}
+                </div>
+
+                {/* Pet à direita — sticky ao fundo, typing durante stream */}
+                <div className="flex-shrink-0 pointer-events-none select-none"
+                  style={{ position: 'sticky', bottom: '1rem', alignSelf: 'flex-end' }}
+                  aria-hidden="true">
+                  <CapivaraPet
+                    state={petPostStream ? 'idle' : 'typing'}
+                    size={80}
+                    withGlasses={glassesActive}
+                    eyeAnim={glassesActive ? 'capivara-eye-proud 5.8s ease-in-out 0.6s infinite' : undefined}
+                  />
+                </div>
+              </div>
+
+              {/* Painel de fontes — aparece só após o streaming terminar */}
+              {sources.length > 0 && !isStreaming && (
+                <div ref={sourcesRef}>
                   <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 overflow-hidden">
                     <button
                       onClick={() => setIsSourcesOpen(!isSourcesOpen)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-800/40 hover:bg-slate-800/60 transition-colors focus:outline-none"
+                      className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-800/40 hover:bg-slate-800/60 transition-colors focus:outline-none"
                     >
                       <div className="flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 text-sky-400 flex-shrink-0">
@@ -695,14 +759,14 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                     </button>
                     <div
                       style={{
-                        maxHeight: isSourcesOpen ? '70vh' : '0',
+                        maxHeight: isSourcesOpen ? '60vh' : '0',
                         overflow: 'hidden',
                         transition: 'max-height 0.35s ease-in-out, opacity 0.3s ease-in-out',
                         opacity: isSourcesOpen ? 1 : 0,
                       }}
                     >
-                      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '70vh' }}>
-                        <ol className="list-none m-0 p-2.5 space-y-2">
+                      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '60vh' }}>
+                        <ol className="list-none m-0 p-3 grid grid-cols-2 gap-x-6 gap-y-2">
                           {sources.map((source, i) => (
                             <li key={i} className="flex items-start gap-1.5">
                               <span className="flex-shrink-0 w-3.5 h-3.5 rounded-full bg-sky-500/20 text-sky-400 text-[8px] font-bold flex items-center justify-center mt-0.5">
@@ -725,60 +789,11 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                 </div>
               )}
 
-              {/* Coluna esquerda: stats + dossiê + disclaimer */}
-              <div className="flex-1 min-w-0 space-y-4" style={{ order: 1 }}>
-                {/* Stats rápidos */}
-                {piespStats && (
-                  <div className="flex gap-4 flex-wrap">
-                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                      <p className="text-xs text-slate-400">Projetos no PIESP</p>
-                      <p className="text-xl font-bold text-white">{piespStats.total_projetos}</p>
-                    </div>
-                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                      <p className="text-xs text-slate-400">Valor total investido em SP</p>
-                      <p className={`text-xl font-bold ${piespStats.total_investimentos > 0 ? 'text-rose-400' : 'text-slate-500 text-lg'}`}>
-                        {piespStats.total_investimentos > 0
-                          ? (piespStats.total_investimentos >= 1000
-                            ? `R$ ${(piespStats.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi`
-                            : `R$ ${piespStats.total_investimentos.toFixed(0)} mi`)
-                          : 'Não divulgado'}
-                      </p>
-                    </div>
-                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                      <p className="text-xs text-slate-400">Empresa pesquisada</p>
-                      <p className="text-base font-bold text-white truncate max-w-48">{empresaPesquisada}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Dossiê + pet digitando à direita */}
-                <div className="flex gap-4 items-start">
-                  <div className="flex-1 min-w-0 bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
-                    <DossieRenderer content={isStreaming ? streamedText : (dossie ?? '')} sources={sources} />
-                    {isStreaming && (
-                      <span className="inline-block w-1.5 h-[1.1em] bg-rose-400/70 animate-pulse ml-0.5 align-middle rounded-sm" />
-                    )}
-                  </div>
-
-                  {/* Pet à direita — sticky ao fundo, typing durante stream */}
-                  <div className="flex-shrink-0 pointer-events-none select-none"
-                    style={{ position: 'sticky', bottom: '1rem', alignSelf: 'flex-end' }}
-                    aria-hidden="true">
-                    <CapivaraPet
-                      state={petPostStream ? 'idle' : 'typing'}
-                      size={80}
-                      withGlasses={glassesActive}
-                      eyeAnim={glassesActive ? 'capivara-eye-proud 5.8s ease-in-out 0.6s infinite' : undefined}
-                    />
-                  </div>
-                </div>
-
-                {!isStreaming && glassesActive && (
-                  <p className="text-xs text-slate-500 text-center pt-2">
-                    Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
-                  </p>
-                )}
-              </div>
+              {!isStreaming && glassesActive && (
+                <p className="text-xs text-slate-500 text-center pt-1">
+                  Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
+                </p>
+              )}
 
             </div>
           )}

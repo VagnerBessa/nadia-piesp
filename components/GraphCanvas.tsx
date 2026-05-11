@@ -177,6 +177,27 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
   // Keep ref in sync so callbacks/effects can read live data without calling fgRef.graphData()
   useEffect(() => { gd.current = graphData; }, [graphData]);
 
+  // Prevent isolated clusters from drifting far from the main group.
+  // Adds a gentle centering force (pulls every node toward origin) and caps
+  // the repulsion range so distant lone nodes don't keep accelerating away.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const fg = fgRef.current;
+      if (!fg) return;
+      const k = 0.04; // centering strength — small enough not to collapse clusters
+      fg.d3Force('attract', (alpha: number) => {
+        (gd.current.nodes as any[]).forEach(n => {
+          n.vx -= k * (n.x ?? 0) * alpha;
+          n.vy -= k * (n.y ?? 0) * alpha;
+          if (n.vz !== undefined) n.vz -= k * (n.z ?? 0) * alpha;
+        });
+      });
+      fg.d3Force('charge')?.distanceMax?.(350);
+      fg.d3ReheatSimulation?.();
+    }, 200);
+    return () => clearTimeout(t);
+  }, [graphData]);
+
   // ── Interaction ─────────────────────────────────────────────────────────
 
   const clearSelection = useCallback(() => {
