@@ -133,7 +133,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
         id:    n.id,
         label: n.label ?? n.id,
         group: n.type,
-        val:   Math.max(1, Math.pow(n.valor_total > 0 ? n.valor_total / maxVal : 0.02, 0.32) * 20),
+        val:   Math.max(0.4, Math.pow(n.valor_total > 0 ? n.valor_total / maxVal : 0.02, 0.38) * 6),
       })),
       links: data.edges
         .filter(e => ids.has(e.source) && ids.has(e.target) && e.source !== e.target)
@@ -258,12 +258,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
       }
       const sprite = new SpriteText(node.label ?? node.id);
       sprite.color = color;
-      sprite.textHeight = Math.max(3, Math.min(7, Math.cbrt(node.val ?? 1) * 2.2));
+      sprite.textHeight = Math.max(2, Math.min(5, Math.cbrt(node.val ?? 1) * 2.0));
       sprite.backgroundColor = 'rgba(4,13,24,0.72)';
-      sprite.padding = 1.5;
+      sprite.padding = 1.2;
       sprite.borderRadius = 2;
       // @ts-ignore
-      (sprite as any).position.set(0, Math.cbrt(node.val ?? 1) * 4 + 4, 0);
+      (sprite as any).position.set(0, Math.cbrt(node.val ?? 1) * 3 + 3, 0);
       nodeSprites.current.set(node, sprite);
       return sprite;
     } catch { return undefined; }
@@ -415,6 +415,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
           showNavInfo={false}
           nodeColor={nodeColor}
           nodeVal="val"
+          nodeRelSize={3}
           nodeOpacity={0.92}
           nodeResolution={16}
           nodeVisibility={nodeVisibility}
