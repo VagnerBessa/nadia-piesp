@@ -193,12 +193,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     setSelectedId(node.id);
     setNeighbors(nbrs);
     onNodeSelect?.(data.nodes.find(n => n.id === node.id) ?? null);
-    if (node.x != null) {
-      fgRef.current?.cameraPosition(
-        { x: node.x * 1.3, y: node.y * 1.3, z: (node.z ?? 0) * 1.3 + 200 },
-        { x: node.x, y: node.y, z: node.z ?? 0 }, 900,
-      );
-    }
+    // Fit camera to the full neighborhood so no connected node goes off-screen
+    setTimeout(() => {
+      fgRef.current?.zoomToFit(700, 100, (n: any) => nbrs.has(n.id));
+    }, 50);
   }, [selectedId, data.nodes, onNodeSelect]);
 
   // ── Color functions (depend on state → re-evaluate when selection changes) ──
@@ -319,17 +317,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
 
     setSelectedId(live.id);
     setNeighbors(nbrs);
-    setQueried(nbrs);   // strong visual: dims everything outside neighborhood
+    setQueried(nbrs);
     onNodeSelect?.(data.nodes.find(n => n.id === live.id) ?? null);
 
-    if (live.x != null) {
-      const dist = 120 + Math.cbrt(live.val ?? 1) * 25;
-      fgRef.current?.cameraPosition(
-        { x: live.x, y: live.y, z: (live.z ?? 0) + dist },
-        { x: live.x, y: live.y, z: live.z ?? 0 },
-        800,
-      );
-    }
+    setTimeout(() => {
+      fgRef.current?.zoomToFit(700, 100, (n: any) => nbrs.has(n.id));
+    }, 50);
   }, [data.nodes, onNodeSelect]);
 
   // ── Analytics physics commands ──────────────────────────────────────────
