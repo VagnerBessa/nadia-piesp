@@ -87,10 +87,11 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
   const [search,      setSearch]      = useState('');
   const [searchRes,   setSearchRes]   = useState<any[]>([]);
   const [paused,      setPaused]      = useState(false);
+  const [panMode,     setPanMode]     = useState(false);
   const [showCtrl,    setShowCtrl]    = useState(false);
   const [showLegend,  setShowLegend]  = useState(false);
 
-  useEffect(() => { setDensity(Math.min(500, data.nodes.length)); setMinDegree(0); }, [data]);
+  useEffect(() => { setDensity(Math.min(500, data.nodes.length)); setMinDegree(0); setPanMode(false); }, [data]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -105,6 +106,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     if (!fgRef.current) return;
     paused ? fgRef.current.pauseAnimation() : fgRef.current.resumeAnimation();
   }, [paused]);
+
+  const applyPanMode = useCallback((active: boolean) => {
+    const controls = fgRef.current?.controls?.();
+    if (!controls) return;
+    // THREE.MOUSE: ROTATE=0, DOLLY=1, PAN=2
+    controls.mouseButtons = { LEFT: active ? 2 : 0, MIDDLE: 1, RIGHT: active ? 0 : 2 };
+  }, []);
+
+  useEffect(() => { applyPanMode(panMode); }, [panMode, applyPanMode]);
 
   // ── Graph data pipeline ─────────────────────────────────────────────────
 
@@ -419,6 +429,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
           linkDirectionalParticleColor={linkParticleColor}
           d3AlphaDecay={alphaDec}
           d3VelocityDecay={veloDec}
+          onEngineStop={() => applyPanMode(panMode)}
         />
       </div>
 
@@ -517,7 +528,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
 
       <div className="absolute bottom-3 text-[10px] text-slate-700 pointer-events-none select-none z-10"
         style={{ left: `${drawerW + 12}px` }}>
-        Drag = rotar · Scroll = zoom · Click = detalhe
+        {panMode
+          ? 'Drag = mover · Scroll = zoom · Click = detalhe'
+          : 'Drag = rotar · Scroll = zoom · Click = detalhe · ✥ = mover'}
       </div>
 
       {/* ── Top-right controls */}
@@ -551,6 +564,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
               showDrawer ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
               : 'bg-slate-900/80 border-slate-700/30 text-slate-400 hover:text-rose-300'}`}>
             ◎ Analisar
+          </button>
+          <button onClick={() => setPanMode(v => !v)}
+            title={panMode ? 'Modo mover ativo — clique para voltar a rotar' : 'Mover grafo (pan)'}
+            className={`text-[10px] px-3 py-1.5 rounded-lg border transition-all ${
+              panMode ? 'bg-sky-500/20 border-sky-500/40 text-sky-400'
+              : 'bg-slate-900/80 border-slate-700/30 text-slate-400 hover:text-white'}`}>
+            ✥
           </button>
           <button onClick={() => setPaused(p => !p)}
             className={`text-[10px] px-3 py-1.5 rounded-lg border transition-all ${
