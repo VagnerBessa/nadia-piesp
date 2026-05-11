@@ -541,7 +541,7 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
         {showLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-950/90 z-10">
             <ThoughtBubble label={isLoading ? 'Mapeando conexões' : 'Preparando visualização'} />
-            <CapivaraPet state="reading" withGlasses size={72} />
+            <CapivaraPet state="attention" withGlasses size={72} />
           </div>
         )}
         {error && !isLoading && (
