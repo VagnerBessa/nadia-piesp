@@ -384,11 +384,12 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
   const [metrics, setMetrics]         = useState<GraphMetrics | null>(null);
   const loadingStartRef               = useRef<number>(0);
 
-  // Keep loading overlay visible for at least MIN_LOADING_MS so the pet doesn't flash
+  // Keep loading overlay visible for at least MIN_LOADING_MS so the pet doesn't flash.
+  // showLoading may already be false when silent=true — only extend if it was set.
   useEffect(() => {
     if (isLoading) {
       loadingStartRef.current = Date.now();
-      setShowLoading(true);
+      // showLoading already set by runQuery when not silent
     } else {
       const elapsed   = Date.now() - loadingStartRef.current;
       const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
@@ -401,8 +402,9 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
     getMetadados().then(m => setRegioes(m.regioes)).catch(() => {});
   }, []);
 
-  const runQuery = useCallback(async (fn: () => Promise<GraphData>) => {
+  const runQuery = useCallback(async (fn: () => Promise<GraphData>, silent = false) => {
     setIsLoading(true);
+    if (!silent) setShowLoading(true);
     setError(null);
     setSelectedNode(null);
     setGraphData(null);
@@ -436,13 +438,13 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
     setQuery(node.label);
     if (node.type === 'municipio') {
       setModo('regiao');
-      runQuery(() => getRedeRegiao(node.label));
+      runQuery(() => getRedeRegiao(node.label), true);
     } else if (node.type === 'setor') {
       setModo('tema');
-      runQuery(() => getRedeQuery({ setor: node.label }));
+      runQuery(() => getRedeQuery({ setor: node.label }), true);
     } else {
       setModo('empresa');
-      runQuery(() => getRedeEmpresa(node.label));
+      runQuery(() => getRedeEmpresa(node.label), true);
     }
   }, [runQuery]);
 
