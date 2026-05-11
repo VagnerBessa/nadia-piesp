@@ -251,9 +251,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
 
   const linkWidth = useCallback((link: any): number => {
     const s = nodeId(link.source), t = nodeId(link.target);
-    return selectedId && neighbors.has(s) && neighbors.has(t)
-      ? (link.weight ?? 1) * 2.5 : (link.weight ?? 1) * 0.8;
-  }, [selectedId, neighbors]);
+    const w = link.weight ?? 1;
+    if (selectedId || (queried && queried.size > 0)) {
+      const active = selectedId ? neighbors.has(s) && neighbors.has(t)
+        : (queried!.has(s) && queried!.has(t));
+      return active ? w * 5 : w * 0.4;
+    }
+    return w * 2;
+  }, [selectedId, neighbors, queried]);
 
   const nodeVisibility = useCallback((node: any) =>
     visGroups.size === 0 || visGroups.has(node.group), [visGroups]);
@@ -436,7 +441,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
           onBackgroundClick={clearSelection}
           linkColor={linkColor}
           linkWidth={linkWidth}
-          linkOpacity={0.55}
+          linkOpacity={0.75}
           linkVisibility={linkVisibility}
           linkDirectionalParticles={linkParticleCount}
           linkDirectionalParticleWidth={linkParticleWidth}
