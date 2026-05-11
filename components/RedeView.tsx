@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, Component } from 'reac
 import CapivaraPet from './CapivaraPet';
 import { MiniGraphSVG, LoadingPetOverlay } from './LoadingPetOverlay';
 import GraphCanvas from './GraphCanvas';
+import GraphCopilot from './GraphCopilot';
 import {
   getRedeEmpresa, getRedeRegiao, getRedeTema, getRedeQuery,
   GraphData, GraphNode,
@@ -515,6 +516,11 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
               onMetricsReady={setMetrics}
             />
           </GraphErrorBoundary>
+        )}
+
+        {/* Copilot — retractable AI chat sobre o grafo */}
+        {graphData && !showLoading && (
+          <GraphCopilot graphData={graphData} metrics={metrics} />
         )}
 
         {/* Node detail panel */}

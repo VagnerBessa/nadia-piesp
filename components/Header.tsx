@@ -78,7 +78,7 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMun
                 onClick={onNavigateToRede}
                 className="px-4 py-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-full transition-all whitespace-nowrap"
               >
-                Rede
+                Grafos
               </button>
             </li>
             <li>
