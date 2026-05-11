@@ -181,11 +181,24 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     setSelectedId(null); setNeighbors(new Set()); setQueried(null); onNodeSelect?.(null);
   }, [onNodeSelect]);
 
-  // Padding scales with neighborhood size: 2 nodes → ~280px back, 16+ nodes → 80px
   const zoomToNeighborhood = useCallback((nbrs: Set<string>) => {
-    const padding = Math.max(80, Math.round(380 / Math.sqrt(nbrs.size)));
     setTimeout(() => {
-      fgRef.current?.zoomToFit(700, padding, (n: any) => nbrs.has(n.id));
+      const nbrNodes = gd.current.nodes.filter((n: any) => nbrs.has(n.id) && n.x != null);
+      if (!nbrNodes.length) return;
+
+      if (nbrs.size <= 4) {
+        // Small neighborhood: fixed camera distance from centroid — predictable, no over-zoom
+        const cx = nbrNodes.reduce((s: number, n: any) => s + n.x, 0) / nbrNodes.length;
+        const cy = nbrNodes.reduce((s: number, n: any) => s + n.y, 0) / nbrNodes.length;
+        const cz = nbrNodes.reduce((s: number, n: any) => s + (n.z ?? 0), 0) / nbrNodes.length;
+        fgRef.current?.cameraPosition(
+          { x: cx, y: cy, z: cz + 280 },
+          { x: cx, y: cy, z: cz },
+          700,
+        );
+      } else {
+        fgRef.current?.zoomToFit(700, 80, (n: any) => nbrs.has(n.id));
+      }
     }, 50);
   }, []);
 
