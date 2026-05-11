@@ -133,7 +133,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
         id:    n.id,
         label: n.label ?? n.id,
         group: n.type,
-        val:   Math.max(0.4, Math.pow(n.valor_total > 0 ? n.valor_total / maxVal : 0.02, 0.38) * 6),
+        val:   n.valor_total > 0
+          ? Math.max(1, Math.pow(n.valor_total / maxVal, 0.5) * 8)
+          : 0.5,
       })),
       links: data.edges
         .filter(e => ids.has(e.source) && ids.has(e.target) && e.source !== e.target)
