@@ -112,28 +112,25 @@ const AGENTS: AgentConfig[] = [
 ];
 
 const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
-  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
   useEffect(() => { getDbConnection().catch(() => {}); }, []);
 
   const [activeAgent, setActiveAgent] = useState<AgentConfig | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
+  const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const { messages, sendMessage, isLoading, streamingText, streamingComplete } = useChat({ selectedSkillName: activeAgent?.name });
   const { text: speechText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
   const [inputValue, setInputValue] = useState('');
-  const [responseMode, setResponseMode] = useState<ResponseMode>('complete');
-
-  const petState: PetState = isLoading ? 'typing' : inputValue.length > 0 ? 'user_typing' : 'idle';
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const prevIsListening = useRef(isListening);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottom = useRef(true);
 
-  // Animação palavra-a-palavra: setInterval a 22ms/palavra drena fila independente do tamanho dos chunks
+  // Animação palavra-a-palavra com setInterval — velocidade constante independente do tamanho dos chunks
   const [displayText, setDisplayText] = useState('');
   const streamQueueRef = useRef('');
   const prevStreamLenRef = useRef(0);
@@ -169,7 +166,10 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
   useLayoutEffect(() => {
     if (streamingText === null) {
       if (!streamingComplete) {
-        stopDrain(); streamQueueRef.current = ''; prevStreamLenRef.current = 0; setDisplayText('');
+        stopDrain();
+        streamQueueRef.current = '';
+        prevStreamLenRef.current = 0;
+        setDisplayText('');
       } else {
         prevStreamLenRef.current = 0;
       }
@@ -251,17 +251,21 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
     setPickerOpen(false);
   };
 
+  const petState: PetState = isListening ? 'listening'
+    : (isLoading || !!streamingText) ? 'attention'
+    : inputValue.length > 0 ? 'user_typing'
+    : 'idle';
+
   // Caixa de input — reutilizada nos dois estados (centrada e bottom)
   const InputBox = (
     <div className="relative w-full">
-      {/* Dropdown de agentes — abre para baixo */}
+      {/* Dropdown de agentes — abre para cima ou para baixo conforme estado */}
       {pickerOpen && (
         <div
           ref={pickerRef}
-          className={`absolute left-0 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl z-50 flex flex-col ${chatStarted ? 'bottom-full mb-2' : 'top-full mt-2'}`}
-          style={{ animation: 'dropdown-in 140ms ease-out forwards' }}
+          className={`xl:hidden absolute left-0 w-64 rounded-2xl border border-slate-700 bg-slate-900 shadow-[0_-20px_50px_rgba(0,0,0,0.5)] z-50 flex flex-col ${chatStarted ? 'bottom-full mb-3' : 'top-full mt-2'}`}
+          style={{ animation: 'dropdown-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
         >
-          {/* Opção fixa no topo */}
           <div className="flex-shrink-0">
             <button
               onClick={() => handleSelectAgent(null)}
@@ -270,30 +274,27 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
               <span className={`${activeAgent === null ? 'text-slate-200 font-medium' : 'text-slate-400'}`}>
                 Geral
               </span>
-              {activeAgent === null && <span className="text-rose-400"><Icons.Check /></span>}
+              {activeAgent === null && <span className="text-rose-500"><Icons.Check /></span>}
             </button>
             <div className="border-t border-slate-800 mx-3" />
           </div>
-          {/* Lista com scroll */}
           <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '260px' }}>
-          {AGENTS.map(agent => {
-            const isActive = activeAgent?.name === agent.name;
-            return (
-              <button
-                key={agent.name}
-                onClick={() => handleSelectAgent(agent)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-slate-800 transition-colors gap-3"
-              >
-                <span className={`flex items-center gap-3 ${isActive ? 'text-rose-300' : 'text-slate-400'}`}>
-                  <span className={isActive ? 'text-rose-400' : 'text-slate-500'}>
-                    {agent.icon}
+            {AGENTS.map(agent => {
+              const isActive = activeAgent?.name === agent.name;
+              return (
+                <button
+                  key={agent.name}
+                  onClick={() => handleSelectAgent(agent)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-slate-800 transition-colors gap-3"
+                >
+                  <span className={`flex items-center gap-3 ${isActive ? 'text-rose-400' : 'text-slate-400'}`}>
+                    <span className={isActive ? 'text-rose-500' : 'text-slate-500'}>{agent.icon}</span>
+                    <span className={isActive ? 'font-medium' : ''}>{agent.label}</span>
                   </span>
-                  <span className={isActive ? 'font-medium' : ''}>{agent.label}</span>
-                </span>
-                {isActive && <span className="text-rose-400 flex-shrink-0"><Icons.Check /></span>}
-              </button>
-            );
-          })}
+                  {isActive && <span className="text-rose-500 flex-shrink-0"><Icons.Check /></span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -306,12 +307,12 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
         {/* Badge de agente ativo */}
         {activeAgent && (
           <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
-              <span className="text-rose-400">{activeAgent.icon}</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">
+              <span className="text-rose-500">{activeAgent.icon}</span>
               {activeAgent.label}
               <button
                 onClick={() => setActiveAgent(null)}
-                className="ml-0.5 text-rose-400/50 hover:text-rose-300 transition-colors"
+                className="ml-0.5 text-rose-500/50 hover:text-rose-400 transition-colors"
               >
                 <Icons.Close />
               </button>
@@ -347,7 +348,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
           <button
             onClick={handleSend}
             disabled={isLoading || !inputValue.trim()}
-            className="flex-shrink-0 p-1.5 rounded-full bg-rose-600 text-white disabled:bg-slate-700 disabled:cursor-not-allowed hover:bg-rose-500 transition-colors"
+            className="flex-shrink-0 p-1.5 rounded-full bg-rose-500 text-white disabled:bg-slate-700 disabled:cursor-not-allowed hover:bg-rose-400 transition-colors"
           >
             <SendIcon className="w-5 h-5" />
           </button>
@@ -358,9 +359,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
           <button
             ref={triggerRef}
             onClick={() => setPickerOpen(p => !p)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+            className={`xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
               activeAgent
-                ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                 : pickerOpen
                   ? 'bg-slate-700 text-slate-200 border border-slate-600'
                   : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200 hover:border-slate-600'
@@ -370,7 +371,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
             <span>Agentes</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-slate-500">Modo:</span>
             <div className="flex items-center bg-slate-800 rounded-full p-0.5 border border-slate-700 text-xs">
               <button
@@ -410,102 +411,222 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
         }
       `}</style>
 
-      <div className="w-full h-full flex flex-col max-w-3xl mx-auto bg-transparent">
+      {/* Layout: left spacer | chat column | agent sidebar */}
+      <div className="relative w-full h-full flex">
 
-        {/* Header */}
-        <header className="flex-shrink-0 flex items-center justify-between p-4 border-b border-slate-700/50">
-          <div className="flex items-center gap-4">
-            <ChatHeaderSphere />
-            <h1 className="text-xl font-bold text-slate-100">Nadia</h1>
-          </div>
-          <button
-            onClick={onNavigateHome}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 backdrop-blur-sm shadow-lg"
-          >
-            <SwitchModeIcon className="h-5 w-5" />
-            <span className="hidden sm:inline text-sm font-medium leading-none">Voltar</span>
-          </button>
-        </header>
+        {/* Left spacer — mirrors sidebar width on XL to keep chat centered */}
+        <div className="hidden xl:block xl:w-56 flex-shrink-0" />
 
-        {!chatStarted ? (
-          /* Estado inicial — input posicionado no terço superior */
-          <div className="flex-grow flex flex-col items-center px-4 pt-[12%]">
-            <p className="text-slate-500 text-sm mb-6 font-mono tracking-wide">
-              Como posso ajudar?
-            </p>
-            <div className="w-full max-w-2xl">
-              {InputBox}
+        {/* Chat column */}
+        <div className="flex-1 flex flex-col min-w-0 max-w-3xl bg-transparent">
+
+          {!chatStarted ? (
+            /* Estado inicial — identidade visual + chips + pet + input */
+            <div className="flex-grow flex flex-col items-center px-6 pt-[8%] pb-8 overflow-y-auto">
+
+              <div className="flex flex-col items-center text-center mb-10 animate-in fade-in zoom-in duration-1000">
+                <div className="flex flex-col items-center mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tighter leading-none mb-2">
+                    Nadia
+                  </h1>
+                  <div className="h-0.5 w-10 bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                </div>
+
+                <div className="relative mb-5">
+                  <div className="absolute inset-0 bg-rose-500/20 blur-3xl rounded-full" />
+                  <ChatHeaderSphere size={120} />
+                </div>
+                <h2 className="text-lg font-semibold text-white mb-2 tracking-tight">Como posso ajudar hoje?</h2>
+                <p className="text-sm text-slate-400 max-w-[320px] leading-relaxed">
+                  Explore os dados do PIESP com a Nadia e obtenha insights instantâneos.
+                </p>
+              </div>
+
+              {/* Suggestion chips */}
+              <div className="w-full max-w-lg mb-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">Sugestões de Consulta</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {[
+                    'Mostre os investimentos confirmados em Campinas',
+                    'Há projetos de transição energética anunciados?',
+                    'Quais investimentos em logística estão na Baixada Santista?',
+                  ].map((sugestao) => (
+                    <button
+                      key={sugestao}
+                      onClick={() => {
+                        setInputValue(sugestao);
+                        setTimeout(() => handleSend(), 150);
+                      }}
+                      className="px-4 py-2 rounded-full bg-slate-800/40 border border-white/5 text-slate-300 text-xs font-medium hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-95"
+                    >
+                      {sugestao}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pet + Input */}
+              <div className="w-full max-w-2xl mt-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500">
+                <div className="pointer-events-none select-none mb-1" aria-hidden="true">
+                  <CapivaraPet state={petState} size={52} />
+                </div>
+                {InputBox}
+              </div>
+
+              {/* Voltar — link discreto abaixo do input */}
+              <button
+                onClick={onNavigateHome}
+                className="mt-4 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+              >
+                ← Voltar ao início
+              </button>
             </div>
-          </div>
-        ) : (
-          /* Estado de chat — mensagens + input no rodapé */
-          <>
-            <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
-              {messages.map((msg, index) => {
-                // Esconde a última mensagem do modelo enquanto o drain de palavras está ativo
-                if (displayText && streamingComplete && index === messages.length - 1 && msg.role === 'model') return null;
-                return (
-                <div
-                  key={index}
-                  className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+
+          ) : (
+            /* Estado de chat — mensagens + input no rodapé */
+            <>
+              {/* Mini marca Nadia + Voltar */}
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2.5">
+                  <ChatHeaderSphere size={28} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-extrabold text-white tracking-tight leading-none">Nadia</span>
+                    <div className="h-0.5 w-5 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.5)]" />
+                  </div>
+                </div>
+                <button
+                  onClick={onNavigateHome}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700 text-slate-400 hover:text-slate-200 text-xs transition-all"
                 >
-                  {msg.role === 'model' && <div className="flex-shrink-0"><ChatHeaderSphere /></div>}
-                  <div className={`max-w-xl rounded-2xl px-4 py-3 ${
-                    msg.role === 'user'
-                      ? 'bg-rose-600 text-white rounded-br-none'
-                      : 'bg-slate-700 text-slate-200 rounded-bl-none'
-                  }`}>
-                    <MarkdownRenderer content={msg.text} />
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-600">
-                        <h4 className="text-xs font-semibold text-slate-400 mb-1.5">Fontes:</h4>
-                        <ul className="text-xs space-y-1">
-                          {msg.sources.map((source, i) => (
-                            <li key={i}>
-                              <a href={source.uri} target="_blank" rel="noopener noreferrer"
-                                className="text-sky-400 hover:text-sky-300 hover:underline truncate block">
-                                {source.title}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
+                  <SwitchModeIcon className="h-3.5 w-3.5" />
+                  <span>Voltar</span>
+                </button>
+              </div>
+
+              <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
+                {messages.map((msg, index) => {
+                  if (displayText && streamingComplete && index === messages.length - 1 && msg.role === 'model') return null;
+                  return (
+                    <div
+                      key={index}
+                      className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {msg.role === 'model' && <div className="flex-shrink-0"><ChatHeaderSphere /></div>}
+                      <div className={`max-w-xl rounded-2xl px-4 py-3 ${
+                        msg.role === 'user'
+                          ? 'bg-rose-500 text-white rounded-br-none shadow-[0_4px_12px_rgba(244,63,94,0.2)]'
+                          : 'bg-slate-700 text-slate-200 rounded-bl-none'
+                      }`}>
+                        <MarkdownRenderer content={msg.text} />
+                        {msg.sources && msg.sources.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-600">
+                            <h4 className="text-xs font-semibold text-slate-400 mb-1.5">Fontes:</h4>
+                            <ul className="text-xs space-y-1">
+                              {msg.sources.map((source, i) => (
+                                <li key={i}>
+                                  <a href={source.uri} target="_blank" rel="noopener noreferrer"
+                                    className="text-sky-400 hover:text-sky-300 hover:underline truncate block">
+                                    {source.title}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-                );
-              })}
-              {displayText && (
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0"><ChatHeaderSphere /></div>
-                  <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
-                    <span className="whitespace-pre-wrap leading-relaxed">{displayText}</span>
-                    <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
-                  </div>
-                </div>
-              )}
-              {isLoading && !displayText && (
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0"><ChatHeaderSphere /></div>
-                  <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">
-                    <SmallNadiaSphere />
-                    <span className="text-slate-400 animate-pulse">Pensando...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </main>
+                    </div>
+                  );
+                })}
 
-            <footer className="flex-shrink-0 px-4 pt-3 pb-8 border-t border-slate-700/50">
-              {InputBox}
-            </footer>
-          </>
-        )}
-      </div>
+                {/* Texto em streaming — pet aparece ao lado da bolha */}
+                {displayText && (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0"><ChatHeaderSphere /></div>
+                    <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
+                      <span className="whitespace-pre-wrap leading-relaxed">{displayText}</span>
+                      <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
+                    </div>
+                    <div className="flex-shrink-0 pointer-events-none select-none self-end mb-1" aria-hidden="true">
+                      <CapivaraPet state="typing" size={52} />
+                    </div>
+                  </div>
+                )}
 
-      {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
-      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-10" aria-hidden="true">
-        <CapivaraPet state={petState} size={72} />
+                {/* Pensando — pet aparece ao lado da bolha */}
+                {isLoading && !displayText && (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0"><ChatHeaderSphere /></div>
+                    <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none flex items-center gap-2">
+                      <SmallNadiaSphere />
+                      <span className="text-slate-400 animate-pulse">Pensando...</span>
+                    </div>
+                    <div className="flex-shrink-0 pointer-events-none select-none self-end mb-1" aria-hidden="true">
+                      <CapivaraPet state="attention" size={52} />
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </main>
+
+              <footer className="flex-shrink-0 px-4 pt-2 pb-6 border-t border-slate-700/50">
+                {/* Pet acima do input — some quando a IA está respondendo (já aparece ao lado) */}
+                {!isLoading && !displayText && (
+                  <div className="pointer-events-none select-none mb-0.5" aria-hidden="true">
+                    <CapivaraPet state={petState} size={52} />
+                  </div>
+                )}
+                {InputBox}
+              </footer>
+            </>
+          )}
+        </div>
+
+        {/* Agent sidebar — desktop only (XL+), usa o espaço negativo fora do max-w-3xl */}
+        <aside className="hidden xl:flex flex-col w-56 flex-shrink-0 border-l border-slate-800/60 pt-6 px-4 overflow-y-auto custom-scrollbar">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4 px-1">
+            Agente Ativo
+          </p>
+
+          <button
+            onClick={() => handleSelectAgent(null)}
+            className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-150 mb-1 ${
+              activeAgent === null
+                ? 'bg-slate-800 text-slate-100 border border-slate-600/60'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${
+              activeAgent === null ? 'bg-slate-300' : 'bg-slate-700'
+            }`} />
+            <span className={activeAgent === null ? 'font-medium' : ''}>Geral</span>
+          </button>
+
+          <div className="border-t border-slate-800 my-3" />
+
+          <div className="flex flex-col gap-0.5">
+            {AGENTS.map(agent => {
+              const isActive = activeAgent?.name === agent.name;
+              return (
+                <button
+                  key={agent.name}
+                  onClick={() => handleSelectAgent(isActive ? null : agent)}
+                  className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-left transition-all duration-150 border ${
+                    isActive
+                      ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border-transparent'
+                  }`}
+                >
+                  <span className={`flex-shrink-0 transition-colors ${isActive ? 'text-rose-500' : 'text-slate-600'}`}>
+                    {agent.icon}
+                  </span>
+                  <span className={`leading-snug ${isActive ? 'font-medium' : ''}`}>{agent.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
       </div>
     </>
   );

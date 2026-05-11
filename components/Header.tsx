@@ -8,9 +8,10 @@ interface HeaderProps {
   onNavigateToExplorar?: () => void;
   onNavigateToPerfilEmpresa?: () => void;
   onNavigateToDataLab?: () => void;
+  onNavigateToRede?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateHome, onNavigateToExplorar, onNavigateToPerfilEmpresa, onNavigateToDataLab }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMunicipal, onNavigateHome, onNavigateToExplorar, onNavigateToPerfilEmpresa, onNavigateToDataLab, onNavigateToRede }) => {
   return (
     <header className="flex-shrink-0 w-full max-w-7xl mx-auto px-6 py-4">
       <div className="grid grid-cols-3 items-center">
@@ -70,6 +71,14 @@ const Header: React.FC<HeaderProps> = ({ onNavigateToDashboards, onNavigateToMun
                 className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-all whitespace-nowrap"
               >
                 Empresas
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={onNavigateToRede}
+                className="px-4 py-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-full transition-all whitespace-nowrap"
+              >
+                Rede
               </button>
             </li>
             <li>

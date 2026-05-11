@@ -11,8 +11,9 @@ const UploadView        = React.lazy(() => import('./components/UploadView'));
 const ExplorarDadosView = React.lazy(() => import('./components/ExplorarDadosView'));
 const PerfilEmpresaView = React.lazy(() => import('./components/PerfilEmpresaView'));
 const DataLabView       = React.lazy(() => import('./components/DataLabView'));
+const RedeView          = React.lazy(() => import('./components/RedeView'));
 
-type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload' | 'explorar' | 'perfil-empresa' | 'datalab';
+type View = 'home' | 'voice' | 'chat' | 'dashboards' | 'municipal' | 'upload' | 'explorar' | 'perfil-empresa' | 'datalab' | 'rede';
 
 // Fallback minimalista enquanto o chunk da view carrega
 const ViewLoader = () => (
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const handleNavigateToExplorar     = () => setView('explorar');
   const handleNavigateToPerfilEmpresa = () => setView('perfil-empresa');
   const handleNavigateToDataLab      = () => setView('datalab');
+  const handleNavigateToRede         = () => setView('rede');
 
   const renderView = () => {
     switch (view) {
@@ -43,6 +45,7 @@ const App: React.FC = () => {
       case 'explorar':      return <ExplorarDadosView onNavigateHome={handleNavigateHome} />;
       case 'perfil-empresa': return <PerfilEmpresaView onNavigateHome={handleNavigateHome} />;
       case 'datalab':       return <DataLabView onNavigateHome={handleNavigateHome} />;
+      case 'rede':          return <RedeView onNavigateHome={handleNavigateHome} />;
       case 'home':
       default:
         return (
@@ -64,6 +67,7 @@ const App: React.FC = () => {
         onNavigateToExplorar={handleNavigateToExplorar}
         onNavigateToPerfilEmpresa={handleNavigateToPerfilEmpresa}
         onNavigateToDataLab={handleNavigateToDataLab}
+        onNavigateToRede={handleNavigateToRede}
       />
       <main className="flex-grow relative overflow-hidden flex flex-col">
         <Suspense fallback={<ViewLoader />}>

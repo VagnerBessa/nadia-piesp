@@ -17,7 +17,11 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-        }
+        },
+        dedupe: ['three'],
+      },
+      optimizeDeps: {
+        include: ['three', 'three-spritetext'],
       }
     };
 });

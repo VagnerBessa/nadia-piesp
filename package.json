@@ -12,18 +12,26 @@
     "mcp:duckdb": "node scripts/piesp-duckdb-mcp-server.mjs"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@google/genai": "^1.29.0",
     "@heroicons/react": "^2.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@mui/material": "^5.15.0",
+    "@types/cytoscape": "^3.21.9",
+    "3d-force-graph": "^1.80.0",
     "cors": "^2.8.5",
+    "cytoscape": "^3.33.3",
+    "cytoscape-fcose": "^2.2.0",
     "duckdb": "^1.4.4",
     "firebase-functions": "^7.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^2.12.0"
+    "react-force-graph": "^1.48.2",
+    "react-force-graph-3d": "^1.29.1",
+    "recharts": "^2.12.0",
+    "three-spritetext": "^1.10.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

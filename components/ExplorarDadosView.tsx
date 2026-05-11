@@ -140,6 +140,15 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
   const [resumoStats, setResumoStats] = useState<{ total: number; totalMilhoes: number } | null>(null);
   const [previewCount, setPreviewCount] = useState(0);
 
+  const [streamedText, setStreamedText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const [chartsShowing, setChartsShowing] = useState(false);
+  const [chartsOpacity, setChartsOpacity] = useState(1);
+  const [petPostStream, setPetPostStream] = useState(false);
+  const [glassesActive, setGlassesActive] = useState(false);
+
   const [anoDropdownOpen, setAnoDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -193,6 +202,50 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
     filtrarParaRelatorio(filtro).then(r => setPreviewCount(r.total_projetos)).catch(() => setPreviewCount(0));
   }, [setor, regiao, anosSelecionados, tipo, anoInicio, anoFim]);
 
+  // Transição escalonada: charts somem → pet muda → óculos aparecem
+  useEffect(() => {
+    if (isStreaming) {
+      setChartsShowing(true);
+      setChartsOpacity(1);
+      setPetPostStream(false);
+      setGlassesActive(false);
+    } else if (chartsShowing) {
+      requestAnimationFrame(() => setChartsOpacity(0));   // inicia fade CSS (0.8s)
+      const t1 = setTimeout(() => setPetPostStream(true), 350);   // typing → idle
+      const t2 = setTimeout(() => setGlassesActive(true), 550);   // óculos aparecem
+      const t3 = setTimeout(() => setChartsShowing(false), 880);  // remove DOM
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [isStreaming]);
+
+  // Inicia streaming quando o relatório chega
+  useEffect(() => {
+    if (!relatorio || isLoading) return;
+    if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+    setStreamedText('');
+    setIsStreaming(true);
+    let i = 0;
+    const full = relatorio;
+    streamIntervalRef.current = setInterval(() => {
+      i += 8;
+      if (i >= full.length) {
+        setStreamedText(full);
+        setIsStreaming(false);
+        clearInterval(streamIntervalRef.current!);
+      } else {
+        setStreamedText(full.slice(0, i));
+      }
+    }, 16);
+    return () => { if (streamIntervalRef.current) clearInterval(streamIntervalRef.current); };
+  }, [relatorio, isLoading]);
+
+  // Auto-scroll para o fundo durante o streaming
+  useEffect(() => {
+    if (mainRef.current && isStreaming) {
+      mainRef.current.scrollTop = mainRef.current.scrollHeight;
+    }
+  }, [streamedText, isStreaming]);
+
   const handleGerarRelatorio = async () => {
     setIsLoading(true);
     setError(null);
@@ -233,7 +286,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
   const labelClass = 'block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5';
 
-  const petState: PetState = isLoading ? 'supervising' : relatorio ? 'found' : 'idle';
+  const petState: PetState = (relatorio && !isLoading && !isStreaming) ? 'found' : 'analyzing';
 
   return (
     <>
@@ -271,140 +324,150 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
         <div className="flex-grow overflow-hidden flex flex-col lg:flex-row">
           {/* Painel de filtros */}
-          <aside className="flex-shrink-0 lg:w-72 p-5 border-b lg:border-b-0 lg:border-r border-slate-700/50 flex flex-col gap-5">
-            <div>
-              <p className="text-xs text-slate-500 mb-4">
-                Selecione os filtros desejados e clique em <span className="text-rose-400 font-semibold">Gerar Relatório</span>.
-              </p>
+          <aside className="flex-shrink-0 lg:w-72 border-b lg:border-b-0 lg:border-r border-slate-700/50 flex flex-col">
+            {/* Área scrollável com os filtros */}
+            <div className="flex-1 overflow-y-auto min-h-0 p-5 flex flex-col gap-5 custom-scrollbar">
+              <div>
+                <p className="text-xs text-slate-500 mb-4">
+                  Selecione os filtros desejados e clique em <span className="text-rose-400 font-semibold">Gerar Relatório</span>.
+                </p>
 
-              <div className="space-y-4">
-                <div>
-                  <label className={labelClass}>Setor</label>
-                  <div className="relative">
-                    <select value={setor} onChange={e => setSetor(e.target.value)} className={selectClass}>
-                      <option value="">{TODOS}</option>
-                      {metadados.setores.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelClass}>Setor</label>
+                    <div className="relative">
+                      <select value={setor} onChange={e => setSetor(e.target.value)} className={selectClass}>
+                        <option value="">{TODOS}</option>
+                        {metadados.setores.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className={labelClass}>Região</label>
-                  <div className="relative">
-                    <select value={regiao} onChange={e => setRegiao(e.target.value)} className={selectClass}>
-                      <option value="">{TODOS}</option>
-                      {metadados.regioes.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                  <div>
+                    <label className={labelClass}>Região</label>
+                    <div className="relative">
+                      <select value={regiao} onChange={e => setRegiao(e.target.value)} className={selectClass}>
+                        <option value="">{TODOS}</option>
+                        {metadados.regioes.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="relative" ref={dropdownRef}>
-                  <label className={labelClass}>Anos de Anúncio</label>
-                  <div 
-                    className={`${selectClass} flex items-center justify-between cursor-pointer`}
-                    onClick={() => setAnoDropdownOpen(!anoDropdownOpen)}
-                  >
-                    <span className={anosSelecionados.length === 0 ? "text-slate-400" : "text-slate-200 truncate pr-4"}>
-                      {anosSelecionados.length === 0 ? TODOS || 'Todos' : anosSelecionados.sort().join(', ')}
-                    </span>
-                    <span className="text-slate-400 text-xs">▾</span>
-                  </div>
-                  
-                  {anoDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
-                      <div className="p-2 space-y-1">
-                        {metadados.anos.map(a => {
-                          const isSelected = anosSelecionados.includes(a);
-                          return (
-                            <div 
-                              key={a} 
-                              className="flex items-center space-x-3 px-2 py-2 hover:bg-slate-700 rounded cursor-pointer transition-colors"
-                              onClick={() => {
-                                setAnosSelecionados(prev => 
-                                  isSelected ? prev.filter(y => y !== a) : [...prev, a]
-                                );
-                              }}
-                            >
-                              <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-rose-500 border-rose-500' : 'border-slate-500 bg-slate-900/50'}`}>
-                                {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  <div className="relative" ref={dropdownRef}>
+                    <label className={labelClass}>Anos de Anúncio</label>
+                    <div
+                      className={`${selectClass} flex items-center justify-between cursor-pointer`}
+                      onClick={() => setAnoDropdownOpen(!anoDropdownOpen)}
+                    >
+                      <span className={anosSelecionados.length === 0 ? "text-slate-400" : "text-slate-200 truncate pr-4"}>
+                        {anosSelecionados.length === 0 ? TODOS || 'Todos' : anosSelecionados.sort().join(', ')}
+                      </span>
+                      <span className="text-slate-400 text-xs">▾</span>
+                    </div>
+
+                    {anoDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                        <div className="p-2 space-y-1">
+                          {metadados.anos.map(a => {
+                            const isSelected = anosSelecionados.includes(a);
+                            return (
+                              <div
+                                key={a}
+                                className="flex items-center space-x-3 px-2 py-2 hover:bg-slate-700 rounded cursor-pointer transition-colors"
+                                onClick={() => {
+                                  setAnosSelecionados(prev =>
+                                    isSelected ? prev.filter(y => y !== a) : [...prev, a]
+                                  );
+                                }}
+                              >
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-rose-500 border-rose-500' : 'border-slate-500 bg-slate-900/50'}`}>
+                                  {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                                <span className="text-sm font-medium text-slate-200">{a}</span>
                               </div>
-                              <span className="text-sm font-medium text-slate-200">{a}</span>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Período Início</label>
+                      <div className="relative">
+                        <select value={anoInicio} onChange={e => setAnoInicio(e.target.value)} className={selectClass}>
+                          <option value="">{TODOS}</option>
+                          {[...opcoesPeriodo].reverse().map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
                       </div>
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <label className={labelClass}>Período Fim</label>
+                      <div className="relative">
+                        <select value={anoFim} onChange={e => setAnoFim(e.target.value)} className={selectClass}>
+                          <option value="">{TODOS}</option>
+                          {[...opcoesPeriodo]
+                            .reverse()
+                            .filter(a => anoInicio ? Number(a) >= Number(anoInicio) : true)
+                            .map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>Período Início</label>
+                    <label className={labelClass}>Tipo de Investimento</label>
                     <div className="relative">
-                      <select value={anoInicio} onChange={e => setAnoInicio(e.target.value)} className={selectClass}>
+                      <select value={tipo} onChange={e => setTipo(e.target.value)} className={selectClass}>
                         <option value="">{TODOS}</option>
-                        {[...opcoesPeriodo].reverse().map(a => <option key={a} value={a}>{a}</option>)}
+                        {metadados.tipos.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
                     </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Período Fim</label>
-                    <div className="relative">
-                      <select value={anoFim} onChange={e => setAnoFim(e.target.value)} className={selectClass}>
-                        <option value="">{TODOS}</option>
-                        {[...opcoesPeriodo]
-                          .reverse()
-                          .filter(a => anoInicio ? Number(a) >= Number(anoInicio) : true)
-                          .map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Tipo de Investimento</label>
-                  <div className="relative">
-                    <select value={tipo} onChange={e => setTipo(e.target.value)} className={selectClass}>
-                      <option value="">{TODOS}</option>
-                      {metadados.tipos.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Preview count */}
-            <div className="bg-slate-800/40 rounded-lg px-4 py-3 border border-slate-700/50">
-              <p className="text-xs text-slate-400">Projetos encontrados</p>
-              <p className="text-2xl font-bold text-rose-400">{previewCount.toLocaleString('pt-BR')}</p>
-            </div>
+              {/* Preview count */}
+              <div className="bg-slate-800/40 rounded-lg px-4 py-3 border border-slate-700/50">
+                <p className="text-xs text-slate-400">Projetos encontrados</p>
+                <p className="text-2xl font-bold text-rose-400">{previewCount.toLocaleString('pt-BR')}</p>
+              </div>
 
-            <button
-              onClick={handleGerarRelatorio}
-              disabled={isLoading || previewCount === 0}
-              className="w-full py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
-            >
-              {isLoading ? 'Gerando...' : 'Gerar Relatório'}
-            </button>
-
-            {/* Limpar filtros */}
-            {(setor || regiao || anosSelecionados.length > 0 || tipo || anoInicio || anoFim) && (
               <button
-                onClick={() => { setSetor(''); setRegiao(''); setAnosSelecionados([]); setTipo(''); setAnoInicio(''); setAnoFim(''); }}
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors text-center"
+                onClick={handleGerarRelatorio}
+                disabled={isLoading || previewCount === 0}
+                className="w-full py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
               >
-                Limpar filtros
+                {isLoading ? 'Gerando...' : 'Gerar Relatório'}
               </button>
+
+              {/* Limpar filtros */}
+              {(setor || regiao || anosSelecionados.length > 0 || tipo || anoInicio || anoFim) && (
+                <button
+                  onClick={() => { setSetor(''); setRegiao(''); setAnosSelecionados([]); setTipo(''); setAnoInicio(''); setAnoFim(''); }}
+                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors text-center"
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+
+            {/* Pet — base da sidebar, some quando a consulta começa */}
+            {!isLoading && !isStreaming && !relatorio && (
+              <div className="flex-shrink-0 px-5 pb-4 pt-3 flex justify-start pointer-events-none select-none border-t border-slate-700/30" aria-hidden="true">
+                <CapivaraPet state="idle" size={72} eyeAnim="capivara-eye-fields 11s ease-in-out 2s infinite" />
+              </div>
             )}
           </aside>
 
           {/* Área do relatório */}
-          <main className="flex-grow overflow-y-auto custom-scrollbar p-6">
+          <main ref={mainRef} className="flex-grow overflow-y-auto custom-scrollbar p-6">
             {!relatorio && !isLoading && !error && (
               <div className="h-full flex flex-col items-center justify-center text-center gap-4 opacity-50">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 text-slate-500">
@@ -418,9 +481,75 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
             )}
 
             {isLoading && (
-              <div className="h-full flex flex-col items-center justify-center gap-4">
-                <SmallNadiaSphere />
-                <p className="text-slate-400 animate-pulse text-sm">A Nadia está analisando os dados...</p>
+              <div className="h-full flex flex-col items-center justify-center gap-6">
+                {/* Container: charts alinham ao topo do pet, sem espaço entre eles */}
+                <div className="relative pointer-events-none select-none" style={{ width: 280, height: 180, overflow: 'visible' }} aria-hidden="true">
+
+                  {/* Gráfico de barras — esquerda, rente ao pet */}
+                  <div className="absolute" style={{ top: 8, left: 8, zIndex: 10, animation: 'pet-float-a 3.3s ease-in-out infinite', filter: 'drop-shadow(0 6px 18px rgba(59,130,246,0.55))' }}>
+                    <div style={{ transform: 'perspective(300px) rotateX(8deg) rotateY(16deg)' }}>
+                      <svg width="82" height="62" viewBox="0 0 82 62" style={{ display: 'block' }}>
+                        <rect width="82" height="62" rx="8" fill="#0d1b2a" stroke="#1e3a5f" strokeWidth="1.5"/>
+                        <line x1="8" y1="50" x2="76" y2="50" stroke="#1e293b" strokeWidth="0.8"/>
+                        <line x1="8" y1="40" x2="76" y2="40" stroke="#1e293b" strokeWidth="0.8"/>
+                        <line x1="8" y1="30" x2="76" y2="30" stroke="#1e293b" strokeWidth="0.8"/>
+                        <rect x="10" y="40" width="11" height="14" fill="#3b82f6" rx="1.5"/>
+                        <rect x="25" y="30" width="11" height="24" fill="#60a5fa" rx="1.5"/>
+                        <rect x="40" y="20" width="11" height="34" fill="#2563eb" rx="1.5"/>
+                        <rect x="55" y="34" width="11" height="20" fill="#1d4ed8" rx="1.5"/>
+                        <rect x="66" y="44" width="10" height="10" fill="#93c5fd" rx="1.5"/>
+                        <line x1="6" y1="55" x2="78" y2="55" stroke="#1e3a5f" strokeWidth="1.5"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Tabela — direita, rente ao pet */}
+                  <div className="absolute" style={{ top: 8, right: 8, zIndex: 10, animation: 'pet-float-b 2.9s ease-in-out 0.8s infinite', filter: 'drop-shadow(0 6px 18px rgba(244,63,94,0.4))' }}>
+                    <div style={{ transform: 'perspective(300px) rotateX(8deg) rotateY(-16deg)' }}>
+                      <svg width="82" height="62" viewBox="0 0 82 62" style={{ display: 'block' }}>
+                        <rect width="82" height="62" rx="8" fill="#0d1b2a" stroke="#1e3a5f" strokeWidth="1.5"/>
+                        <rect x="2"  y="2"  width="78" height="12" rx="3" fill="#1e3a5f"/>
+                        <rect x="6"  y="4"  width="24" height="5"  rx="1" fill="#60a5fa" opacity="0.65"/>
+                        <rect x="46" y="4"  width="16" height="5"  rx="1" fill="#60a5fa" opacity="0.65"/>
+                        <rect x="2"  y="17" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <rect x="44" y="17" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <rect x="2"  y="27" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <rect x="44" y="27" width="22" height="7"  rx="1" fill="#f43f5e" opacity="0.5"/>
+                        <rect x="2"  y="37" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <rect x="44" y="37" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <rect x="2"  y="47" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <rect x="44" y="47" width="36" height="7"  rx="1" fill="#1e293b"/>
+                        <line x1="42" y1="2" x2="42" y2="60" stroke="#1e3a5f" strokeWidth="1"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Bloco de notas — centro, levemente acima dos outros dois */}
+                  <div className="absolute" style={{ top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 10, animation: 'pet-float-c 4.1s ease-in-out 1.4s infinite', filter: 'drop-shadow(0 6px 18px rgba(148,163,184,0.35))' }}>
+                    <svg width="68" height="58" viewBox="0 0 68 58" style={{ display: 'block' }}>
+                      <rect width="68" height="58" rx="8" fill="#0d1b2a" stroke="#1e3a5f" strokeWidth="1.5"/>
+                      {/* espiral de encadernação */}
+                      <rect x="2" y="4"  width="8" height="50" rx="3" fill="#1a2744"/>
+                      <circle cx="6" cy="12" r="2.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="1.2"/>
+                      <circle cx="6" cy="24" r="2.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="1.2"/>
+                      <circle cx="6" cy="36" r="2.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="1.2"/>
+                      <circle cx="6" cy="48" r="2.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="1.2"/>
+                      {/* linhas de texto */}
+                      <rect x="16" y="10" width="46" height="4" rx="1.5" fill="#1e293b"/>
+                      <rect x="16" y="19" width="38" height="4" rx="1.5" fill="#1e293b"/>
+                      <rect x="16" y="28" width="46" height="4" rx="1.5" fill="#f43f5e" fillOpacity="0.45"/>
+                      <rect x="16" y="37" width="30" height="4" rx="1.5" fill="#1e293b"/>
+                      <rect x="16" y="46" width="42" height="4" rx="1.5" fill="#1e293b"/>
+                    </svg>
+                  </div>
+
+                  {/* Pet — base, charts ficam rentes ao topo da cabeça */}
+                  <div className="absolute bottom-0 left-1/2" style={{ transform: 'translateX(-50%)', zIndex: 1 }}>
+                    <CapivaraPet state="found" size={110} />
+                  </div>
+                </div>
+
+                <p className="text-slate-400 animate-pulse text-sm tracking-wide">Preparando os dados...</p>
               </div>
             )}
 
@@ -446,21 +575,79 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
                     </div>
                   </div>
                 )}
-                <div className="bg-slate-800/30 rounded-xl border border-slate-700/40 p-6 text-slate-200">
-                  <MarkdownRenderer content={relatorio} />
+
+                <div className="flex gap-4 items-start">
+                  {/* Texto do relatório */}
+                  <div className="flex-1 min-w-0 bg-slate-800/30 rounded-xl border border-slate-700/40 p-6 text-slate-200">
+                    <MarkdownRenderer content={isStreaming ? streamedText : relatorio} />
+                    {isStreaming && (
+                      <span className="inline-block w-1.5 h-[1.1em] bg-rose-400/70 animate-pulse ml-0.5 align-middle rounded-sm" />
+                    )}
+                  </div>
+
+                  {/* Pet direita — único bloco; gráficos fazem fade-out suave ao terminar */}
+                  <div
+                    className="flex-shrink-0 pointer-events-none select-none"
+                    style={{
+                      position: 'sticky',
+                      bottom: '1rem',
+                      alignSelf: 'flex-end',
+                    }}
+                    aria-hidden="true"
+                  >
+                    {/* gráficos acima do pet — fade-out escalonado */}
+                    {chartsShowing && (
+                      <div style={{
+                        opacity: chartsOpacity,
+                        transition: 'opacity 0.8s ease-out',
+                        position: 'relative', width: 110, height: 44, overflow: 'visible',
+                      }}>
+                        <div className="absolute" style={{ top: 0, left: 0, animation: 'pet-float-a 3.3s ease-in-out infinite', filter: 'drop-shadow(0 4px 12px rgba(59,130,246,0.55))' }}>
+                          <svg width="48" height="36" viewBox="0 0 48 36" style={{ display: 'block' }}>
+                            <rect width="48" height="36" rx="5" fill="#0d1b2a" stroke="#1e3a5f" strokeWidth="1.2"/>
+                            <rect x="5"  y="22" width="7" height="10" fill="#3b82f6" rx="1"/>
+                            <rect x="15" y="16" width="7" height="16" fill="#60a5fa" rx="1"/>
+                            <rect x="25" y="10" width="7" height="22" fill="#2563eb" rx="1"/>
+                            <rect x="35" y="20" width="7" height="12" fill="#93c5fd" rx="1"/>
+                            <line x1="3" y1="33" x2="45" y2="33" stroke="#1e3a5f" strokeWidth="1"/>
+                          </svg>
+                        </div>
+                        <div className="absolute" style={{ top: 0, right: 0, animation: 'pet-float-b 2.9s ease-in-out 0.8s infinite', filter: 'drop-shadow(0 4px 12px rgba(244,63,94,0.4))' }}>
+                          <svg width="48" height="36" viewBox="0 0 48 36" style={{ display: 'block' }}>
+                            <rect width="48" height="36" rx="5" fill="#0d1b2a" stroke="#1e3a5f" strokeWidth="1.2"/>
+                            <rect x="2" y="2" width="6" height="32" rx="2" fill="#1a2744"/>
+                            <circle cx="5" cy="9"  r="1.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="0.8"/>
+                            <circle cx="5" cy="18" r="1.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="0.8"/>
+                            <circle cx="5" cy="27" r="1.8" fill="#0d1b2a" stroke="#3b82f6" strokeWidth="0.8"/>
+                            <rect x="11" y="8"  width="33" height="3" rx="1" fill="#1e293b"/>
+                            <rect x="11" y="15" width="25" height="3" rx="1" fill="#1e293b"/>
+                            <rect x="11" y="22" width="33" height="3" rx="1" fill="#f43f5e" fillOpacity="0.4"/>
+                            <rect x="11" y="29" width="20" height="3" rx="1" fill="#1e293b"/>
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                    {/* pet — state e acessórios escalonados */}
+                    <CapivaraPet
+                      state={petPostStream ? 'idle' : 'typing'}
+                      size={80}
+                      withGlasses={glassesActive}
+                      eyeAnim={glassesActive ? 'capivara-eye-proud 5.8s ease-in-out 0.6s infinite' : undefined}
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 text-center pt-2">
-                  Relatório gerado pela Nadia com base nos dados do PIESP. Valide informações críticas na fonte oficial.
-                </p>
+
+                {!isStreaming && glassesActive && (
+                  <p className="text-xs text-slate-500 text-center pt-2">
+                    Relatório gerado pela Nadia com base nos dados do PIESP. Valide informações críticas na fonte oficial.
+                  </p>
+                )}
               </div>
             )}
           </main>
         </div>
       </div>
 
-      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-10" aria-hidden="true">
-        <CapivaraPet state={petState} size={72} />
-      </div>
     </>
   );
 };

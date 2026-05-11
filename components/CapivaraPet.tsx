@@ -8,6 +8,7 @@ export type PetState =
   | 'typing'
   | 'user_typing'
   | 'supervising'   // query/sistema carregando — caminha lateralmente
+  | 'analyzing'     // analisando dados — pata varre gráfico imaginário
   | 'waiting'       // IA processando — pestanejo lento, paciente
   | 'found'         // resultado chegou — olhar sobe brevemente
   | 'empty'         // zero resultados — olhar desce
@@ -17,6 +18,8 @@ interface CapivaraPetProps {
   state?: PetState;
   size?: number;
   audioLevel?: number;
+  eyeAnim?: string;
+  withGlasses?: boolean;
 }
 
 const R  = '#e03848';
@@ -26,13 +29,14 @@ const W  = '#f4f4f4';
 const N  = '#1a1f30';
 const M  = '#7a1020';
 
-const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) => {
+const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64, eyeAnim, withGlasses = false }) => {
   const isListening    = state === 'listening';
   const isSpeaking     = state === 'speaking';
   const isAttention    = state === 'attention';
   const isTyping       = state === 'typing';
   const isUserTyping   = state === 'user_typing';
   const isSupervising  = state === 'supervising';
+  const isAnalyzing    = state === 'analyzing';
   const isWaiting      = state === 'waiting';
   const isFound        = state === 'found';
   const isEmpty        = state === 'empty';
@@ -43,7 +47,9 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
   let pupilDY = 0;
   if (isSpeaking)                        { pupilDX = 5;  pupilDY = -4; }
   else if (isAttention || isFound)       { pupilDX = 0;  pupilDY = -3; }
+  else if (isReading)                           { pupilDX = 0; pupilDY = 4; }
   else if (isTyping || isUserTyping || isEmpty) { pupilDX = 0; pupilDY = 5; }
+  else if (isAnalyzing)                        { pupilDX = 0; pupilDY = 4; }
 
   // Animação do wrapper
   let wrapperAnim: string;
@@ -52,12 +58,13 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
   else if (isSpeaking)  wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
   else if (isTyping)    wrapperAnim = 'capivara-breathe 2s ease-in-out infinite';
   else if (isUserTyping) wrapperAnim = 'capivara-breathe 3s ease-in-out infinite';
-  else if (isSupervising) wrapperAnim = 'capivara-patrol 4s ease-in-out infinite';
+  else if (isSupervising) wrapperAnim = 'capivara-patrol 6s ease-in-out infinite';
+  else if (isAnalyzing)  wrapperAnim = 'capivara-breathe 3.2s ease-in-out infinite';
   else if (isWaiting)   wrapperAnim = 'capivara-breathe 5s ease-in-out infinite';
   else if (isFound)     wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite';
   else if (isEmpty)     wrapperAnim = 'capivara-breathe 4s ease-in-out infinite';
   else if (isReading)   wrapperAnim = 'capivara-breathe 4s ease-in-out infinite';
-  else wrapperAnim = 'capivara-breathe 3.5s ease-in-out infinite, capivara-tilt 6s ease-in-out 1s infinite';
+  else wrapperAnim = 'capivara-breathe 4.3s ease-in-out infinite, capivara-tilt 11.7s ease-in-out 2.1s infinite';
 
   const wrapperStyle: React.CSSProperties = {
     width: size,
@@ -69,14 +76,18 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
 
   // Pestanejo: lento no waiting/idle, normal nos demais
   const blinkAnim     = (isAttention || isWaiting) ? 'capivara-blink-slow' : 'capivara-blink';
-  const blinkDuration = (isAttention || isWaiting) ? '8s' : '4.5s';
+  const blinkDuration = (isAttention || isWaiting) ? '14s' : '8.3s';
 
   // Olho dart: idle → random; supervising → varre esq→dir continuamente; reading → suave esq→dir
   let eyeDartStyle: React.CSSProperties | undefined;
-  if (state === 'idle') {
-    eyeDartStyle = { animation: 'capivara-eye-dart 5s ease-in-out 1s infinite' };
+  if (eyeAnim) {
+    eyeDartStyle = { animation: eyeAnim };
+  } else if (state === 'idle') {
+    eyeDartStyle = { animation: 'capivara-eye-dart 9.7s ease-in-out 3.2s infinite' };
   } else if (isSupervising) {
     eyeDartStyle = { animation: 'capivara-eye-scan 2.4s linear infinite' };
+  } else if (isAnalyzing) {
+    eyeDartStyle = { animation: 'capivara-eye-scan 2.1s linear infinite' };
   } else if (isReading) {
     eyeDartStyle = { animation: 'capivara-eye-read 3.5s ease-in-out infinite' };
   }
@@ -111,7 +122,16 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
         <rect x={12} y={26} width={22} height={22} fill={R}
           style={{ opacity: 0, animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.3s infinite` }} />
         <rect x={62} y={26} width={22} height={22} fill={R}
-          style={{ opacity: 0, animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.42s infinite` }} />
+          style={{ opacity: 0, animation: `${blinkAnim} ${blinkDuration} ease-in-out 0.55s infinite` }} />
+
+        {/* ── ÓCULOS (fade-in via opacity) ────────── */}
+        <g style={{ opacity: withGlasses ? 1 : 0, transition: 'opacity 0.45s ease-in' }}>
+          <rect x={10} y={24} width={26} height={26} fill="none" stroke="#111827" strokeWidth={3}/>
+          <rect x={60} y={24} width={26} height={26} fill="none" stroke="#111827" strokeWidth={3}/>
+          <rect x={36} y={33} width={24} height={4}  fill="#111827"/>
+          <rect x={0}  y={33} width={10} height={4}  fill="#111827"/>
+          <rect x={86} y={33} width={10} height={4}  fill="#111827"/>
+        </g>
 
         {/* ── FOCINHO ─────────────────────────────── */}
         <rect x={8}  y={52} width={80} height={26} fill={P} />
@@ -124,7 +144,7 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
         <rect x={88} y={76} width={8}  height={22} fill={Rd} />
 
         {/* ── PERNAS ──────────────────────────────── */}
-        {!isTyping && (
+        {!isTyping && !isAnalyzing && (
           <>
             <rect x={0}  y={88} width={8}  height={24} fill={Rd} />
             <rect x={4}  y={88} width={18} height={24} fill={R}  />
@@ -152,6 +172,60 @@ const CapivaraPet: React.FC<CapivaraPetProps> = ({ state = 'idle', size = 64 }) 
               <rect x={72} y={88} width={24} height={20} fill={Rd} />
               <rect x={74} y={88} width={18} height={20} fill={R}  />
               <rect x={74} y={100} width={18} height={8}  fill={P}  />
+            </g>
+          </>
+        )}
+        {/* ── BRAÇOS + LIVRO (estado reading) ─────── */}
+        {isReading && (
+          <>
+            {/* lombada do livro */}
+            <rect x={44} y={105} width={8}  height={23} fill="#4a1e0a" />
+            <rect x={46} y={106} width={4}  height={21} fill="#6b2e12" />
+            {/* página esquerda */}
+            <rect x={2}  y={108} width={42} height={18} fill="#f2e8d0" />
+            <rect x={40} y={108} width={4}  height={18} fill="#d8cdb4" />
+            {/* página direita */}
+            <rect x={52} y={108} width={42} height={18} fill="#f8f2e4" />
+            <rect x={52} y={108} width={4}  height={18} fill="#d8cdb4" />
+            {/* linhas de texto — esq */}
+            <rect x={6}  y={112} width={28} height={2} fill="#b8a888" />
+            <rect x={6}  y={116} width={22} height={2} fill="#b8a888" />
+            <rect x={6}  y={120} width={26} height={2} fill="#b8a888" />
+            {/* linhas de texto — dir */}
+            <rect x={56} y={112} width={28} height={2} fill="#b8a888" />
+            <rect x={56} y={116} width={23} height={2} fill="#b8a888" />
+            <rect x={56} y={120} width={26} height={2} fill="#b8a888" />
+            {/* pata esquerda */}
+            <rect x={0}  y={90} width={8}  height={20} fill={Rd} />
+            <rect x={4}  y={90} width={16} height={20} fill={R}  />
+            <rect x={4}  y={102} width={16} height={8}  fill={P}  />
+            {/* pata direita */}
+            <rect x={76} y={90} width={16} height={20} fill={R}  />
+            <rect x={76} y={102} width={16} height={8}  fill={P}  />
+            <rect x={88} y={90} width={8}  height={20} fill={Rd} />
+          </>
+        )}
+        {/* ── BRAÇOS + GRÁFICO (estado analyzing) ─── */}
+        {isAnalyzing && (
+          <>
+            {/* painel escuro do gráfico */}
+            <rect x={0}  y={108} width={96} height={20} fill="#0d1b2a" />
+            {/* linha de base */}
+            <rect x={2}  y={124} width={92} height={2}  fill="#1e3a5f" />
+            {/* barras do gráfico */}
+            <rect x={8}  y={117} width={11} height={7}  fill="#3b82f6" />
+            <rect x={23} y={113} width={11} height={11} fill="#60a5fa" />
+            <rect x={38} y={110} width={11} height={14} fill="#2563eb" />
+            <rect x={53} y={115} width={11} height={9}  fill="#1d4ed8" />
+            <rect x={68} y={119} width={11} height={5}  fill="#93c5fd" />
+            {/* pata direita estática */}
+            <rect x={74} y={88} width={18} height={24} fill={R}  />
+            <rect x={88} y={88} width={8}  height={24} fill={Rd} />
+            {/* pata esquerda varre o gráfico */}
+            <g style={{ animation: 'capivara-analyze-paw 2.8s ease-in-out infinite' }}>
+              <rect x={0}  y={88} width={8}  height={24} fill={Rd} />
+              <rect x={4}  y={88} width={18} height={24} fill={R}  />
+              <rect x={4}  y={100} width={18} height={8}  fill={P}  />
             </g>
           </>
         )}

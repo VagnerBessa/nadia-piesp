@@ -4,6 +4,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { getRedeEmpresa, getRedeRegiao, getRedeQuery } from '../services/piespGraphService';
 import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
 import { callOpenRouter } from '../services/openrouterService';
 import { OPENROUTER_API_KEY } from '../config';
@@ -69,6 +70,18 @@ const piespTools = [
             termo_busca: { type: Type.STRING, description: 'Termos livres separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
           }
         }
+      },
+      {
+        name: 'consultar_rede_investimentos',
+        description: 'Use quando o usuário perguntar sobre CONEXÕES, RELAÇÕES ou REDES entre entidades: "quais empresas investem em múltiplos setores", "quem investe em X", "ecossistema em torno de Y", "empresas conectadas a Z". NÃO usar para consultas de volume, soma ou listagem simples — nesses casos use consultar_projetos_piesp.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            modo: { type: Type.STRING, description: 'Um de: "empresa" (centrado numa empresa), "regiao" (empresas de uma região), "livre" (busca por palavras-chave)' },
+            valor: { type: Type.STRING, description: 'Nome da empresa, região ou palavras-chave conforme o modo escolhido' },
+          },
+          required: ['modo', 'valor'],
+        },
       }
     ]
   }
@@ -99,6 +112,40 @@ async function executarFerramenta(nome: string, args: any): Promise<any> {
       if (semAno.total_anuncios > 0) resultados = semAno;
     }
     return { sucesso: true, ...resultados };
+  }
+  if (nome === 'consultar_rede_investimentos') {
+    const { modo, valor } = args;
+    try {
+      let graphData;
+      if (modo === 'empresa') graphData = await getRedeEmpresa(valor);
+      else if (modo === 'regiao') graphData = await getRedeRegiao(valor);
+      else graphData = await getRedeQuery({ termo_busca: valor });
+
+      const topEmpresas = graphData.nodes
+        .filter(n => n.type === 'empresa_alvo').slice(0, 8)
+        .map(n => ({ empresa: n.id, projetos: n.count, valor_milhoes: Math.round(n.valor_total * 10) / 10 }));
+      const topInvestidoras = graphData.nodes
+        .filter(n => n.type === 'investidora').slice(0, 5)
+        .map(n => ({ investidora: n.id, projetos: n.count }));
+      const topMunicipios = graphData.nodes
+        .filter(n => n.type === 'municipio').slice(0, 5)
+        .map(n => ({ municipio: n.id, projetos: n.count }));
+      const setores = graphData.nodes
+        .filter(n => n.type === 'setor')
+        .map(n => ({ setor: n.id, projetos: n.count }));
+
+      return {
+        sucesso: true,
+        ...graphData.meta,
+        top_empresas: topEmpresas,
+        top_investidoras: topInvestidoras,
+        top_municipios: topMunicipios,
+        setores,
+        observacao: 'Dados de rede mapeados. Para visualização interativa, o usuário pode acessar a aba "Rede" no menu.',
+      };
+    } catch (e: any) {
+      return { sucesso: false, error: 'Erro ao consultar rede de investimentos.' };
+    }
   }
   return { error: 'Ferramenta não reconhecida' };
 }
