@@ -101,9 +101,9 @@ function buildGraphFromRecords(rows: RawRow[], noCentral?: string): GraphData {
       addEdge(empresa, setor, valor, temValor);
     }
 
-    // Split only by comma — slash is common in company names (S/A, Ltda/Me)
+    // Split by comma OR " / " (spaced slash = list separator); bare "/" kept intact (S/A, Ltda/Me)
     if (row.investidora_s) {
-      const partes = row.investidora_s.split(',').map(s => s.trim()).filter(s => s.length > 3);
+      const partes = row.investidora_s.split(/,|\s+\/\s+/).map(s => s.trim()).filter(s => s.length > 3);
       for (const inv of partes) {
         if (inv === empresa) continue; // mesma entidade nos dois papéis — evita self-loop
         addNode(inv, 'investidora', valor, temValor, ano);

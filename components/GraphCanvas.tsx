@@ -58,6 +58,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
   const fgRef         = useRef<any>(null);
   const containerRef  = useRef<HTMLDivElement>(null);
   const nodeSprites   = useRef(new WeakMap<object, any>());
+  const hasZoomed     = useRef(false);
   // Always-current snapshot of graphData (force-graph mutates nodes in-place with x/y/z)
   const gd            = useRef<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [dims, setDims] = useState({ w: 800, h: 600 });
@@ -91,7 +92,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
   const [showCtrl,    setShowCtrl]    = useState(false);
   const [showLegend,  setShowLegend]  = useState(false);
 
-  useEffect(() => { setDensity(Math.min(500, data.nodes.length)); setMinDegree(0); setPanMode(false); }, [data]);
+  useEffect(() => {
+    setDensity(Math.min(500, data.nodes.length)); setMinDegree(0); setPanMode(false);
+    hasZoomed.current = false;
+  }, [data]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -429,7 +433,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
           linkDirectionalParticleColor={linkParticleColor}
           d3AlphaDecay={alphaDec}
           d3VelocityDecay={veloDec}
-          onEngineStop={() => applyPanMode(panMode)}
+          onEngineStop={() => {
+            applyPanMode(panMode);
+            if (!hasZoomed.current) {
+              fgRef.current?.zoomToFit(600, 80);
+              hasZoomed.current = true;
+            }
+          }}
         />
       </div>
 
@@ -530,7 +540,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
         style={{ left: `${drawerW + 12}px` }}>
         {panMode
           ? 'Drag = mover · Scroll = zoom · Click = detalhe'
-          : 'Drag = rotar · Scroll = zoom · Click = detalhe · ✥ = mover'}
+          : 'Drag = rotar · Scroll = zoom · Click = detalhe · ↕↔ = mover'}
       </div>
 
       {/* ── Top-right controls */}
@@ -570,7 +580,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
             className={`text-[10px] px-3 py-1.5 rounded-lg border transition-all ${
               panMode ? 'bg-sky-500/20 border-sky-500/40 text-sky-400'
               : 'bg-slate-900/80 border-slate-700/30 text-slate-400 hover:text-white'}`}>
-            ✥
+            ↕↔
           </button>
           <button onClick={() => setPaused(p => !p)}
             className={`text-[10px] px-3 py-1.5 rounded-lg border transition-all ${
