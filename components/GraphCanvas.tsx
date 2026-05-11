@@ -181,6 +181,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     setSelectedId(null); setNeighbors(new Set()); setQueried(null); onNodeSelect?.(null);
   }, [onNodeSelect]);
 
+  // Padding scales with neighborhood size: 2 nodes → ~280px back, 16+ nodes → 80px
+  const zoomToNeighborhood = useCallback((nbrs: Set<string>) => {
+    const padding = Math.max(80, Math.round(380 / Math.sqrt(nbrs.size)));
+    setTimeout(() => {
+      fgRef.current?.zoomToFit(700, padding, (n: any) => nbrs.has(n.id));
+    }, 50);
+  }, []);
+
   const handleNodeClick = useCallback((node: any) => {
     if (!node) { clearSelection(); return; }
     if (selectedId === node.id) { clearSelection(); return; }
@@ -193,11 +201,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     setSelectedId(node.id);
     setNeighbors(nbrs);
     onNodeSelect?.(data.nodes.find(n => n.id === node.id) ?? null);
-    // Fit camera to the full neighborhood so no connected node goes off-screen
-    setTimeout(() => {
-      fgRef.current?.zoomToFit(700, 100, (n: any) => nbrs.has(n.id));
-    }, 50);
-  }, [selectedId, data.nodes, onNodeSelect]);
+    zoomToNeighborhood(nbrs);
+  }, [selectedId, data.nodes, onNodeSelect, zoomToNeighborhood]);
 
   // ── Color functions (depend on state → re-evaluate when selection changes) ──
 
@@ -319,11 +324,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     setNeighbors(nbrs);
     setQueried(nbrs);
     onNodeSelect?.(data.nodes.find(n => n.id === live.id) ?? null);
-
-    setTimeout(() => {
-      fgRef.current?.zoomToFit(700, 100, (n: any) => nbrs.has(n.id));
-    }, 50);
-  }, [data.nodes, onNodeSelect]);
+    zoomToNeighborhood(nbrs);
+  }, [data.nodes, onNodeSelect, zoomToNeighborhood]);
 
   // ── Analytics physics commands ──────────────────────────────────────────
 
