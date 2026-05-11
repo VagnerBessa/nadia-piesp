@@ -2,8 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { generateWithFallback } from '../services/geminiService';
 import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
-import { SmallNadiaSphere } from './SmallNadiaSphere';
-import CapivaraPet, { PetState } from './CapivaraPet';
+import { LoadingPetOverlay } from './LoadingPetOverlay';
 import { EmbeddedChart } from './EmbeddedChart';
 
 interface SourceItem {
@@ -510,7 +509,6 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
     }
   };
 
-  const petState: PetState = isLoading ? 'supervising' : dossie ? 'reading' : 'idle';
 
   return (
     <>
@@ -616,15 +614,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
           )}
 
           {isLoading && (
-            <div className="h-full flex flex-col items-center justify-center gap-4">
-              <SmallNadiaSphere />
-              <div className="text-center">
-                <p className="text-slate-400 animate-pulse text-sm">
-                  A Nadia está pesquisando {empresaPesquisada}...
-                </p>
-                <p className="text-slate-500 text-xs mt-1">Consultando PIESP e buscando na internet</p>
-              </div>
-            </div>
+            <LoadingPetOverlay label={`Pesquisando ${empresaPesquisada}`} />
           )}
 
           {error && (
@@ -730,9 +720,6 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         </main>
       </div>
 
-      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-10" aria-hidden="true">
-        <CapivaraPet state={petState} size={72} />
-      </div>
     </>
   );
 };
