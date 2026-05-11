@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Component } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Component } from 'react';
 import CapivaraPet from './CapivaraPet';
 import GraphCanvas from './GraphCanvas';
 import {
@@ -322,17 +322,60 @@ function NodePanel({
   );
 }
 
+// ── Mini graph thought bubble ─────────────────────────────────────────────
+
+function MiniGraphSVG() {
+  return (
+    <svg viewBox="0 0 84 60" width="84" height="60">
+      {/* edges */}
+      <line x1="42" y1="11" x2="14" y2="40" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="42" y1="11" x2="70" y2="40" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="42" y1="11" x2="42" y2="49" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="14" y1="40" x2="42" y2="49" stroke="#334155" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="70" y1="40" x2="42" y2="49" stroke="#334155" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="14" y1="40" x2="70" y2="40" stroke="#334155" strokeWidth="0.8" strokeLinecap="round" />
+      {/* side nodes */}
+      <circle cx="22" cy="20" r="3.5" fill="#a78bfa" opacity="0.85" />
+      <line x1="42" y1="11" x2="22" y2="20" stroke="#334155" strokeWidth="0.8" />
+      <circle cx="62" cy="20" r="3" fill="#34d399" opacity="0.85" />
+      <line x1="42" y1="11" x2="62" y2="20" stroke="#334155" strokeWidth="0.8" />
+      {/* main nodes */}
+      <circle cx="42" cy="11" r="8"  fill="#f43f5e" opacity="0.9" />
+      <circle cx="14" cy="40" r="5.5" fill="#38bdf8" opacity="0.9" />
+      <circle cx="70" cy="40" r="5.5" fill="#38bdf8" opacity="0.9" />
+      <circle cx="42" cy="49" r="4.5" fill="#34d399" opacity="0.9" />
+    </svg>
+  );
+}
+
 // ── RedeView ─────────────────────────────────────────────────────────────
+
+const MIN_LOADING_MS = 1400;
 
 const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
   const [modo, setModo]               = useState<Modo>('empresa');
   const [query, setQuery]             = useState('');
   const [graphData, setGraphData]     = useState<GraphData | null>(null);
   const [isLoading, setIsLoading]     = useState(false);
+  const [showLoading, setShowLoading] = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [regioes, setRegioes]         = useState<string[]>([]);
   const [metrics, setMetrics]         = useState<GraphMetrics | null>(null);
+  const loadingStartRef               = useRef<number>(0);
+
+  // Keep loading overlay visible for at least MIN_LOADING_MS so the pet doesn't flash
+  useEffect(() => {
+    if (isLoading) {
+      loadingStartRef.current = Date.now();
+      setShowLoading(true);
+    } else {
+      const elapsed   = Date.now() - loadingStartRef.current;
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+      const t = setTimeout(() => setShowLoading(false), remaining);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     getMetadados().then(m => setRegioes(m.regioes)).catch(() => {});
@@ -473,10 +516,23 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
             </p>
           </div>
         )}
-        {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/80 z-10">
+        {showLoading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/90 z-10">
+            {/* Thought bubble */}
+            <div className="flex flex-col items-center">
+              <div className="bg-slate-800/90 border border-slate-600/30 rounded-2xl px-5 py-4 shadow-xl backdrop-blur-sm animate-pulse">
+                <MiniGraphSVG />
+              </div>
+              {/* Bubble dots */}
+              <div className="flex items-end gap-1.5 mt-1.5 mb-0.5">
+                <div className="w-2 h-2 rounded-full bg-slate-700/80" />
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-700/50" />
+              </div>
+            </div>
             <CapivaraPet state="analyzing" withGlasses size={72} />
-            <p className="text-slate-400 text-sm">Mapeando conexões…</p>
+            <p className="text-slate-400 text-sm mt-1">
+              {isLoading ? 'Mapeando conexões…' : 'Preparando visualização…'}
+            </p>
           </div>
         )}
         {error && !isLoading && (
@@ -486,7 +542,7 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
           </div>
         )}
 
-        {graphData && !isLoading && (
+        {graphData && !showLoading && (
           <GraphErrorBoundary onReset={() => { setGraphData(null); setError(null); }}>
             <GraphCanvas
               data={graphData}
