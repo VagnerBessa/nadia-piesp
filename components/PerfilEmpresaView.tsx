@@ -4,6 +4,7 @@ import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../ser
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { LoadingPetOverlay } from './LoadingPetOverlay';
 import { EmbeddedChart } from './EmbeddedChart';
+import CapivaraPet from './CapivaraPet';
 
 interface SourceItem {
   uri: string;
@@ -395,9 +396,54 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [empresaPesquisada, setEmpresaPesquisada] = useState<string | null>(null);
   const [piespStats, setPiespStats] = useState<{ total_projetos: number; total_investimentos: number } | null>(null);
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [streamedText, setStreamedText]   = useState('');
+  const [isStreaming, setIsStreaming]     = useState(false);
+  const [petPostStream, setPetPostStream] = useState(false);
+  const [glassesActive, setGlassesActive] = useState(false);
+  const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mainRef    = useRef<HTMLDivElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
   const sugestoesRef = useRef<HTMLDivElement>(null);
   const sourcesRef = useRef<HTMLDivElement>(null);
+
+  // Inicia streaming quando o dossiê chega
+  useEffect(() => {
+    if (!dossie || isLoading) return;
+    if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+    setStreamedText('');
+    setIsStreaming(true);
+    setPetPostStream(false);
+    setGlassesActive(false);
+    let i = 0;
+    const full = dossie;
+    streamIntervalRef.current = setInterval(() => {
+      i += 10;
+      if (i >= full.length) {
+        setStreamedText(full);
+        setIsStreaming(false);
+        clearInterval(streamIntervalRef.current!);
+      } else {
+        setStreamedText(full.slice(0, i));
+      }
+    }, 16);
+    return () => { if (streamIntervalRef.current) clearInterval(streamIntervalRef.current); };
+  }, [dossie, isLoading]);
+
+  // Transição pós-stream: typing → idle com óculos
+  useEffect(() => {
+    if (!isStreaming && dossie) {
+      const t1 = setTimeout(() => setPetPostStream(true), 350);
+      const t2 = setTimeout(() => setGlassesActive(true), 600);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isStreaming, dossie]);
+
+  // Auto-scroll durante o streaming
+  useEffect(() => {
+    if (mainRef.current && isStreaming) {
+      mainRef.current.scrollTop = mainRef.current.scrollHeight;
+    }
+  }, [streamedText, isStreaming]);
 
   // Filtra sugestões pelo que o usuário digitou
   const sugestoesFiltradas = useMemo(() => {
@@ -600,7 +646,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         </div>
 
         {/* Área do dossiê */}
-        <main className="flex-grow overflow-y-auto custom-scrollbar p-6">
+        <main ref={mainRef} className="flex-grow overflow-y-auto custom-scrollbar p-6">
           {!dossie && !isLoading && !error && (
             <div className="h-full flex flex-col items-center justify-center text-center gap-4 opacity-50">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 text-slate-500">
@@ -705,14 +751,33 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
                   </div>
                 )}
 
-                {/* Dossiê */}
-                <div className="bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
-                  <DossieRenderer content={dossie} sources={sources} />
+                {/* Dossiê + pet digitando à direita */}
+                <div className="flex gap-4 items-start">
+                  <div className="flex-1 min-w-0 bg-slate-800/30 rounded-xl border border-slate-700/40 p-6">
+                    <DossieRenderer content={isStreaming ? streamedText : (dossie ?? '')} sources={sources} />
+                    {isStreaming && (
+                      <span className="inline-block w-1.5 h-[1.1em] bg-rose-400/70 animate-pulse ml-0.5 align-middle rounded-sm" />
+                    )}
+                  </div>
+
+                  {/* Pet à direita — sticky ao fundo, typing durante stream */}
+                  <div className="flex-shrink-0 pointer-events-none select-none"
+                    style={{ position: 'sticky', bottom: '1rem', alignSelf: 'flex-end' }}
+                    aria-hidden="true">
+                    <CapivaraPet
+                      state={petPostStream ? 'idle' : 'typing'}
+                      size={80}
+                      withGlasses={glassesActive}
+                      eyeAnim={glassesActive ? 'capivara-eye-proud 5.8s ease-in-out 0.6s infinite' : undefined}
+                    />
+                  </div>
                 </div>
 
-                <p className="text-xs text-slate-500 text-center pt-2">
-                  Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
-                </p>
+                {!isStreaming && glassesActive && (
+                  <p className="text-xs text-slate-500 text-center pt-2">
+                    Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
+                  </p>
+                )}
               </div>
 
             </div>
