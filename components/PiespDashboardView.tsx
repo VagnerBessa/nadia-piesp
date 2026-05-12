@@ -247,7 +247,7 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
                   <Typography variant="h4" component="h1" sx={{ color: '#fff', fontSize: '1.6rem' }}>
                     Investimentos Anunciados no Estado de São Paulo
                   </Typography>
-                  <CapivaraPet state={petState} size={56} withBook pupilOffset={petPupilOffset} />
+                  <CapivaraPet state={petState} size={56} withBook withGlasses pupilOffset={petPupilOffset} />
                 </Box>
                 <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: '800px', fontSize: '0.9rem' }}>
                   Painel consolidado com dados da base PIESP. Valores em R$ milhões (preços correntes).
