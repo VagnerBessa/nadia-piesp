@@ -33,7 +33,7 @@ import CapivaraPet, { PetState } from './CapivaraPet';
 import { useLiveConnection } from '../hooks/useLiveConnection';
 import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
-import { getDashboardData, getDashboardDataByYear, getDashboardContext, getAvailableYears } from '../services/piespDashboardData';
+import { getDashboardData, getDashboardDataByYear, getAvailableYears } from '../services/piespDashboardData';
 
 // --- Theme ---
 const dashTheme = createTheme({
@@ -137,21 +137,38 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
   const years = getAvailableYears();
   // "Volume por Ano" sempre usa dados completos; demais gráficos filtram pelo ano selecionado
   const data = selectedYear ? getDashboardDataByYear(selectedYear) : allData;
-  const context = getDashboardContext();
 
-  const dashboardSystemInstruction = `
-  ${SYSTEM_INSTRUCTION}
+  const fmtBi = (v: number) => `R$ ${(v / 1000).toFixed(1)} bi`;
 
-  **SITUAÇÃO ATUAL: O USUÁRIO ESTÁ OLHANDO PARA O DASHBOARD ANALÍTICO DA PIESP.**
-  Abaixo estão os dados AGREGADOS que estão visíveis na tela.
+  const dashboardSystemInstruction = `${SYSTEM_INSTRUCTION}
 
-  ${context}
+SITUAÇÃO ATUAL: O USUÁRIO ESTÁ OLHANDO PARA O DASHBOARD ANALÍTICO DA PIESP.
+Use os dados abaixo para descrever e interpretar o que está visível na tela. Nunca invente ou estime — use apenas os números fornecidos aqui.
 
-  **MODO: ANALISTA SÊNIOR DE INVESTIMENTOS INDUSTRIAIS**
-  - Interprete os gráficos de forma técnica. Conecte setores, regiões e tipos de investimento.
-  - Se perguntarem sobre um setor ou município, use as ferramentas de consulta da PIESP para aprofundar.
-  - Não repita números sem contexto — explique o que significam.
-  `;
+VISÃO GERAL:
+Total acumulado: R$ ${data.totalBilhoes} bilhões | ${data.totalProjetos} projetos | ${data.totalEmpresas} empresas | ${data.totalMunicipios} municípios
+${selectedYear ? `Filtro ativo: Ano ${selectedYear}` : 'Período: todos os anos disponíveis'}
+
+EVOLUÇÃO ANUAL (série completa):
+${allData.porAno.map(a => `${a.name}: ${fmtBi(a.value)}`).join(' | ')}
+
+TOP 8 SETORES:
+${data.porSetor.map((s, i) => `${i + 1}. ${s.name}: ${fmtBi(s.value)}`).join(' | ')}
+
+TOP 10 MUNICÍPIOS:
+${data.porMunicipio.map((m, i) => `${i + 1}. ${m.name}: ${fmtBi(m.value)}`).join(' | ')}
+
+CONCENTRAÇÃO ESPACIAL:
+RMSP: ${fmtBi(data.rmspVsInterior.rmsp)} | Interior + Litoral: ${fmtBi(data.rmspVsInterior.interior)}
+
+TIPOS DE INVESTIMENTO:
+${data.porTipo.map(t => `${t.name}: ${t.count} projetos`).join(' | ')}
+
+TOP 10 EMPRESAS INVESTIDORAS:
+${data.porEmpresa.map((e, i) => `${i + 1}. ${e.name}: ${fmtBi(e.value)} (${e.count} proj.)`).join(' | ')}
+
+MODO: ANALISTA SÊNIOR DE INVESTIMENTOS INDUSTRIAIS
+Interprete os gráficos com profundidade técnica. Conecte setores, regiões e tipos de investimento. Para aprofundar em um setor ou município específico, use as ferramentas de consulta da PIESP.`;
 
   const {
     isConnected,
@@ -219,9 +236,12 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
                   </Typography>
                   <Chip label="DASHBOARD ANALÍTICO" size="small" sx={{ borderColor: '#22d3ee', color: '#22d3ee', height: 16, fontSize: '0.6rem' }} variant="outlined" />
                 </Box>
-                <Typography variant="h4" component="h1" sx={{ color: '#fff', fontSize: '1.6rem', mb: 0.5 }}>
-                  Investimentos Anunciados no Estado de São Paulo
-                </Typography>
+                <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
+                  <Typography variant="h4" component="h1" sx={{ color: '#fff', fontSize: '1.6rem' }}>
+                    Investimentos Anunciados no Estado de São Paulo
+                  </Typography>
+                  <CapivaraPet state={petState} size={56} />
+                </Box>
                 <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: '800px', fontSize: '0.9rem' }}>
                   Painel consolidado com dados da base PIESP. Valores em R$ milhões (preços correntes).
                 </Typography>
@@ -508,9 +528,6 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
         </Box>
       </Box>
 
-      <div className="fixed bottom-5 left-4 pointer-events-none select-none z-50" aria-hidden="true">
-        <CapivaraPet state={petState} size={72} />
-      </div>
     </ThemeProvider>
   );
 };
