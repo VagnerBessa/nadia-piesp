@@ -112,6 +112,48 @@ Em grafos com componentes desconectados (nós sem caminho até o cluster princip
 
 ---
 
+## Por que o contexto de voz do Dashboard foi reescrito inline
+
+`getDashboardContext()` retornava apenas 6 linhas (totais + top 3 setores + top 3 municípios). Quando o usuário pedia à esfera para descrever os dados visíveis, o modelo não tinha material suficiente e ou inventava ou dava respostas genéricas.
+
+**Solução:** `dashboardSystemInstruction` em `PiespDashboardView.tsx` constrói o contexto diretamente a partir de `data` (já carregado no componente), incluindo série histórica completa, top 8 setores, top 10 municípios, top 10 empresas, concentração espacial e filtro de ano ativo.
+
+**Regra derivada:** o contexto de voz deve incluir exatamente o que está visível na tela — não um resumo do resumo. Se o componente já tem os dados, não há razão para passar por uma função auxiliar que os trunca.
+
+---
+
+## Por que o pet do Dashboard usa `withBook` fixo em vez de depender do estado
+
+O livro é renderizado em `CapivaraPet` quando `isReading || withBook`. Quando o estado muda de `'reading'` para `'speaking'` ou `'listening'` durante o diálogo de voz, `isReading` vira `false` e o livro desaparece.
+
+**Solução:** passar `withBook={true}` fixo. O prop garante o livro independentemente do estado — o estado continua controlando animação, direção dos olhos e respiração, mas não mais a presença do acessório.
+
+**Regra derivada:** acessórios visuais permanentes (`withBook`, `withGlasses`) devem ser declarados explicitamente, não inferidos do estado. Estado é comportamento; acessório é identidade visual.
+
+---
+
+## Por que o olhar do pet usa `pupilOffset` e não troca de estado
+
+Para o pet olhar para a esfera (direita) quando ela fala e para frente quando o usuário fala, a alternativa óbvia seria criar dois estados novos (`looking_right`, `looking_forward`). Isso poluiria o enum de estados com lógica específica de uma única tela.
+
+**Solução:** `pupilOffset` prop — sobrescreve a posição das pupilas sem alterar estado, animação ou acessórios. `isSpeaking → { dx: 10, dy: -2 }` (direita, onde a esfera está); `isListening → { dx: 0, dy: 0 }` (frente); sem conexão → `undefined` (comportamento padrão do estado).
+
+**Regra derivada:** `pupilOffset` é a válvula de escape para direcionamento pontual sem criar estados novos. Usar quando o direcionamento é contextual de uma tela específica, não um comportamento reutilizável.
+
+---
+
+## Por que o GraphCopilot tem escopo analítico e não apenas descritivo
+
+A primeira versão do system prompt restringia a Nadia a descrever apenas os dados do grafo (nós, arestas, métricas). Perguntas como "o que essa estrutura sugere economicamente?" eram recusadas como fora do escopo.
+
+**O que aconteceu:** respostas excessivamente descritivas e literais — o modelo listava fatos sem interpretar. O valor de um assistente de grafo está precisamente na interpretação econômica da estrutura.
+
+**Decisão:** reescrever o prompt com ancoragem obrigatória (toda análise parte dos dados do grafo) + liberdade analítica (hipóteses econômicas, relações setoriais, padrões estruturais). Salvaguardas metodológicas permanecem, mas são sinalizadas só quando relevante — não repetidas mecanicamente.
+
+**Parâmetro de calibração:** dados citados de forma compacta numa frase; interpretação se desenvolve a seguir sem repetir os dados. Limite: 2–3 frases para consultas simples, até 6 para análises estruturais.
+
+---
+
 ## Por que o encoding do CSV não foi corrigido na origem ainda
 
 O CSV da PIESP está em Latin-1. O Vite importa via `?raw` como UTF-8. Acentos viram U+FFFD.
