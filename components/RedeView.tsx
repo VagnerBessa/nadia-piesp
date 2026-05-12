@@ -461,6 +461,17 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
             </button>
           </div>
 
+          {!graphData && !showLoading && (
+            <div className="absolute left-full top-0 ml-4 flex flex-col items-center gap-0.5">
+              <CapivaraPet
+                state="reading"
+                withGlasses={true}
+                size={48}
+              />
+              <span className="text-[9px] text-slate-600 whitespace-nowrap">PIESP</span>
+            </div>
+          )}
+
           {modo === 'tema' && (
             <div className="flex flex-wrap gap-1.5 pt-0.5">
               {TEMAS_RAPIDOS.map(t => (
@@ -472,17 +483,6 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
             </div>
           )}
 
-          {!showLoading && (
-            <div className="absolute left-full top-0 ml-4 flex flex-col items-center gap-0.5">
-              <CapivaraPet
-                state={graphData ? 'idle' : 'reading'}
-                withGlasses={true}
-                size={48}
-                eyeAnim={graphData ? 'capivara-eye-graph 99s linear infinite' : undefined}
-              />
-              <span className="text-[9px] text-slate-600 whitespace-nowrap">PIESP</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -520,7 +520,12 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
 
         {/* Copilot — retractable AI chat sobre o grafo */}
         {graphData && !showLoading && (
-          <GraphCopilot graphData={graphData} metrics={metrics} />
+          <GraphCopilot
+            graphData={graphData}
+            metrics={metrics}
+            selectedNode={selectedNode}
+            queryContext={{ modo, query }}
+          />
         )}
 
         {/* Node detail panel */}
