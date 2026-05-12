@@ -198,6 +198,13 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
 
   const petState: PetState = isConnecting ? 'waiting' : isSpeaking ? 'speaking' : isListening ? 'listening' : 'reading';
 
+  // Esfera está à direita do pet → olha para direita quando esfera fala; olha para frente quando usuário fala
+  const petPupilOffset = isSpeaking
+    ? { dx: 10, dy: -2 }
+    : isListening
+    ? { dx: 0, dy: 0 }
+    : undefined;
+
   // Consolidar "RMSP vs Interior" para o donut de concentração
   const concentracaoData = [
     { name: 'RMSP', value: data.rmspVsInterior.rmsp, color: '#f43f5e' },
@@ -240,7 +247,7 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
                   <Typography variant="h4" component="h1" sx={{ color: '#fff', fontSize: '1.6rem' }}>
                     Investimentos Anunciados no Estado de São Paulo
                   </Typography>
-                  <CapivaraPet state={petState} size={56} />
+                  <CapivaraPet state={petState} size={56} pupilOffset={petPupilOffset} />
                 </Box>
                 <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: '800px', fontSize: '0.9rem' }}>
                   Painel consolidado com dados da base PIESP. Valores em R$ milhões (preços correntes).
