@@ -4,7 +4,7 @@ import { consultarPiespData, consultarAnunciosSemValor, canonicalSetor } from '.
 import { getDbConnection } from '../services/duckdbService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
-import CapivaraPet, { PetState } from './CapivaraPet';
+
 
 interface VoiceViewProps {
   onNavigateHome: () => void;
@@ -147,7 +147,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
   const isListening = isConnected && !isSpeaking && !toolProcessing;
   const hasTranscript = currentTranscript.trim().length > 0;
 
-  const petState: PetState = isNadiaSpeaking ? 'speaking' : isListening ? 'listening' : 'idle';
+
 
   const handleDownload = () => {
     const date = new Date().toLocaleDateString('pt-BR');
@@ -309,10 +309,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         )}
       </div>
 
-      {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
-      <div className="absolute bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none" aria-hidden="true">
-        <CapivaraPet state={petState} size={80} audioLevel={audioLevel} />
-      </div>
+
     </div>
   );
 };

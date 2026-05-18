@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import SoundWaveIcon from './SoundWaveIcon';
 import { NadiaSphere } from './NadiaSphere';
-import CapivaraPet, { PetState } from './CapivaraPet';
+
 
 interface LandingPageProps {
   onNavigateToVoice: () => void;
@@ -9,14 +9,10 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigateToChat }) => {
-  const [petState, setPetState] = useState<PetState>('idle');
-
-  // Ao tocar em Voz: pet olha para cima (attention) → navega 350ms depois
+  // Ao tocar em Voz: navega após delay curto
   const handleVoiceClick = useCallback(() => {
-    setPetState('attention');
     setTimeout(() => {
       onNavigateToVoice();
-      setPetState('idle');
     }, 350);
   }, [onNavigateToVoice]);
 
@@ -85,14 +81,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
             Nadia-Mobile · v{__APP_VERSION__}
           </span>
         </div>
-      </div>
-
-      {/* Pet — inferior esquerdo; em telas maiores aproxima do centro */}
-      <div
-        className="absolute bottom-5 left-4 sm:left-[15%] lg:left-[22%] pointer-events-none select-none"
-        aria-hidden="true"
-      >
-        <CapivaraPet state={petState} size={60} />
       </div>
 
     </div>
