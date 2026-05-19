@@ -167,3 +167,13 @@ A investigação revelou que não era um bug isolado, mas uma "tempestade perfei
    - *Solução:* Defesa proativa no Typescript: `Array.isArray(filtro.termo_busca) ? ...join(',') : String(...)`. 
 
 *A Lição:* Em interfaces conversacionais multimodais, os erros quase nunca são lineares. Eles ocorrem na intersecção entre o comportamento não-determinístico da IA (alucinação de tipo), a física das redes de tempo real (WebSocket payload e timeouts) e a engenharia da experiência do usuário (UX hacks de timing). Proteger o sistema exige programar assumindo que as três camadas tentarão se auto-sabotar simultaneamente.
+
+### A Latência Acústica e a Palavra Engolida (UX Voice Delay)
+**Data:** 19 de maio de 2026 (Continuação)
+
+Após resolvermos o problema do WebSocket (ver tópico acima), nos deparamos com uma consequência colateral da nossa própria solução. Reduzimos o timeout de transição para 1.2 segundos, o que impediu as quedas do socket. No entanto, o prompt mandava a IA dizer: *"Vou pesquisar esses investimentos para você..."*. Falar isso exige 2.5 a 3 segundos. Resultado: aos 1.2 segundos, nós disparávamos a `sendToolResponse`, o que cortava instantaneamente o áudio da IA no meio da frase. Ela "engolia" as palavras e começava a vomitar o resultado final em cima do áudio inacabado.
+
+**A Solução Híbrida:**
+1. **Engenharia de Prompt (Extrema Brevidade):** Alteramos a instrução VITAL da ferramenta. Proibimos frases longas e ordenamos que a IA use APENAS: *"Buscando."* ou *"Só um segundo."* (uma ou duas palavras no máximo).
+2. **Afinação de Timeouts:** Aumentamos o delay artificial de `1.2s` para `1.5s`. 
+Assim, damos exatamente 1.5 segundos (uma janela de tempo curtíssima, mas segura para o WebSocket) e forçamos a IA a falar uma frase que cabe cirurgicamente dentro dessa janela. A UX fica fluida, ultra-responsiva, e o sistema de rede permanece vivo. Mais um exemplo de que o design conversacional não é apenas linguística, é engenharia de tempo real.
