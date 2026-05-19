@@ -253,7 +253,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       }
 
       // Adicionando a Diretriz de UX/Voice com Trava Psicológica, Desocultamento Progressivo e Graceful Fallback Flexível
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa te chamando pelo nome (Nadia), NUNCA se apresente dizendo quem você é. Vá direto ao assunto.\nIMPORTANTE SOBRE FERRAMENTAS: Se você precisar consultar a base de dados do PIESP, você OBRIGATORIAMENTE deve avisar o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CURTA (ex: "Um instante", "Vou buscar os dados..."). Fale apenas essa frase curta e acione a ferramenta.\nREGRAS DE EXPOSIÇÃO PROGRESSIVA (CRÍTICO): Ao retornar dados da base, NUNCA vomite uma lista de projetos. Dê APENAS o resumo Macro (Total de Bilhões/Milhões e a tendência geral). Finalize SEMPRE com uma pergunta suave para ancorar a navegação do usuário (Ex: "Encontrei X bilhões. Deseja que eu detalhe as principais empresas envolvidas?"). ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE. É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala. Espere o usuário responder "Sim".\nREGRA DE CONTINUIDADE (MEMÓRIA CONVERSACIONAL): Quando o usuário pedir para detalhar uma informação que você acabou de dar, NÃO repita o valor macro. Entre direto nos detalhes solicitados (Ex: "Claro! As principais empresas são...").\nTRATAMENTO DE NULOS (GRACEFUL FALLBACK): Se a pesquisa retornar zerada, sugira uma alternativa. Se o usuário aceitar com um "Sim", aja imediatamente (dispare a ferramenta) sem hesitar. NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.`;
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa te chamando pelo nome (Nadia), NUNCA se apresente dizendo quem você é. Vá direto ao assunto.\nIMPORTANTE SOBRE FERRAMENTAS: Se você precisar consultar a base de dados do PIESP, você OBRIGATORIAMENTE deve avisar o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CURTA (ex: "Só um segundo.", "Buscando."). Fale APENAS essa frase curta de no máximo 3 palavras e acione a ferramenta. É proibido dizer frases longas como "vou procurar os dados".\nREGRAS DE EXPOSIÇÃO PROGRESSIVA (CRÍTICO): Ao retornar dados da base, NUNCA vomite uma lista de projetos. Dê APENAS o resumo Macro (Total de Bilhões/Milhões e a tendência geral). Finalize SEMPRE com uma pergunta suave para ancorar a navegação do usuário (Ex: "Encontrei X bilhões. Deseja que eu detalhe as principais empresas envolvidas?"). ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE. É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala. Espere o usuário responder "Sim".\nREGRA DE CONTINUIDADE (MEMÓRIA CONVERSACIONAL): Quando o usuário pedir para detalhar uma informação que você acabou de dar, NÃO repita o valor macro. Entre direto nos detalhes solicitados (Ex: "Claro! As principais empresas são...").\nTRATAMENTO DE NULOS (GRACEFUL FALLBACK): Se a pesquisa retornar zerada, sugira uma alternativa. Se o usuário aceitar com um "Sim", aja imediatamente (dispare a ferramenta) sem hesitar. NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
@@ -330,8 +330,8 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
                             const result = await onToolCallRef.current(call);
                             
-                            // UX Hack: Atraso artificial de 1.2s para não "engolir" a frase de transição.
-                            // Diminuído de 2.5s para 1.2s para evitar que a conexão WebSocket caia por timeout
+                            // UX Hack: Atraso artificial de 1.5s para não "engolir" a frase de transição.
+                            // Diminuído de 2.5s para 1.5s para evitar que a conexão WebSocket caia por timeout
                             // quando a query no DuckDB for mais pesada (ex: termos genéricos como "TI").
                             setTimeout(() => {
                                 toolProcessingRef.current = false;
@@ -341,7 +341,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                                         functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
                                     });
                                 });
-                            }, 1200);
+                            }, 1500);
                         } catch (err) {
                              sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
@@ -446,7 +446,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
               functionDeclarations: [
                 {
                   name: 'consultar_projetos_piesp',
-                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro. INSTRUÇÃO VITAL: Diga "Vou pesquisar esses investimentos para você..." ANTES de invocar.',
+                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Buscando." ANTES de invocar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
@@ -460,7 +460,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*. INSTRUÇÃO VITAL: Diga "Um momento, vou procurar..." ANTES de invocar. REGRA CRÍTICA DE FILTRO: Se o usuário mencionar um tipo específico de empresa ou atividade (hospital, farmácia, escola, montadora, data center, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os 20 exibidos não representarão o tipo solicitado.',
+                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Só um segundo." ANTES de invocar. REGRA CRÍTICA DE FILTRO: Se o usuário mencionar um tipo específico de empresa ou atividade (hospital, farmácia, escola, montadora, data center, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os 20 exibidos não representarão o tipo solicitado.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
