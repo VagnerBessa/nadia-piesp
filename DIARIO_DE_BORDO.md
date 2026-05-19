@@ -177,3 +177,16 @@ Após resolvermos o problema do WebSocket (ver tópico acima), nos deparamos com
 1. **Engenharia de Prompt (Extrema Brevidade):** Alteramos a instrução VITAL da ferramenta. Proibimos frases longas e ordenamos que a IA use APENAS: *"Buscando."* ou *"Só um segundo."* (uma ou duas palavras no máximo).
 2. **Afinação de Timeouts:** Aumentamos o delay artificial de `1.2s` para `1.5s`. 
 Assim, damos exatamente 1.5 segundos (uma janela de tempo curtíssima, mas segura para o WebSocket) e forçamos a IA a falar uma frase que cabe cirurgicamente dentro dessa janela. A UX fica fluida, ultra-responsiva, e o sistema de rede permanece vivo. Mais um exemplo de que o design conversacional não é apenas linguística, é engenharia de tempo real.
+
+### A Divergência Arquitetural e o Backporting de UX
+**Data:** 19 de maio de 2026 (Conclusão)
+
+A necessidade de replicar essas correções de áudio e robustez para as branches antigas (`main`, `web/v3.0`, `web/v4.0`, `web/v4.1`) revelou o custo da divergência estrutural. Tentar um `cherry-pick` do commit falhou porque a branch `mobile/v2.3` (onde as correções originais nasceram) introduziu a `CapivaraPet` e o suporte a DuckDB, o que alterou profundamente arquivos cruciais como `ChatView.tsx` e `piespDataService.ts`.
+
+**A Solução de Sincronização:**
+Em vez de forçar um merge que traria código mobile para as versões web legadas, isolamos a "alma matemática" do patch:
+1. **Payload e Otimização:** O corte cirúrgico no JSON (de 20/10 para 5 registros) e o limite de caracteres de descrição.
+2. **UX de Áudio:** A injeção do delay de `1.5s` associado à mudança nos `systemInstructions` para frases curtas ("Só um segundo.", "Buscando.").
+
+Aplicamos esse core logic através de um script automatizado que varreu, ajustou e fez commit em todas as quatro branches web sem poluir sua arquitetura base.
+*Lição:* Ao manter múltiplas "linhagens" vivas (web vs mobile) com backends diferentes (CSV vs DuckDB), correções de infraestrutura (como falhas no WebSocket) devem ser portadas focando no *conceito funcional* (a lógica de negócio / UX timeout) em vez da *tentativa de mesclar diffs de código* cego via Git.
