@@ -147,3 +147,23 @@ Estamos lançando a versão 0.2 da Nadia Mobile, trazendo avanços fundamentais 
 *   **Inteligência de busca aprimorada:** Mapeamento lexical profundo integrando a classificação CNAE às consultas.
 *   **Registro e portabilidade:** Exportação da transcrição completa da conversa para documentação e compartilhamento.
 *   **Privacidade e controle de áudio:** Encerramento ativo da captação do microfone ao final de cada sessão, garantindo a privacidade do usuário após a conclusão do diálogo.
+
+---
+
+### A Tempestade Perfeita do WebSocket: Payload, Timeout e Alucinação de Tipos
+**Data:** 19 de maio de 2026
+
+Hoje investigamos e resolvemos um bug misterioso e silencioso na v2.3: consultas hiperespecíficas (como "hospitais") funcionavam perfeitamente na interface de voz da Nadia, mas termos amplos (como "TI" ou "tecnologia") causavam o fechamento imediato e inesperado da esfera, matando o diálogo logo após o aviso "Vou procurar os dados...". Nenhuma mensagem de erro clara, apenas o colapso da sessão.
+
+A investigação revelou que não era um bug isolado, mas uma "tempestade perfeita" de três fatores arquiteturais combinados, mostrando a fragilidade de pipelines que unem UI de tempo real, LLMs e protocolos estritos:
+
+1. **A Armadilha do Payload (WebSocket Size Limits):** Ao buscar "TI", o DuckDB encontrava milhares de registros em milissegundos (a string "ti" ocorre em "investimentos", "atividade", etc). O código devolvia um JSON com 10 projetos e suas descrições completas (até 150 caracteres cada). Para o ambiente REST isso é irrelevante, mas o Live API do Gemini impõe limites extremamente baixos e não documentados para o tamanho do payload na resposta de ferramentas (*Tool Response*). Enviar JSON "gordo" em um canal WebSocket de áudio causava rejeição invisível (policy violation 1008 ou 400 bad request) por parte do Google.
+   - *Solução:* Reduzimos o retorno para 5 projetos e truncamos as descrições em 100 caracteres. Como o próprio System Prompt proíbe a IA de vomitar listas (forçando um resumo macro), mandar dados detalhados era puro desperdício e risco.
+
+2. **O Abismo do Timeout (Latência Acumulada):** Para garantir uma boa experiência (UX), criamos um atraso artificial de 2,5 segundos para que a IA tivesse tempo de terminar de falar a frase preenchedora ("Vou procurar..."). No entanto, quando a query envolvia termos amplos, o mapeamento via `LIKE` em todos os 6000 registros e a sumarização (`agrupar('municipio')` etc.) adicionava alguns milissegundos preciosos. A soma do nosso timeout UX + tempo de processamento DuckDB cruzou a fronteira do *Tool Call Timeout* oculto da Live API do Gemini. Quando o cliente não responde rápido o bastante a um pedido de ferramenta, o servidor aborta a conexão sem dó.
+   - *Solução:* Reduzimos o *UX Hack Timeout* de 2500ms para 1200ms. Dá tempo suficiente para a transição vocal, preservando uma margem gigante antes do timeout da API.
+
+3. **Alucinação de Tipos Sintáticos:** O terceiro fator era a própria natureza probabilística do Gemini. Embora o schema determinasse estritamente que `termo_busca` fosse `Type.STRING`, o modelo — ao ver a instrução "termos separados por vírgula" — ocasionalmente decidia ser prestativo e enviava um objeto `Array` JSON nativo `["TI", "tecnologia"]`. Isso fazia o nosso `.split(',')` lançar um `TypeError` que o bloco `catch` engolia e devolvia como erro genérico para a ferramenta, adicionando caos ao estado da conexão.
+   - *Solução:* Defesa proativa no Typescript: `Array.isArray(filtro.termo_busca) ? ...join(',') : String(...)`. 
+
+*A Lição:* Em interfaces conversacionais multimodais, os erros quase nunca são lineares. Eles ocorrem na intersecção entre o comportamento não-determinístico da IA (alucinação de tipo), a física das redes de tempo real (WebSocket payload e timeouts) e a engenharia da experiência do usuário (UX hacks de timing). Proteger o sistema exige programar assumindo que as três camadas tentarão se auto-sabotar simultaneamente.
