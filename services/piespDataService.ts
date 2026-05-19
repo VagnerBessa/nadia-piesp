@@ -99,6 +99,7 @@ function buildWhereClause(filtro: FiltroPiesp): { where: string; params: any[] }
   }
   
   if (filtro.termo_busca) {
+    if (Array.isArray(filtro.termo_busca)) filtro.termo_busca = filtro.termo_busca.join(',');
     const normalize = (s: string) => s.toLowerCase()
       .replace(/[áàãâä]/g, '_')
       .replace(/[éèêë]/g, '_')
@@ -201,7 +202,7 @@ export async function filtrarParaRelatorio(filtro: FiltroRelatorio): Promise<Res
     regioes: agrupar('regiao'),
     municipios: agrupar('municipio'),
     evolucao_anual: agruparAno(),
-    projetos: resultados.sort((a, b) => b.valor_milhoes_reais - a.valor_milhoes_reais)
+    projetos: resultados.sort((a, b) => b.valor_milhoes_reais - a.valor_milhoes_reais).slice(0, 5).map(p => ({...p, descricao: p.descricao.substring(0, 100)})).slice(0, 5).map(p => ({...p, descricao: p.descricao.substring(0, 100)}))
   };
 }
 
@@ -245,14 +246,14 @@ export async function consultarAnunciosSemValor(filtro: FiltroPiesp) {
 
   return {
     total_anuncios: rows.length,
-    anuncios: rows.slice(0, 20).map(r => ({
+    anuncios: rows.slice(0, 5).map(r => ({
       empresa: r.empresa_alvo,
       municipio: r.municipio,
       regiao: r.regiao,
       setor: canonicalSetor(r.setor_desc),
       atividade: r.cnae_inv_descricao || '',
       ano: r.anuncio_ano?.toString() || '',
-      descricao: (r.descr_investimento || '').substring(0, 150)
+      descricao: (r.descr_investimento || '').substring(0, 100)
     }))
   };
 }
