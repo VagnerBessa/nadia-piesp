@@ -230,7 +230,8 @@ export function consultarPiespData(filtro: FiltroPiesp) {
     }
 
     if (filtro.termo_busca) {
-      const tb = filtro.termo_busca.toLowerCase();
+    if (Array.isArray(filtro.termo_busca)) filtro.termo_busca = filtro.termo_busca.join(',');
+    const tb = filtro.termo_busca.toLowerCase();
       // busca semântica livre em vários campos textuais
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
@@ -245,7 +246,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
         regiao: colunas[8] || 'Não informada',
         ano: anoLinha,
         setor: setorLinha,
-        descricao: descricaoLinha.substring(0, 150),
+        descricao: descricaoLinha.substring(0, 100),
         valor_milhoes_reais: colunas[5] || '0,00'
       });
     }
@@ -261,7 +262,7 @@ export function consultarPiespData(filtro: FiltroPiesp) {
   // Se houver muitos, o top 10 é enviado ao modelo + total real para contexto
   const total = resultados.length;
 
-  return { total, projetos: resultados.slice(0, 10) };
+  return { total, projetos: resultados.slice(0, 5) };
 }
 
 export interface FiltroRelatorio {
@@ -315,7 +316,8 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
     if (filtro.tipo && tipoLinha !== filtro.tipo) continue;
     if (filtro.municipio && !municipioLinha.toLowerCase().includes(filtro.municipio.toLowerCase())) continue;
     if (filtro.termo_busca) {
-      const tb = filtro.termo_busca.toLowerCase();
+    if (Array.isArray(filtro.termo_busca)) filtro.termo_busca = filtro.termo_busca.join(',');
+    const tb = filtro.termo_busca.toLowerCase();
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
       if (!textToSearch.includes(tb)) continue;
     }
@@ -372,7 +374,7 @@ export function filtrarParaRelatorio(filtro: FiltroRelatorio): ResumoRelatorio {
   return {
     total: resultados.length,
     totalMilhoes: Math.round(totalMilhoes * 10) / 10,
-    projetos: resultados.slice(0, 20),
+    projetos: resultados.slice(0, 5),
     porSetor: agrupar('setor'),
     porMunicipio: agrupar('municipio'),
     porRegiao: agrupar('regiao'),
@@ -454,7 +456,7 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
       ano: (cols[1] || '').trim(),
       setor: (cols[10] || 'Outros').trim(),
       tipo: (cols[14] || '').trim(),
-      descricao: (cols[9] || '').trim().substring(0, 300),
+      descricao: (cols[9] || '').trim().substring(0, 100),
       valor_milhoes_reais: valorStr,
     });
   }
@@ -496,7 +498,7 @@ export function buscarEmpresaNoPiesp(nomeEmpresa: string): ResumoRelatorio {
   return {
     total: resultados.length,
     totalMilhoes: Math.round(totalMilhoes * 10) / 10,
-    projetos: resultados,
+    projetos: resultados.slice(0, 5).map(p => ({...p, descricao: p.descricao.substring(0, 100)})),
     porSetor: agrupar('setor'),
     porMunicipio: agrupar('municipio'),
     porRegiao: agrupar('regiao'),
@@ -535,7 +537,8 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
     }
 
     if (filtro.termo_busca) {
-      const tb = filtro.termo_busca.toLowerCase();
+    if (Array.isArray(filtro.termo_busca)) filtro.termo_busca = filtro.termo_busca.join(',');
+    const tb = filtro.termo_busca.toLowerCase();
       // busca semântica livre
       const textToSearch = (empresaLinha + ' ' + setorLinha + ' ' + descricaoLinha).toLowerCase();
       if (!textToSearch.includes(tb)) {
@@ -549,13 +552,13 @@ export function consultarAnunciosSemValor(filtro: FiltroPiesp) {
         municipio: colunas[5] || 'Não informado',
         ano: anoLinha,
         setor: setorLinha,
-        descricao: descricaoLinha.substring(0, 150)
+        descricao: descricaoLinha.substring(0, 100)
       });
     }
   }
 
   // Retorna todos os resultados (mais recentes primeiro)
   const total = resultados.length;
-  return { total, projetos: resultados.slice(0, 10) };
+  return { total, projetos: resultados.slice(0, 5) };
 }
 

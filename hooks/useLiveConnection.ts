@@ -259,6 +259,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                             console.log("Calling tool:", call.name, call.args);
                             const result = await onToolCallRef.current(call);
                             
+                            // UX Hack: Delay to allow AI to speak "Buscando." before tool response cuts it off
+                            await new Promise(r => setTimeout(r, 1500));
+
                             // Send response back to model
                             sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
@@ -374,7 +377,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*, APENAS QUANDO e SE o usuário demonstrar interesse nesses anúncios sem cifra.',
+                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Só um segundo." ANTES de invocar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
