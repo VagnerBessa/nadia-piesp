@@ -330,10 +330,9 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
                             const result = await onToolCallRef.current(call);
                             
-                            // UX Hack: Atraso artificial de 2.5s para não "engolir" a frase de transição.
-                            // Como a ferramenta local executa em milissegundos, se devolvermos a resposta 
-                            // imediatamente, o Gemini interrompe a frase "Vou pesquisar..." no meio para 
-                            // começar a falar os resultados. O atraso garante que a fala termine.
+                            // UX Hack: Atraso artificial de 1.2s para não "engolir" a frase de transição.
+                            // Diminuído de 2.5s para 1.2s para evitar que a conexão WebSocket caia por timeout
+                            // quando a query no DuckDB for mais pesada (ex: termos genéricos como "TI").
                             setTimeout(() => {
                                 toolProcessingRef.current = false;
                                 setToolProcessing(false);
@@ -342,7 +341,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                                         functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
                                     });
                                 });
-                            }, 2500);
+                            }, 1200);
                         } catch (err) {
                              sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({

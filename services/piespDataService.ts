@@ -105,7 +105,11 @@ function buildWhereClause(filtro: FiltroPiesp): { where: string; params: any[] }
       .replace(/[óòõôö]/g, '_')
       .replace(/[úùûü]/g, '_')
       .replace(/[ç]/g, '_');
-    const termos = filtro.termo_busca.split(',').map(s => normalize(s.trim())).filter(Boolean);
+      
+    // Fix: Se o LLM alucinar e enviar um Array de strings em vez de uma string separada por vírgula
+    const termoStr = Array.isArray(filtro.termo_busca) ? filtro.termo_busca.join(',') : String(filtro.termo_busca);
+    const termos = termoStr.split(',').map(s => normalize(s.trim())).filter(Boolean);
+    
     const campo = `LOWER(CONCAT_WS(' ', empresa_alvo, setor_desc, descr_investimento, cnae_inv_2_desc, cnae_inv_descricao, cnae_empresa_descricao))`;
     const termClauses = termos.map(() => `${campo} LIKE ?`).join(' OR ');
     conditions.push(`(${termClauses})`);
@@ -205,13 +209,13 @@ export async function consultarPiespData(filtro: FiltroPiesp) {
   return {
     total_projetos: relatorio.total_projetos,
     valor_total_milhoes: relatorio.total_investimentos,
-    projetos: relatorio.projetos.slice(0, 10).map(p => ({
+    projetos: relatorio.projetos.slice(0, 5).map(p => ({
       empresa: p.empresa,
       municipio: p.municipio,
       regiao: p.regiao,
       ano: p.ano,
       setor: p.setor,
-      descricao: p.descricao.substring(0, 150),
+      descricao: p.descricao.substring(0, 100),
       valor_milhoes_reais: p.valor_milhoes_reais.toFixed(2).replace('.', ',')
     }))
   };
@@ -238,14 +242,14 @@ export async function consultarAnunciosSemValor(filtro: FiltroPiesp) {
   
   return {
     total_anuncios: rows.length,
-    anuncios: rows.slice(0, 20).map(r => ({
+    anuncios: rows.slice(0, 5).map(r => ({
       empresa: r.empresa_alvo,
       municipio: r.municipio,
       regiao: r.regiao,
       setor: canonicalSetor(r.setor_desc),
       atividade: r.cnae_inv_descricao || '',
       ano: r.anuncio_ano?.toString() || '',
-      descricao: (r.descr_investimento || '').substring(0, 150)
+      descricao: (r.descr_investimento || '').substring(0, 100)
     }))
   };
 }
