@@ -190,3 +190,16 @@ Em vez de forçar um merge que traria código mobile para as versões web legada
 
 Aplicamos esse core logic através de um script automatizado que varreu, ajustou e fez commit em todas as quatro branches web sem poluir sua arquitetura base.
 *Lição:* Ao manter múltiplas "linhagens" vivas (web vs mobile) com backends diferentes (CSV vs DuckDB), correções de infraestrutura (como falhas no WebSocket) devem ser portadas focando no *conceito funcional* (a lógica de negócio / UX timeout) em vez da *tentativa de mesclar diffs de código* cego via Git.
+
+### O Fim do "Atropelo": Smart Wait Dinâmico
+**Data:** 20 de maio de 2026
+
+O *UX Hack* anterior que usava um delay fixo de 1500ms para aguardar a IA dizer "Buscando" provou-se ineficaz. Dependendo da latência da rede e do tempo de resposta da API do Gemini, o áudio da IA podia demorar mais de 500ms para *começar* a tocar no frontend. Como resultado, o `sendToolResponse` era acionado antes da fala terminar, cortando o áudio e engolindo as palavras. Além disso, se ela falasse uma frase um pouco mais longa, seria cortada do mesmo jeito.
+
+**A Solução (Smart Wait):**
+Em vez de um timer cego, implementamos uma trava dinâmica baseada no ciclo de vida real do áudio da IA (`isSpeakingRef`):
+1. **Initial Grace Period:** Aguardamos até 600ms para ver se o estado de fala (`isSpeakingRef.current`) se torna `true`. Isso compensa o atraso entre o recebimento do `toolCall` e a chegada do primeiro chunk de áudio do `modelTurn`.
+2. **Speaking Lock:** Se ela estiver falando, congelamos a execução do `sendToolResponse` até que `isSpeakingRef.current` seja `false` (o evento `ended` do `AudioBufferSourceNode` foi acionado).
+3. **Safety Timeout:** Para garantir que não tomaremos um *timeout* do WebSocket da Google, impomos um limite duro de 2500ms para essa espera.
+
+Isso garante que a IA *sempre* termina de falar antes da ferramenta responder, adaptando-se perfeitamente ao tamanho da frase e estabilizando a sensação estranha de "engolir palavras".
