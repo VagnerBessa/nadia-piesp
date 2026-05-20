@@ -330,18 +330,29 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
 
                             const result = await onToolCallRef.current(call);
                             
-                            // UX Hack: Atraso artificial de 1.5s para não "engolir" a frase de transição.
-                            // Diminuído de 2.5s para 1.5s para evitar que a conexão WebSocket caia por timeout
-                            // quando a query no DuckDB for mais pesada (ex: termos genéricos como "TI").
-                            setTimeout(() => {
-                                toolProcessingRef.current = false;
-                                setToolProcessing(false);
-                                sessionPromiseRef.current?.then((session) => {
-                                    session.sendToolResponse({
-                                        functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
-                                    });
+                            // UX Hack (Smart Wait): Aguarda dinamicamente o áudio da IA ("Buscando.") terminar
+                            // antes de enviar a resposta da ferramenta, para evitar que a própria resposta
+                            // interrompa a fala.
+                            let startWait = 0;
+                            while (!isSpeakingRef.current && startWait < 600) {
+                                await new Promise(r => setTimeout(r, 50));
+                                startWait += 50;
+                            }
+                            
+                            let speakingWait = 0;
+                            // Limite de 2500ms para evitar timeout na conexão WebSocket da Google
+                            while (isSpeakingRef.current && speakingWait < 2500) {
+                                await new Promise(r => setTimeout(r, 50));
+                                speakingWait += 50;
+                            }
+
+                            toolProcessingRef.current = false;
+                            setToolProcessing(false);
+                            sessionPromiseRef.current?.then((session) => {
+                                session.sendToolResponse({
+                                    functionResponses: [{ id: call.id, name: call.name, response: { result: result } }]
                                 });
-                            }, 1500);
+                            });
                         } catch (err) {
                              sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
