@@ -106,7 +106,16 @@ function buildWhereClause(filtro: FiltroPiesp): { where: string; params: any[] }
       .replace(/[óòõôö]/g, '_')
       .replace(/[úùûü]/g, '_')
       .replace(/[ç]/g, '_');
-    const termos = filtro.termo_busca.split(',').map(s => normalize(s.trim())).filter(Boolean);
+      
+    // Tratamento robusto para evitar que a IA envie Array em vez de String
+    let termosRaw = filtro.termo_busca;
+    if (Array.isArray(termosRaw)) {
+        termosRaw = termosRaw.join(',');
+    } else if (typeof termosRaw !== 'string') {
+        termosRaw = String(termosRaw);
+    }
+      
+    const termos = termosRaw.split(',').map(s => normalize(s.trim())).filter(Boolean);
     const campo = `LOWER(CONCAT_WS(' ', empresa_alvo, setor_desc, descr_investimento, cnae_inv_2_desc, cnae_inv_descricao, cnae_empresa_descricao))`;
     const termClauses = termos.map(() => `${campo} LIKE ?`).join(' OR ');
     conditions.push(`(${termClauses})`);
@@ -207,15 +216,20 @@ export async function filtrarParaRelatorio(filtro: FiltroRelatorio): Promise<Res
 
 export async function consultarPiespData(filtro: FiltroPiesp) {
   const relatorio = await filtrarParaRelatorio(filtro);
+  
+  // LIMITAR A 5 REGISTROS PARA NÃO ESTOURAR O WEBSOCKET
+  const limitados = relatorio.projetos.slice(0, 5);
+  
   return {
-    investimentos: relatorio.projetos.map(p => ({
+    investimentos: limitados.map(p => ({
       empresa_alvo: p.empresa,
       municipio: p.municipio,
       setor_desc: p.setor,
       anuncio_ano: p.ano,
       periodo: p.periodo,
       reais_milhoes: p.valor_milhoes_reais,
-      descr_investimento: p.descricao
+      // TRUNCAR DESCRIÇÃO EM 100 CARACTERES PARA O WEBSOCKET
+      descr_investimento: p.descricao.substring(0, 100) + (p.descricao.length > 100 ? '...' : '')
     })),
     metadados: {
       total_projetos: relatorio.total_projetos,
@@ -245,14 +259,16 @@ export async function consultarAnunciosSemValor(filtro: FiltroPiesp) {
 
   return {
     total_anuncios: rows.length,
-    anuncios: rows.slice(0, 20).map(r => ({
+    // LIMITAR A 5 REGISTROS PARA NÃO ESTOURAR O WEBSOCKET
+    anuncios: rows.slice(0, 5).map(r => ({
       empresa: r.empresa_alvo,
       municipio: r.municipio,
       regiao: r.regiao,
       setor: canonicalSetor(r.setor_desc),
       atividade: r.cnae_inv_descricao || '',
       ano: r.anuncio_ano?.toString() || '',
-      descricao: (r.descr_investimento || '').substring(0, 150)
+      // TRUNCAR DESCRIÇÃO EM 100 CARACTERES PARA O WEBSOCKET
+      descricao: (r.descr_investimento || '').substring(0, 100) + ((r.descr_investimento || '').length > 100 ? '...' : '')
     }))
   };
 }
