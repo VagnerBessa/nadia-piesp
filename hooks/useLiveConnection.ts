@@ -20,6 +20,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const isSpeakingRef = useRef<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
@@ -259,9 +260,22 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                             console.log("Calling tool:", call.name, call.args);
                             const result = await onToolCallRef.current(call);
                             
-                            // UX Hack: Delay to allow AI to speak "Buscando." before tool response cuts it off
-                            await new Promise(r => setTimeout(r, 1500));
-
+                            // UX Hack (Smart Wait): Aguarda dinamicamente o áudio da IA ("Buscando.") terminar
+                            // antes de enviar a resposta da ferramenta, para evitar que a própria resposta
+                            // interrompa a fala.
+                            let startWait = 0;
+                            while (!isSpeakingRef.current && startWait < 600) {
+                                await new Promise(r => setTimeout(r, 50));
+                                startWait += 50;
+                            }
+                            
+                            let speakingWait = 0;
+                            // Limite de 2500ms para evitar timeout na conexão WebSocket da Google
+                            while (isSpeakingRef.current && speakingWait < 2500) {
+                                await new Promise(r => setTimeout(r, 50));
+                                speakingWait += 50;
+                            }
+                            
                             // Send response back to model
                             sessionPromiseRef.current!.then((session) => {
                                 session.sendToolResponse({
@@ -292,9 +306,10 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
              // Handle Audio Output
              const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
              if (base64EncodedAudioString && outputAudioContextRef.current && analyserRef.current) {
-                console.log('[Nadia] Received audio response from API');
-                setIsSpeaking(true);
-                const currentOutputContext = outputAudioContextRef.current;
+                 console.log('[Nadia] Received audio response from API');
+                 setIsSpeaking(true);
+                 isSpeakingRef.current = true;
+                 const currentOutputContext = outputAudioContextRef.current;
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, currentOutputContext.currentTime);
 
                 const audioBuffer = await decodeAudioData(
@@ -308,28 +323,29 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 source.buffer = audioBuffer;
                 // Connect source to analyser, and analyser to destination
                 source.connect(analyserRef.current);
-                
-                source.addEventListener('ended', () => {
-                    audioSourcesRef.current.delete(source);
-                    if (audioSourcesRef.current.size === 0) {
-                        setIsSpeaking(false);
-                    }
-                });
+                                source.addEventListener('ended', () => {
+                     audioSourcesRef.current.delete(source);
+                     if (audioSourcesRef.current.size === 0) {
+                         setIsSpeaking(false);
+                         isSpeakingRef.current = false;
+                     }
+                 });
 
                 source.start(nextStartTimeRef.current);
                 nextStartTimeRef.current += audioBuffer.duration;
                 audioSourcesRef.current.add(source);
              }
 
-             const interrupted = message.serverContent?.interrupted;
-             if (interrupted) {
-                for (const source of audioSourcesRef.current.values()) {
-                    source.stop();
-                }
-                audioSourcesRef.current.clear();
-                nextStartTimeRef.current = 0;
-                setIsSpeaking(false);
-             }
+              const interrupted = message.serverContent?.interrupted;
+              if (interrupted) {
+                 for (const source of audioSourcesRef.current.values()) {
+                     source.stop();
+                 }
+                 audioSourcesRef.current.clear();
+                 nextStartTimeRef.current = 0;
+                 setIsSpeaking(false);
+                 isSpeakingRef.current = false;
+              }
           },
           onerror: (e: ErrorEvent) => {
             console.error("[Nadia] Session error:", e);
@@ -365,7 +381,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
               functionDeclarations: [
                 {
                   name: 'consultar_projetos_piesp',
-                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro.',
+                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Buscando." ANTES de invocar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
@@ -381,7 +397,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
                 },
                 {
                   name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Só um segundo." ANTES de invocar.',
+                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*, APENAS QUANDO e SE o usuário demonstrar interesse nesses anúncios sem cifra. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Só um segundo." ANTES de invocar. REGRA CRÍTICA DE FILTRO: Se o usuário mencionar um tipo específico de empresa ou atividade (hospital, farmácia, escola, montadora, data center, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
