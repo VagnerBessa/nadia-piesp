@@ -82,3 +82,21 @@ Hoje avançamos em frentes críticas de infraestrutura e usabilidade, inaugurand
    Descobrimos que a transição de PostgreSQL/Javascript `includes` para DuckDB introduzia uma restrição severa de idioma: o `LOWER()` do DuckDB não remove acentos naturalmente. Assim, buscas guiadas pela IA com os termos "saude" ou "saúde" poderiam se desencontrar da base.
    - *A Correção:* Transformamos as vogais acentuadas provenientes do input do usuário em wildcards puros do SQL (`_`) diretamente no middleware do Frontend antes da query, resolvendo o problema de forma agnóstica sem instalar extensões do DuckDB.
    - Além disso, constatamos novamente a *Síndrome da Subserviência* (Helpful Bias) da IA. Ao ser questionada sobre a "área da saúde", ela insistia em enquadrar a palavra no filtro restrito de `setor`, falhando ao tentar achar uma categoria exata. Alteramos o Prompt de Tool Calling para blindar o campo `setor` estritamente a 5 valores macro (ex: "Serviços"), instruindo a Nadia a canalizar nichos (como "Saúde" ou "Tecnologia") invariavelmente para o campo genérico de `termo_busca`, e alimentamos esse parâmetro com as colunas completas do CNAE em SQL (`CONCAT_WS`), resultando numa fluidez imaculada.
+
+---
+
+### Sincronização Acústica (Smart Wait) e Paridade de Branches
+**Data:** 13 de maio de 2026
+
+Enfrentamos um problema severo de UX no Gemini Live: quando o usuário pedia buscas complexas (ex: "TI"), o websocket encerrava abruptamente ou a voz da IA "atropelava" a si mesma (cortando palavras). O atraso ("delay") fixo entre acionar a tool e responder ao WebSocket não estava sendo suficiente, variando conforme a rede ou o volume de dados.
+
+1. **A Armadilha do Volume (WebSocket Payload Explosion):**
+   Descobrimos que a IA pedia os dados, e a busca DuckDB retornava a string inteira de descrições e um array massivo de projetos. Esse payload esticava o limite da API do Gemini, fazendo a bolha fechar sem aviso. 
+   - *A Correção:* Aplicamos um truncamento cirúrgico de `substring(0, 100)` nas descrições da Tool e limitamos rigidamente a resposta da ferramenta a no máximo 5 registros (`.slice(0, 5)`). A IA só precisa saber de um panorama para sintetizar a voz, não do dump de banco de dados inteiro. A performance do WebSocket normalizou instantaneamente.
+
+2. **O "Smart Wait" e a Fuga do Atropelo (Stale State em React):**
+   O `useLiveConnection.ts` precisava informar ao backend que o áudio ("Buscando informações...") terminou ANTES de enviar o payload de resposta da tool, para evitar interrupções da síntese de voz (o atropelo).
+   - *A Correção:* Refatoramos a lógica para fugir de *stale closures* do React. Adicionamos uma mutação síncrona `isSpeakingRef.current`. Durante a invocação da tool, o sistema agora faz um `while(isSpeakingRef.current && startWait < 2500)` para pausar a thread ativamente até que a IA conclua o envio da voz preliminar ou bata no teto de 2.5s (protegendo a rede contra timeout). 
+
+3. **Filosofia de "Backporting" em Interfaces Divergentes:**
+   Tivemos de propagar essa lógica vital criada na branch `mobile/v2.3` de volta às branches clássicas (`web/v4.0` e `web/v4.1` — que possui visualização de grafos). Como a arquitetura HTML diverge entre elas, aplicamos a "alma matemática" do patch (referências de mutação em React e limits no DuckDB) em vez de um rebase ou cherry-pick direto do Git, que quebrava com merge conflicts massivos devido às disparidades da UI. O princípio: em produtos modulares baseados em IA, correções de pipeline cognitivo precisam ser acopladas nas "costuras" da infraestrutura (Tools & Prompts), preservando a pureza de cada front-end construído.
