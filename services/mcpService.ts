@@ -5,7 +5,7 @@
  * para buscar informações sobre tópicos específicos.
  */
 
-const MCP_SERVER_URL = 'http://localhost:5678/mcp-server/http';
+const MCP_SERVER_URL = 'https://mcp.seade.gov.br/mcp?key=sk_1070bd250a3c5a13b986d112454fa59ac0f6781185a7d543';
 
 export interface McpRequest {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
