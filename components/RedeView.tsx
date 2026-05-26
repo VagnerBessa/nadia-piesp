@@ -6,8 +6,8 @@ import GraphCopilot from './GraphCopilot';
 import {
   getRedeEmpresa, getRedeRegiao, getRedeTema, getRedeQuery,
   GraphData, GraphNode,
-} from '../services/piespGraphService';
-import { getMetadados } from '../services/piespDataService';
+} from '../services/empreendedorismoGraphService';
+import { getMetadados } from '../services/empreendedorismoDataService';
 import { GraphMetrics } from '../utils/graphAnalytics';
 
 class GraphErrorBoundary extends Component<
@@ -468,7 +468,7 @@ const RedeView: React.FC<RedeViewProps> = ({ onNavigateHome: _nav }) => {
                 withGlasses={true}
                 size={48}
               />
-              <span className="text-[9px] text-slate-600 whitespace-nowrap">PIESP</span>
+              <span className="text-[9px] text-slate-600 whitespace-nowrap">Empreendedorismo</span>
             </div>
           )}
 

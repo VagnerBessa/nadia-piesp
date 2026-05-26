@@ -3,9 +3,9 @@ name: redacao-tecnica-seade
 description: Restrictive guide for writing quantitative data in plain language without using spelled-out words for large numbers or currencies. Use whenever outputting reports, dossiers, or numerical analysis to guarantee institutional formatting (e.g. use "R$ 1,2 bilhão" instead of "um bilhão e duzentos milhões de reais").
 ---
 
-# Skill: Redação Técnica e Institucional (Seade/PIESP)
+# Skill: Redação Técnica e Institucional (Seade/Empreendedorismo)
 
-Esta skill define o guia de redação que a Nadia deve SEMPRE utilizar ao responder perguntas de usuários, criar dossiês ou analisar dados no escopo do PIESP e da Fundação Seade.
+Esta skill define o guia de redação que a Nadia deve SEMPRE utilizar ao responder perguntas de usuários, criar dossiês ou analisar dados no escopo do Empreendedorismo e da Fundação Seade.
 
 ---
 

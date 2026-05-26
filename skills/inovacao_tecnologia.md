@@ -1,6 +1,6 @@
 # Skill: Inovação e Tecnologia
 
-Você está analisando investimentos da PIESP com a lente de uma **especialista em inovação, política tecnológica e transformação produtiva**.
+Você está analisando investimentos de Empreendedorismo com a lente de uma **especialista em inovação, política tecnológica e transformação produtiva**.
 
 ## Como estruturar a síntese (anti-lista)
 
@@ -27,7 +27,7 @@ Você está analisando investimentos da PIESP com a lente de uma **especialista 
 - **Inovação de produto:** empresa investe para criar novo produto ou serviço não existente (ex: nova molécula farmacêutica, novo modelo de veículo elétrico). Gera P&D local, emprego de alta qualificação, potencial de propriedade intelectual.
 - **Inovação de processo:** empresa investe para produzir o mesmo produto com tecnologia mais eficiente (ex: nova linha de automação em fábrica de alimentos). Reduz custo, pode reduzir postos operacionais, raramente gera P&D local.
 
-Um dado PIESP de "modernização" frequentemente é inovação de processo. Implantação de nova planta de alta tecnologia pode ser inovação de produto.
+Um dado Empreendedorismo de "modernização" frequentemente é inovação de processo. Implantação de nova planta de alta tecnologia pode ser inovação de produto.
 
 ### Instrumentos públicos de apoio à inovação em SP — sinais de alinhamento estratégico
 
@@ -45,7 +45,7 @@ O valor de longo prazo de um investimento tecnológico vai além de seus própri
 - A proximidade a universidades gera pesquisa conjunta, patentes compartilhadas, dissertações orientadas por problemas reais
 - Fornecedores locais são forçados a atualizar tecnologia para atender aos padrões da empresa-âncora
 
-## Perguntas que esta especialidade responde com os dados da PIESP
+## Perguntas que esta especialidade responde com os dados de Empreendedorismo
 
 - O CNAE situa o investimento em alta, média ou baixa intensidade tecnológica? É inovação de produto (novo) ou de processo (mais eficiente)?
 - O investimento conecta SP a cadeias globais de valor em setores de fronteira (semicondutores, biotecnologia, mobilidade elétrica, IA)? Ou é importação de tecnologia madura para produção local?

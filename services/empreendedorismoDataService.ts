@@ -1,7 +1,7 @@
 import { getDbConnection } from './duckdbService';
 
-export interface FiltroPiesp {
-  ano?: string;
+export interface FiltroEmpreendedorismo {
+  ano?: string | string[];
   municipio?: string;
   regiao?: string;
   setor?: string;
@@ -11,7 +11,7 @@ export interface FiltroPiesp {
   tipo?: string;
 }
 
-export interface FiltroRelatorio extends FiltroPiesp {}
+export interface FiltroRelatorio extends FiltroEmpreendedorismo {}
 
 export interface ProjetoResumo {
   empresa: string;
@@ -47,13 +47,14 @@ export function canonicalSetor(s: string): string {
   return s || 'Outros';
 }
 
-function buildWhereClause(filtro: FiltroPiesp): { where: string; params: any[] } {
+function buildWhereClause(filtro: FiltroEmpreendedorismo): { where: string; params: any[] } {
   const conditions: string[] = [];
   const params: any[] = [];
   
   if (filtro.ano) {
     conditions.push(`anuncio_ano = ?`);
-    params.push(parseInt(filtro.ano));
+    const anosStr = Array.isArray(filtro.ano) ? filtro.ano[0] : filtro.ano;
+    params.push(parseInt(anosStr));
   }
   
   if (filtro.setor) {
@@ -214,7 +215,7 @@ export async function filtrarParaRelatorio(filtro: FiltroRelatorio): Promise<Res
   };
 }
 
-export async function consultarPiespData(filtro: FiltroPiesp) {
+export async function consultarEmpreendedorismoData(filtro: FiltroEmpreendedorismo) {
   const relatorio = await filtrarParaRelatorio(filtro);
   
   // LIMITAR A 5 REGISTROS PARA NÃO ESTOURAR O WEBSOCKET
@@ -238,7 +239,7 @@ export async function consultarPiespData(filtro: FiltroPiesp) {
   };
 }
 
-export async function consultarAnunciosSemValor(filtro: FiltroPiesp) {
+export async function consultarAnunciosSemValor(filtro: FiltroEmpreendedorismo) {
   // A base piesp.parquet agora unifica com e sem valor (reais_milhoes = NULL ou 0)
   // Então podemos usar a mesma lógica, filtrando onde reais_milhoes is null ou 0
   const conn = await getDbConnection();

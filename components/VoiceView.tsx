@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
-import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
-import { getDbConnection } from '../services/duckdbService';
+import { callMcpTool } from '../services/mcpService';
+import { empreendedorismoTools } from '../generated_tools';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
 import { SwitchModeIcon } from './Icons';
@@ -12,8 +12,7 @@ interface VoiceViewProps {
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
-  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
-  useEffect(() => { getDbConnection().catch(() => {}); }, []);
+  // Conexão Live/Voice do Gemini com MCP
   const {
     isConnected,
     isSpeaking,
@@ -24,17 +23,16 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
     stopConversation
   } = useLiveConnection({
     onToolCall: async (toolCall) => {
-      if (toolCall.name === 'consultar_projetos_piesp') {
-        const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
-        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", { ano, municipio, regiao, setor, termo_busca });
-        const resultados = await consultarPiespData({ ano, municipio, regiao, setor, termo_busca });
-        return { sucesso: true, total_projetos: resultados.total_projetos, valor_total_milhoes: resultados.valor_total_milhoes, projetos: resultados.projetos };
-      }
-      if (toolCall.name === 'consultar_anuncios_sem_valor') {
-        const { ano, municipio, regiao, setor, termo_busca } = toolCall.args;
-        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", { ano, municipio, regiao, setor, termo_busca });
-        const resultados = await consultarAnunciosSemValor({ ano, municipio, regiao, setor, termo_busca });
-        return { sucesso: true, total_anuncios: resultados.total_anuncios, anuncios: resultados.anuncios };
+      const isEmpreendedorismoTool = empreendedorismoTools[0].functionDeclarations.some(t => t.name === toolCall.name);
+      if (isEmpreendedorismoTool) {
+        console.log(`🛠️ Tool Executado (${toolCall.name}):`, toolCall.args);
+        try {
+          const resultado = await callMcpTool(toolCall.name, toolCall.args);
+          return { sucesso: true, ...resultado };
+        } catch (e: any) {
+           console.error("Erro no callMcpTool:", e);
+           return { error: 'Falha ao executar ferramenta MCP', detalhes: e.message };
+        }
       }
       return { error: 'Tool não reconhecido' };
     }

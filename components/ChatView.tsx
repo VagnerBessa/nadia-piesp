@@ -438,7 +438,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                 </div>
                 <h2 className="text-lg font-semibold text-white mb-2 tracking-tight">Como posso ajudar hoje?</h2>
                 <p className="text-sm text-slate-400 max-w-[320px] leading-relaxed">
-                  Explore os dados do PIESP com a Nadia e obtenha insights instantâneos.
+                  Explore os dados do Empreendedorismo com a Nadia e obtenha insights instantâneos.
                 </p>
               </div>
 
@@ -447,9 +447,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">Sugestões de Consulta</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {[
-                    'Mostre os investimentos confirmados em Campinas',
-                    'Há projetos de transição energética anunciados?',
-                    'Quais investimentos em logística estão na Baixada Santista?',
+                    'Quantas empresas existem no Estado de São Paulo?',
+                    'Em que cidades as empresas mais crescem?',
+                    'Quais os setores que mais fecharam empresas em 2025?',
                   ].map((sugestao) => (
                     <button
                       key={sugestao}

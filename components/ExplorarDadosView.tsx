@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { generateWithFallback } from '../services/geminiService';
-import { getMetadados, filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
+import { getMetadados, filtrarParaRelatorio, FiltroRelatorio, ResumoRelatorio } from '../services/empreendedorismoDataService';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
@@ -16,7 +16,7 @@ function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string 
   const filtroDesc = [
     filtros.setor ? `Setor: ${filtros.setor}` : null,
     filtros.regiao ? `Região: ${filtros.regiao}` : null,
-    filtros.ano && filtros.ano.length > 0 ? `Ano(s) de Anúncio: ${filtros.ano.join(', ')}` : null,
+    filtros.ano ? `Ano(s) de Anúncio: ${Array.isArray(filtros.ano) ? filtros.ano.join(', ') : filtros.ano}` : null,
     filtros.ano_inicio || filtros.ano_fim ? `Período de Execução: ${filtros.ano_inicio || 'Início'} a ${filtros.ano_fim || 'Fim'}` : null,
     filtros.tipo ? `Tipo de investimento: ${filtros.tipo}` : null,
   ].filter(Boolean).join(' | ') || 'Sem filtros específicos (base completa)';
@@ -43,12 +43,12 @@ function buildPrompt(filtros: FiltroRelatorio, resumo: ResumoRelatorio): string 
     `- ${a.nome}: R$ ${a.valor} mi em ${a.count} projeto(s)`
   ).join('\n');
 
-  return `Você é a Nadia, analista de investimentos da Fundação Seade especializada no PIESP (Pesquisa de Investimentos no Estado de São Paulo).
+  return `Você é a Nadia, analista de investimentos da Fundação Seade especializada no Empreendedorismo (Painel de Empreendedorismo do Estado de São Paulo).
 
 O usuário solicitou um relatório analítico com o seguinte recorte:
 **${filtroDesc}**
 
-DADOS FILTRADOS DO PIESP:
+DADOS FILTRADOS DO Empreendedorismo:
 - Total de projetos encontrados: ${resumo.total_projetos}
 - Valor total: R$ ${resumo.total_investimentos} milhões (R$ ${totalBi} bilhões)
 
@@ -68,7 +68,7 @@ EVOLUÇÃO DOS ANÚNCIOS POR ANO:
 ${porAnoTexto || '(sem dados)'}
 
 ---
-Com base exclusivamente nesses dados do PIESP, gere um relatório executivo analítico e bem estruturado em português. Use markdown (## para seções, **negrito** para destaques, - para listas). O relatório deve conter:
+Com base exclusivamente nesses dados do Empreendedorismo, gere um relatório executivo analítico e bem estruturado em português. Use markdown (## para seções, **negrito** para destaques, - para listas). O relatório deve conter:
 
 ## Resumo Executivo
 (síntese dos números principais e o que se destaca)
@@ -310,7 +310,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
               </div>
               <div className="flex flex-col gap-1.5">
                 <h1 className="text-2xl md:text-3xl font-black text-slate-50 tracking-tight">Explorar Dados</h1>
-                <p className="text-sm font-medium text-slate-400">Relatórios analíticos do PIESP por filtro</p>
+                <p className="text-sm font-medium text-slate-400">Relatórios analíticos do Empreendedorismo por filtro</p>
               </div>
             </div>
             <button
@@ -639,7 +639,7 @@ const ExplorarDadosView: React.FC<ExplorarDadosViewProps> = ({ onNavigateHome })
 
                 {!isStreaming && glassesActive && (
                   <p className="text-xs text-slate-500 text-center pt-2">
-                    Relatório gerado pela Nadia com base nos dados do PIESP. Valide informações críticas na fonte oficial.
+                    Relatório gerado pela Nadia com base nos dados do Empreendedorismo. Valide informações críticas na fonte oficial.
                   </p>
                 )}
               </div>

@@ -31,9 +31,10 @@ import SoundWaveIcon from './SoundWaveIcon';
 import { NadiaSphere } from './NadiaSphere';
 import CapivaraPet, { PetState } from './CapivaraPet';
 import { useLiveConnection } from '../hooks/useLiveConnection';
-import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
+import { callMcpTool } from '../services/mcpService';
+import { empreendedorismoTools } from '../generated_tools';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
-import { getDashboardData, getDashboardDataByYear, getAvailableYears } from '../services/piespDashboardData';
+import { getDashboardData, getDashboardDataByYear, getAvailableYears } from '../services/empreendedorismoDashboardData';
 
 // --- Theme ---
 const dashTheme = createTheme({
@@ -126,11 +127,11 @@ const MinimalTooltip = ({ active, payload }: any) => {
 };
 
 // --- Main Component ---
-interface PiespDashboardViewProps {
+interface EmpreendedorismoDashboardViewProps {
   onNavigateHome: () => void;
 }
 
-const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome }) => {
+const EmpreendedorismoDashboardView: React.FC<EmpreendedorismoDashboardViewProps> = ({ onNavigateHome }) => {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
 
   const allData = getDashboardData();
@@ -142,7 +143,7 @@ const PiespDashboardView: React.FC<PiespDashboardViewProps> = ({ onNavigateHome 
 
   const dashboardSystemInstruction = `${SYSTEM_INSTRUCTION}
 
-SITUAÇÃO ATUAL: O USUÁRIO ESTÁ OLHANDO PARA O DASHBOARD ANALÍTICO DA PIESP.
+SITUAÇÃO ATUAL: O USUÁRIO ESTÁ OLHANDO PARA O DASHBOARD ANALÍTICO DA Empreendedorismo.
 Use os dados abaixo para descrever e interpretar o que está visível na tela. Nunca invente ou estime — use apenas os números fornecidos aqui.
 
 VISÃO GERAL:
@@ -168,7 +169,7 @@ TOP 10 EMPRESAS INVESTIDORAS:
 ${data.porEmpresa.map((e, i) => `${i + 1}. ${e.name}: ${fmtBi(e.value)} (${e.count} proj.)`).join(' | ')}
 
 MODO: ANALISTA SÊNIOR DE INVESTIMENTOS INDUSTRIAIS
-Interprete os gráficos com profundidade técnica. Conecte setores, regiões e tipos de investimento. Para aprofundar em um setor ou município específico, use as ferramentas de consulta da PIESP.`;
+Interprete os gráficos com profundidade técnica. Conecte setores, regiões e tipos de investimento. Para aprofundar em um setor ou município específico, use as ferramentas de consulta da Empreendedorismo.`;
 
   const {
     isConnected,
@@ -180,15 +181,16 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
   } = useLiveConnection({
     systemInstruction: dashboardSystemInstruction,
     onToolCall: async (toolCall) => {
-      if (toolCall.name === 'consultar_projetos_piesp') {
-        const { ano, municipio, termo_busca } = toolCall.args;
-        const resultados = consultarPiespData({ ano, municipio, termo_busca });
-        return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
-      }
-      if (toolCall.name === 'consultar_anuncios_sem_valor') {
-        const { ano, municipio, termo_busca } = toolCall.args;
-        const resultados = consultarAnunciosSemValor({ ano, municipio, termo_busca });
-        return { sucesso: true, total_investimentos: resultados.total, projetos: resultados.projetos };
+      const isEmpreendedorismoTool = empreendedorismoTools[0].functionDeclarations.some(t => t.name === toolCall.name);
+      if (isEmpreendedorismoTool) {
+        console.log(`🛠️ Tool Executado (${toolCall.name}):`, toolCall.args);
+        try {
+          const resultado = await callMcpTool(toolCall.name, toolCall.args);
+          return { sucesso: true, ...resultado };
+        } catch (e: any) {
+           console.error("Erro no callMcpTool:", e);
+           return { error: 'Falha ao executar ferramenta MCP', detalhes: e.message };
+        }
       }
       return { error: 'Tool não reconhecido' };
     },
@@ -239,7 +241,7 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
               <div className="md:col-span-9">
                 <Box display="flex" alignItems="center" gap={2} mb={0.5}>
                   <Typography variant="overline" sx={{ color: '#f43f5e', textShadow: '0 0 10px rgba(244,63,94,0.5)', fontWeight: 800 }}>
-                    PIESP — PESQUISA DE INVESTIMENTOS
+                    Empreendedorismo — PESQUISA DE INVESTIMENTOS
                   </Typography>
                   <Chip label="DASHBOARD ANALÍTICO" size="small" sx={{ borderColor: '#22d3ee', color: '#22d3ee', height: 16, fontSize: '0.6rem' }} variant="outlined" />
                 </Box>
@@ -250,7 +252,7 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
                   <CapivaraPet state={petState} size={56} withBook withGlasses pupilOffset={petPupilOffset} />
                 </Box>
                 <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: '800px', fontSize: '0.9rem' }}>
-                  Painel consolidado com dados da base PIESP. Valores em R$ milhões (preços correntes).
+                  Painel consolidado com dados da base Empreendedorismo. Valores em R$ milhões (preços correntes).
                 </Typography>
               </div>
 
@@ -539,4 +541,4 @@ Interprete os gráficos com profundidade técnica. Conecte setores, regiões e t
   );
 };
 
-export default PiespDashboardView;
+export default EmpreendedorismoDashboardView;

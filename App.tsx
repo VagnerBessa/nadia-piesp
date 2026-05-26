@@ -5,7 +5,7 @@ import Header from './components/Header';
 const LandingPage       = React.lazy(() => import('./components/LandingPage'));
 const VoiceView         = React.lazy(() => import('./components/VoiceView'));
 const ChatView          = React.lazy(() => import('./components/ChatView'));
-const PiespDashboardView = React.lazy(() => import('./components/PiespDashboardView'));
+const EmpreendedorismoDashboardView = React.lazy(() => import('./components/EmpreendedorismoDashboardView'));
 const PerfilMunicipalView = React.lazy(() => import('./components/PerfilMunicipalView'));
 const UploadView        = React.lazy(() => import('./components/UploadView'));
 const ExplorarDadosView = React.lazy(() => import('./components/ExplorarDadosView'));
@@ -39,7 +39,7 @@ const App: React.FC = () => {
     switch (view) {
       case 'voice':         return <VoiceView onNavigateHome={handleNavigateHome} />;
       case 'chat':          return <ChatView onNavigateHome={handleNavigateHome} />;
-      case 'dashboards':    return <PiespDashboardView onNavigateHome={handleNavigateHome} />;
+      case 'dashboards':    return <EmpreendedorismoDashboardView onNavigateHome={handleNavigateHome} />;
       case 'municipal':     return <PerfilMunicipalView onNavigateHome={handleNavigateHome} />;
       case 'upload':        return <UploadView onNavigateHome={handleNavigateHome} />;
       case 'explorar':      return <ExplorarDadosView onNavigateHome={handleNavigateHome} />;

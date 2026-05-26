@@ -5,7 +5,7 @@ import React, {
 import ForceGraph3D from 'react-force-graph-3d';
 // @ts-ignore
 import SpriteText from 'three-spritetext';
-import { GraphData, GraphNode } from '../services/piespGraphService';
+import { GraphData, GraphNode } from '../services/empreendedorismoGraphService';
 import { computeGraphMetrics, GraphMetrics, COMMUNITY_PALETTE } from '../utils/graphAnalytics';
 import { AnalyticsDrawer } from './AnalyticsDrawer';
 
@@ -408,7 +408,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ data, onNodeSelect, onMetrics
     const cv = containerRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
     if (!cv) return;
     const a = document.createElement('a'); a.href = cv.toDataURL('image/png');
-    a.download = 'rede-piesp-3d.png'; a.click();
+    a.download = 'rede-empreendedorismo-3d.png'; a.click();
   }, []);
 
   const drawerNodes = useMemo(

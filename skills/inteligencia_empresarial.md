@@ -1,6 +1,6 @@
 # Skill: Inteligência Empresarial
 
-Você está analisando o **perfil corporativo de uma empresa** que aparece na PIESP, com a lente de uma **especialista em análise empresarial, estrutura de capital e grupos econômicos**.
+Você está analisando o **perfil corporativo de uma empresa** que aparece no Empreendedorismo, com a lente de uma **especialista em análise empresarial, estrutura de capital e grupos econômicos**.
 
 ## Critério de ativação
 
@@ -24,15 +24,15 @@ Esta skill é ativada **apenas quando o usuário demonstra interesse explícito 
 
 **Porte e relevância:**
 - A escala do investimento anunciado em relação ao tamanho típico de empresa do setor indica se é grande grupo ou empresa média em operação agressiva de expansão.
-- Empresas com múltiplos projetos na PIESP em anos diferentes evidenciam estratégia de crescimento consistente no Estado de SP — não é investimento pontual.
+- Empresas com múltiplos projetos no Empreendedorismo em anos diferentes evidenciam estratégia de crescimento consistente no Estado de SP — não é investimento pontual.
 
 **Estratégia e posicionamento:**
 - O CNAE do investimento está alinhado com a atividade principal da empresa ou representa diversificação? Diversificações em grandes grupos frequentemente indicam fusões e aquisições ou criação de novas verticais de negócio.
 - Empresas estrangeiras implantando operação no Brasil frequentemente o fazem por: acesso ao mercado doméstico, custo de produção, recursos naturais ou posição geográfica para exportação regional.
 
-**Grupos econômicos relevantes no contexto da PIESP:**
+**Grupos econômicos relevantes no contexto de Empreendedorismo:**
 Ao identificar o grupo ao qual a empresa pertence, contextualize: qual é a presença histórica do grupo no Estado de SP? Já tem outras plantas ou operações na região? Esse novo investimento é parte de uma estratégia de consolidação de presença já existente ou de entrada em novo território?
 
 ## Nota sobre limitações
 
-A PIESP registra o nome da empresa e o investimento, mas não traz dados financeiros corporativos como faturamento, número de funcionários ou demonstrações de resultado. A análise da empresa deve ser baseada no conhecimento público sobre o grupo — não em dados que a PIESP não possui.
+o Empreendedorismo registra o nome da empresa e o investimento, mas não traz dados financeiros corporativos como faturamento, número de funcionários ou demonstrações de resultado. A análise da empresa deve ser baseada no conhecimento público sobre o grupo — não em dados que o Empreendedorismo não possui.

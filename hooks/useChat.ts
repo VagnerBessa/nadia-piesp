@@ -3,8 +3,8 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor } from '../services/piespDataService';
-import { getRedeEmpresa, getRedeRegiao, getRedeQuery } from '../services/piespGraphService';
+import { consultarEmpreendedorismoData, consultarAnunciosSemValor } from '../services/empreendedorismoDataService';
+import { getRedeEmpresa, getRedeRegiao, getRedeQuery } from '../services/empreendedorismoGraphService';
 import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
 import { callOpenRouter } from '../services/openrouterService';
 import { OPENROUTER_API_KEY } from '../config';
@@ -30,62 +30,64 @@ export type ResponseMode = 'fast' | 'complete';
 
 const initialMessage: Message = {
     role: 'model',
-    text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
+    text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso analisar dados do Painel de Empreendedorismo do Estado de São Paulo, ajudando a explorar informações sobre abertura, fechamento e crescimento de empresas em diversos setores. O que gostaria de saber?'
 };
 
 // A descrição da região agora é estática porque os metadados são carregados de forma assíncrona.
 const regiaoDesc = 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo" ou "Campinas". Usar quando o usuário perguntar por região, não por município específico.';
 
-const piespTools = [
+const empreendedorismoTools = [{ functionDeclarations: [
   {
-    functionDeclarations: [
-      {
-        name: 'consultar_projetos_piesp',
-        description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Para filtrar por setor (Indústria, Infraestrutura etc.), use o parâmetro `setor`. Retorna os principais projetos confirmados com montante financeiro.',
-        parameters: {
-          type: Type.OBJECT,
-          properties: {
-            ano: { type: Type.STRING, description: 'Ano de anúncio/registro. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período de execução. Nesses casos OMITA este campo completamente e use ano_inicio/ano_fim.' },
-            ano_inicio: { type: Type.STRING, description: 'Ano de início do período de execução do investimento (ex: "2026"). Use para buscas por período ("investimentos previstos entre X e Y", "começando em X").' },
-            ano_fim: { type: Type.STRING, description: 'Ano de fim do período de execução do investimento (ex: "2030"). Use para buscas por período ("investimentos previstos até Y").' },
-            municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-            regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Macro-setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". NUNCA invente variações. Se for um sub-setor (ex: "saúde", "tecnologia"), deixe isso vazio e use termo_busca.' },
-            termo_busca: { type: Type.STRING, description: 'Termos livres separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
-          }
-        }
-      },
-      {
-        name: 'consultar_anuncios_sem_valor',
-        description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas. REGRA CRÍTICA: Se o usuário mencionar um tipo específico de empresa (hospital, farmácia, montadora, data center, escola, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os resultados não representarão o tipo solicitado.',
-        parameters: {
-          type: Type.OBJECT,
-          properties: {
-            ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
-            ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
-            ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
-            municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-            regiao: { type: Type.STRING, description: regiaoDesc },
-            setor: { type: Type.STRING, description: 'Macro-setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". NUNCA invente variações. Se for um sub-setor (ex: "saúde", "tecnologia"), deixe isso vazio e use termo_busca.' },
-            termo_busca: { type: Type.STRING, description: 'Termos livres separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
-          }
-        }
-      },
-      {
-        name: 'consultar_rede_investimentos',
-        description: 'Use quando o usuário perguntar sobre CONEXÕES, RELAÇÕES ou REDES entre entidades: "quais empresas investem em múltiplos setores", "quem investe em X", "ecossistema em torno de Y", "empresas conectadas a Z". NÃO usar para consultas de volume, soma ou listagem simples — nesses casos use consultar_projetos_piesp.',
-        parameters: {
-          type: Type.OBJECT,
-          properties: {
-            modo: { type: Type.STRING, description: 'Um de: "empresa" (centrado numa empresa), "regiao" (empresas de uma região), "livre" (busca por palavras-chave)' },
-            valor: { type: Type.STRING, description: 'Nome da empresa, região ou palavras-chave conforme o modo escolhido' },
-          },
-          required: ['modo', 'valor'],
-        },
-      }
-    ]
-  }
-];
+    name: "listar_datasets",
+    description: "Lista todos os conjuntos de dados (datasets) disponíveis da Fundação SEADE.\n\n    A Fundação SEADE (Sistema Estadual de Análise de Dados) é o órgão de\n    estatísticas do Estado de São Paulo.\n\n    Use esta ferramenta para descobrir quais datasets existem, seus slugs\n    e seus metadados descritivos (título, descrição, tema, fonte, período, cobertura territorial), caso o usuário pergunte sobre assuntos além de empresas e negócios.\n\n    Retorna: slug, título, descrição, tema, fonte, período de referência, periodicidade,\n    cobertura territorial, total de linhas e data de atualização.",
+    parameters: { type: Type.OBJECT, properties: { "busca": { type: Type.STRING, description: "Busca textual pelo nome, título ou tema do dataset." }, "tema": { type: Type.STRING, description: "Filtra por tema (ex: 'Economia', 'Saúde', 'Educação', 'Demografia')." }, "limite": { type: Type.NUMBER, description: "Máximo de resultados (padrão: 50)" }, }, required: [] }
+  },
+  {
+    name: "consultar_dicionario",
+    description: "Retorna o dicionário de dados completo de um dataset da Fundação SEADE.\n    \n    O dicionário contém a definição de TODAS as colunas do dataset, incluindo:\n    - Nome da coluna (nome_limpo para queries)\n    - Tipo de dado (texto, numérico, etc.)\n    - Descrição detalhada do que a coluna representa\n    - Fonte\n    - Notas\n    \n    IMPORTANTE: Sempre consulte o dicionário ANTES de buscar ou agregar dados,\n    para entender o significado exato de cada coluna e formular queries corretas.",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING, description: "ID ou slug do dataset. Obtido via listar_datasets (campo id_dataset)." }, }, required: ["dataset_id"] }
+  },
+  {
+    name: "buscar_dados",
+    description: "Busca e filtra dados em um dataset específico da Fundação SEADE.\n\n    Permite filtrar por qualquer coluna usando operadores:\n    - \"=\" (igual), \"!=\" (diferente)\n    - \">\" , \">=\" , \"<\" , \"<=\" (comparação numérica)\n    - \"LIKE\" (contém texto, use % como curinga)\n    - \"IN\" (lista de valores)\n    - \"BETWEEN\" (intervalo numérico ou de datas)\n\n    DICA: Consulte o dicionário primeiro para saber os nomes exatos das colunas.\n    Nomes de municípios estão geralmente em MAIÚSCULAS (ex: \"SANTOS\", \"SÃO PAULO\").\n    Anos são geralmente inteiros (ex: 2022, não \"2022\").\n\n    Retorna as linhas do dataset que atendem aos filtros, com paginação.\n    Máximo de 10.000 linhas por página. Paginação disponível via parâmetros 'limite' e 'pagina'.\n    A resposta inclui 'total_disponivel' (total de linhas que satisfazem os filtros) e\n    'truncado: true' quando há mais linhas além das retornadas.",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING, description: "ID ou slug do dataset" }, "filtros": { type: Type.ARRAY, description: "Lista de filtros a aplicar", items: { type: Type.OBJECT, properties: { "coluna": { type: Type.STRING, description: "Nome da coluna" }, "operador": { type: Type.STRING, enum: ["=","!=",">",">=","<","<=","LIKE","IN","BETWEEN"] }, "valor": { type: Type.OBJECT, description: "Valor para comparação. String, número ou array (para IN/BETWEEN)" }, }, required: ["coluna","operador","valor"] } }, "colunas": { type: Type.ARRAY, description: "Colunas a retornar. Se vazio, retorna todas.", items: { type: Type.STRING } }, "ordenar_por": { type: Type.STRING, description: "Coluna para ordenação" }, "ordem": { type: Type.STRING, enum: ["ASC","DESC"] }, "limite": { type: Type.NUMBER, description: "Máx linhas por página (até 10000)" }, "pagina": { type: Type.NUMBER }, }, required: ["dataset_id"] }
+  },
+  {
+    name: "agregar_dados",
+    description: "Realiza agregações estatísticas sobre um dataset da Fundação SEADE.\n\n    Funções disponíveis:\n    - SOMA: soma dos valores\n    - MEDIA: média aritmética\n    - CONTAGEM: contagem de registros não-nulos (IMPORTANTE: NUNCA use '*' como nome de coluna. Para contar o total de linhas, use o nome de uma coluna real do dataset, como 'CNPJ' ou 'id').\n    - MINIMO / MAXIMO: extremos\n    - MEDIANA: percentil 50\n    - DESVIO_PADRAO: desvio padrão amostral\n    - VARIANCIA: variância amostral\n    - PERCENTIL: percentil customizado (exige campo 'percentil_p' entre 0 e 1)\n    - CONTAGEM_DISTINTA: COUNT(DISTINCT col)\n\n    Paginação: use 'limite' (até 10.000 grupos) e 'pagina' para navegar conjuntos grandes.\n    Filtro pós-agregação: use 'tendo' (HAVING) para filtrar grupos pelo valor agregado.\n    Resposta inclui 'total_grupos' e 'truncado: true' quando há mais grupos além dos retornados.\n\n    Exemplo: \"qual o PIB total por município da RMSP em 2022?\"\n    - dataset_id: \"pib-municipios\", agrupar_por: [\"municipio\"]\n    - agregacoes: [{ coluna: \"pib\", funcao: \"SOMA\" }]\n    - filtros: [{ coluna: \"ano\", operador: \"=\", valor: 2022 }, { coluna: \"regiao\", operador: \"=\", valor: \"RMSP\" }]",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING }, "agrupar_por": { type: Type.ARRAY, description: "Colunas para agrupamento (GROUP BY)", items: { type: Type.STRING } }, "agregacoes": { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { "coluna": { type: Type.STRING }, "funcao": { type: Type.STRING, enum: ["SOMA","MEDIA","CONTAGEM","MINIMO","MAXIMO","MEDIANA","DESVIO_PADRAO","VARIANCIA","PERCENTIL","CONTAGEM_DISTINTA"] }, "alias": { type: Type.STRING, description: "Nome do resultado (opcional)" }, "percentil_p": { type: Type.NUMBER, description: "Para PERCENTIL: valor entre 0 e 1 (ex: 0.9 para P90)" }, }, required: ["coluna","funcao"] } }, "filtros": { type: Type.ARRAY, description: "Filtros aplicados antes da agregação (WHERE)", items: { type: Type.OBJECT, properties: { "coluna": { type: Type.STRING, description: "Nome da coluna" }, "operador": { type: Type.STRING, enum: ["=","!=",">",">=","<","<=","LIKE","IN","BETWEEN"] }, "valor": { type: Type.OBJECT, description: "Valor para comparação. String, número ou array (para IN/BETWEEN)" }, }, required: ["coluna","operador","valor"] } }, "tendo": { type: Type.ARRAY, description: "Filtros pós-agregação (HAVING). Use o alias da agregação como coluna.", items: { type: Type.OBJECT, properties: { "coluna": { type: Type.STRING, description: "Alias da agregação ou coluna agrupada" }, "operador": { type: Type.STRING, enum: ["=","!=",">",">=","<","<="] }, "valor": { type: Type.NUMBER }, }, required: ["coluna","operador","valor"] } }, "ordenar_por": { type: Type.STRING }, "ordem": { type: Type.STRING, enum: ["ASC","DESC"] }, "limite": { type: Type.NUMBER, description: "Máx grupos por página (até 10000)" }, "pagina": { type: Type.NUMBER }, }, required: ["dataset_id","agregacoes"] }
+  },
+  {
+    name: "baixar_csv",
+    description: "Retorna o conteúdo original do dataset ou instrução de obtenção rápida.\n    \n    Devido a limitações de tamanho em transações para IA, se um dataset tiver \n    mais de milhares de linhas, apenas uma amostra será retornada junto com detalhes \n    de onde baixar a versão em bulk. Para buscas precisas, você DEVE utilizar o buscar_dados.",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING, description: "ID ou slug do dataset" }, "limite": { type: Type.NUMBER }, }, required: ["dataset_id"] }
+  },
+  {
+    name: "comparar_dados",
+    description: "Compara dados entre períodos, regiões ou categorias de um dataset SEADE.\n\n    Tipos de comparação:\n    - TEMPORAL: compara o mesmo indicador em períodos diferentes\n      Ex: \"Compare a população de SP entre 2010 e 2020\"\n    - REGIONAL: compara o mesmo indicador entre regiões\n      Ex: \"Compare o PIB de Santos, Guarujá e São Vicente em 2022\"\n    - CATEGORICA: compara valores agrupados por uma dimensão\n      Ex: \"Compare natalidade por faixa etária da mãe\"\n\n    Retorna dados com paginação. Resposta inclui 'total_disponivel' e 'truncado: true'\n    quando há mais grupos além dos retornados.",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING }, "tipo": { type: Type.STRING, enum: ["TEMPORAL","REGIONAL","CATEGORICA"] }, "coluna_valor": { type: Type.STRING, description: "Coluna numérica a comparar" }, "coluna_comparacao": { type: Type.STRING, description: "Coluna de agrupamento (ano, municipio, etc.)" }, "valores_comparar": { type: Type.ARRAY, description: "Valores a comparar (sempre como strings — DuckDB faz cast). Ex: [\"2010\", \"2020\"] ou [\"SANTOS\", \"GUARUJÁ\"]", items: { type: Type.STRING } }, "filtros": { type: Type.ARRAY, description: "Filtros adicionais (mesmo formato de buscar_dados)", items: { type: Type.OBJECT, properties: { "coluna": { type: Type.STRING, description: "Nome da coluna" }, "operador": { type: Type.STRING, enum: ["=","!=",">",">=","<","<=","LIKE","IN","BETWEEN"] }, "valor": { type: Type.OBJECT, description: "Valor para comparação. String, número ou array (para IN/BETWEEN)" }, }, required: ["coluna","operador","valor"] } }, "funcao_agregacao": { type: Type.STRING, enum: ["SOMA","MEDIA","CONTAGEM"] }, "limite": { type: Type.NUMBER, description: "Máx grupos por página (até 10000)" }, "pagina": { type: Type.NUMBER }, }, required: ["dataset_id","tipo","coluna_valor","coluna_comparacao","valores_comparar"] }
+  },
+  {
+    name: "descrever_dataset",
+    description: "Retorna características estruturais de um dataset (total de linhas, tipos, estatísticas).\n    Útil para entender a dimensão e a qualidade dos dados antes de fazer agregações pesadas.\n\n    Sem 'coluna': usa SUMMARIZE do DuckDB com amostragem (200k linhas) para retornar para TODAS as colunas:\n      min, max, média, desvio padrão, quartis (q25/q50/q75), contagem e % de nulos.\n\n    Com 'coluna': análise específica com MIN, MAX, COUNT DISTINCT e Top-10 valores mais frequentes\n      (usando amostra configurável via 'sample_size').",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING, description: "ID ou slug do dataset" }, "coluna": { type: Type.STRING, description: "Opcional: Coluna específica para análise aprofundada (Top-N, Min, Max)" }, "sample_size": { type: Type.NUMBER, description: "Tamanho da amostra para estatísticas (default 200k)" }, }, required: ["dataset_id"] }
+  },
+  {
+    name: "amostra_dataset",
+    description: "Retorna uma amostra aleatória de linhas de um dataset.\n    Útil para entender o formato, conteúdo e exemplos de dados reais presentes, com baixíssimo custo\n    computacional, pois extrai aleatoriamente sem necessidade de ler todo o arquivo (USING SAMPLE).",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING, description: "ID ou slug do dataset" }, "colunas": { type: Type.ARRAY, description: "Colunas a retornar. Se vazio, retorna todas.", items: { type: Type.STRING } }, "tamanho_amostra": { type: Type.NUMBER, description: "Quantidade de linhas na amostra (default 100, max 1000)" }, }, required: ["dataset_id"] }
+  },
+  {
+    name: "executar_sql",
+    description: "Executa uma consulta SQL customizada (APENAS SELECT) em um ou mais datasets.\n    Ferramenta avançada para subqueries, window functions e JOINs entre datasets.\n\n    Modo simples (um dataset):\n      - Passe 'dataset_id' e use FROM dataset na query.\n      - Ex: SELECT * FROM dataset WHERE ano = 2022 LIMIT 100\n\n    Modo multi-dataset (JOIN entre datasets):\n      - Passe 'datasets': [{\"alias\":\"pib\",\"dataset_id\":\"pib-municipios\"},{\"alias\":\"pop\",\"dataset_id\":\"populacao\"}]\n      - Use os aliases como nomes de tabela na query.\n      - Ex: SELECT p.municipio, p.pib, q.populacao FROM pib p JOIN pop q ON p.cod = q.cod\n\n    Regras:\n    1. Aspas duplas para colunas, aspas simples para valores literais.\n    2. Somente SELECT (sandbox). Outros comandos retornarão erro.\n    3. Limite embutido: 10.000 linhas.\n    4. Todos os datasets em 'datasets' devem estar no escopo do domínio.",
+    parameters: { type: Type.OBJECT, properties: { "dataset_id": { type: Type.STRING, description: "Dataset principal (modo simples). Use FROM dataset na query." }, "datasets": { type: Type.ARRAY, description: "Múltiplos datasets (modo multi). Cada entrada vira um CTE/alias.", items: { type: Type.OBJECT, properties: { "alias": { type: Type.STRING, description: "Nome que a query usará como tabela (ex: 'pib')" }, "dataset_id": { type: Type.STRING, description: "Slug do dataset" }, }, required: ["alias","dataset_id"] } }, "query": { type: Type.STRING, description: "Query SQL SELECT. Use FROM dataset (simples) ou FROM alias (multi)." }, }, required: ["query"] }
+  },
+  {
+    name: "buscar_coluna",
+    description: "Busca colunas em todos os datasets usando linguagem natural e similaridade semântica (embeddings VSS).\n    Útil quando você não sabe o nome exato de uma coluna mas sabe o que ela representa.\n\n    Exemplos:\n    - \"rendimento mensal\" → encontra colunas como 'renda_media', 'salario_mensal'\n    - \"código do município\" → encontra 'cod_municipio', 'id_mun', 'codigo_ibge'\n    - \"taxa de mortalidade infantil\" → encontra a coluna certa no dataset de saúde\n\n    Retorna as colunas mais similares com score de similaridade (0–1) e o dataset ao qual pertencem.\n    Filtrado automaticamente pelos datasets permitidos do domínio.",
+    parameters: { type: Type.OBJECT, properties: { "query": { type: Type.STRING, description: "Texto livre descrevendo a informação que você procura" }, "dataset_id": { type: Type.STRING, description: "Opcional: limita a busca a um dataset específico" }, "limite": { type: Type.NUMBER, description: "Máx de colunas a retornar (até 20)" }, }, required: ["query"] }
+  },
+] }];
 
 // Ferramentas de pesquisa: Google Search para contexto externo
 // (não pode ser combinado com functionDeclarations na mesma chamada)
@@ -93,59 +95,13 @@ const searchTools = [
   { googleSearch: {} }
 ];
 
-// Executa a ferramenta localmente e retorna o resultado
+import { callMcpTool } from '../services/mcpService';
+
+// Executa a ferramenta localmente via servidor MCP e retorna o resultado
 async function executarFerramenta(nome: string, args: any): Promise<any> {
-  if (nome === 'consultar_projetos_piesp') {
-    let resultados = await consultarPiespData({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
-    // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
-    if (resultados.metadados.total_projetos === 0 && args.ano) {
-      const semAno = await consultarPiespData({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.metadados.total_projetos > 0) resultados = semAno;
-    }
-    return { sucesso: true, total_investimentos: resultados.metadados.total_investimento_milhoes, projetos: resultados.investimentos };
-  }
-  if (nome === 'consultar_anuncios_sem_valor') {
-    let resultados = await consultarAnunciosSemValor({ ano: args.ano, ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    if (resultados.total_anuncios === 0 && args.ano) {
-      const semAno = await consultarAnunciosSemValor({ ano_inicio: args.ano_inicio, ano_fim: args.ano_fim, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total_anuncios > 0) resultados = semAno;
-    }
-    return { sucesso: true, ...resultados };
-  }
-  if (nome === 'consultar_rede_investimentos') {
-    const { modo, valor } = args;
-    try {
-      let graphData;
-      if (modo === 'empresa') graphData = await getRedeEmpresa(valor);
-      else if (modo === 'regiao') graphData = await getRedeRegiao(valor);
-      else graphData = await getRedeQuery({ termo_busca: valor });
-
-      const topEmpresas = graphData.nodes
-        .filter(n => n.type === 'empresa_alvo').slice(0, 8)
-        .map(n => ({ empresa: n.id, projetos: n.count, valor_milhoes: Math.round(n.valor_total * 10) / 10 }));
-      const topInvestidoras = graphData.nodes
-        .filter(n => n.type === 'investidora').slice(0, 5)
-        .map(n => ({ investidora: n.id, projetos: n.count }));
-      const topMunicipios = graphData.nodes
-        .filter(n => n.type === 'municipio').slice(0, 5)
-        .map(n => ({ municipio: n.id, projetos: n.count }));
-      const setores = graphData.nodes
-        .filter(n => n.type === 'setor')
-        .map(n => ({ setor: n.id, projetos: n.count }));
-
-      return {
-        sucesso: true,
-        ...graphData.meta,
-        top_empresas: topEmpresas,
-        top_investidoras: topInvestidoras,
-        top_municipios: topMunicipios,
-        setores,
-        observacao: 'Dados de rede mapeados. Para visualização interativa, o usuário pode acessar a aba "Rede" no menu.',
-      };
-    } catch (e: any) {
-      return { sucesso: false, error: 'Erro ao consultar rede de investimentos.' };
-    }
+  const isEmpreendedorismoTool = empreendedorismoTools[0].functionDeclarations.some(t => t.name === nome);
+  if (isEmpreendedorismoTool) {
+    return await callMcpTool(nome, args);
   }
   return { error: 'Ferramenta não reconhecida' };
 }
@@ -324,7 +280,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
 
     const detectedSkill = selectedSkillName ? null : detectSkill(text);
     const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
-    const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
+    const ferramentasAtivas = usarPesquisa ? searchTools : empreendedorismoTools;
 
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });

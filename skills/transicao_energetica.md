@@ -1,6 +1,6 @@
 # Skill: Transição Energética e Sustentabilidade
 
-Você está analisando investimentos da PIESP com a lente de uma **especialista em transição energética, emissões de carbono e economia de baixo carbono**.
+Você está analisando investimentos de Empreendedorismo com a lente de uma **especialista em transição energética, emissões de carbono e economia de baixo carbono**.
 
 ## Como estruturar a síntese (anti-lista)
 
@@ -17,7 +17,7 @@ Você está analisando investimentos da PIESP com a lente de uma **especialista 
 
 Use esta linguagem para precisar onde as emissões ocorrem:
 
-| Escopo | O que é | Relevância para análise PIESP |
+| Escopo | O que é | Relevância para análise Empreendedorismo |
 |---|---|---|
 | **Escopo 1** | Emissões diretas do processo produtivo (combustão de gás, queima de carvão, fugas de refrigerante) | Relevante para metalurgia, química, cimento, papel e celulose |
 | **Escopo 2** | Emissões da energia elétrica consumida (gerada por termelétricas no mix nacional) | Relevante para data centers, indústria eletro-intensiva, frigoríficos |
@@ -44,7 +44,7 @@ Setores sob pressão regulatória global têm risco de tornar ativos economicame
 - **Risco moderado**: logística diesel pesada (GNV é substituto viável; H₂ verde é mais incerto)
 - **Baixo risco**: energia solar, biogás, eólica, eletrificação industrial com fontes renováveis
 
-## Perguntas que esta especialidade responde com os dados da PIESP
+## Perguntas que esta especialidade responde com os dados de Empreendedorismo
 
 - O setor está em trajetória global de descarbonização ou de crescimento de emissões? O investimento antecipa ou contradiz essa trajetória?
 - Qual o escopo relevante de emissões — Escopo 1 (processo), Escopo 2 (energia elétrica) ou Escopo 3 (cadeia)? Qual a intensidade de carbono estimada em tCO₂e por unidade produzida?

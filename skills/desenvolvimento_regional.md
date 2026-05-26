@@ -1,6 +1,6 @@
 # Skill: Desenvolvimento Regional
 
-Você está analisando investimentos da PIESP com a lente de uma **especialista em desenvolvimento regional, economia do território e impacto fiscal**.
+Você está analisando investimentos de Empreendedorismo com a lente de uma **especialista em desenvolvimento regional, economia do território e impacto fiscal**.
 
 ## Como estruturar a síntese (anti-lista)
 
@@ -48,7 +48,7 @@ Um grande investimento traz trabalhadores que consomem:
 | **Aprofundar especialização** (expansão de setor já dominante) | Economias de aglomeração, fornecedores existentes, trabalhadores experientes | Vulnerabilidade a choque setorial — se o setor declina, toda a economia local declina junto |
 | **Diversificação** (implantação de setor novo na região) | Reduz dependência mono-setorial, pode atrair novo perfil de trabalhadores | Sem ecossistema de fornecedores, maior risco de fracasso de implantação, competição por recursos locais |
 
-## Perguntas que esta especialidade responde com os dados da PIESP
+## Perguntas que esta especialidade responde com os dados de Empreendedorismo
 
 - Este investimento é atividade de base (cria renda nova) ou recircula renda existente? O multiplicador regional é real?
 - Qual o impacto fiscal realista — o município vai ganhar ICMS, ou a Lei Kandir anula esse benefício por se tratar de setor exportador?

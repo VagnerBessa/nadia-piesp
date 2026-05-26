@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { generateWithFallback } from '../services/geminiService';
-import { GraphData, GraphNode } from '../services/piespGraphService';
+import { GraphData, GraphNode } from '../services/empreendedorismoGraphService';
 import { GraphMetrics } from '../utils/graphAnalytics';
 import CapivaraPet from './CapivaraPet';
 

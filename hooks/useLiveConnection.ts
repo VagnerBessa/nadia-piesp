@@ -4,7 +4,7 @@ import { GoogleGenAI, LiveServerMessage, Modality, Blob, Tool, FunctionDeclarati
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-
+import { empreendedorismoTools } from '../generated_tools';
 // Audio settings
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
@@ -377,42 +377,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
           },
           tools: tools || [
             { googleSearch: {} },
-            {
-              functionDeclarations: [
-                {
-                  name: 'consultar_projetos_piesp',
-                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Buscando." ANTES de invocar.',
-                  parameters: {
-                    type: Type.OBJECT,
-                    properties: {
-                      ano: { type: Type.STRING, description: 'Ano de anúncio/registro do investimento. Não confunda com o período de execução. Para buscas de período ("entre 2026 e 2030"), use ano_inicio e ano_fim.' },
-                      ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
-                      ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
-                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: 'Região administrativa. Ex: "Região Metropolitana de São Paulo", "Região Administrativa de Campinas".' },
-                      setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
-                      termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição do investimento (ex: "inteligência artificial", "carro elétrico", "sustentabilidade").' }
-                    }
-                  }
-                },
-                {
-                  name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*, APENAS QUANDO e SE o usuário demonstrar interesse nesses anúncios sem cifra. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Só um segundo." ANTES de invocar. REGRA CRÍTICA DE FILTRO: Se o usuário mencionar um tipo específico de empresa ou atividade (hospital, farmácia, escola, montadora, data center, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`.',
-                  parameters: {
-                    type: Type.OBJECT,
-                    properties: {
-                      ano: { type: Type.STRING, description: 'O ano do anúncio/registro do investimento, ex: "2026"' },
-                      ano_inicio: { type: Type.STRING, description: 'Ano de início da execução do investimento (ex: "2026").' },
-                      ano_fim: { type: Type.STRING, description: 'Ano de término da execução do investimento (ex: "2030").' },
-                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: 'Região administrativa. Ex: "Região Metropolitana de São Paulo", "Região Administrativa de Campinas".' },
-                      setor: { type: Type.STRING, description: 'Setor econômico. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços".' },
-                      termo_busca: { type: Type.STRING, description: 'Termo livre para buscar na descrição.' }
-                    }
-                  }
-                }
-              ]
-            }
+            ...empreendedorismoTools
           ],
           systemInstruction: systemInstruction || DEFAULT_SYSTEM_INSTRUCTION,
         },

@@ -134,6 +134,8 @@ function convertGeminiParams(params: Record<string, unknown>): Record<string, un
         props[propKey] = convertGeminiParams(propVal as Record<string, unknown>);
       }
       result[key] = props;
+    } else if (key === 'items' && typeof value === 'object') {
+      result[key] = convertGeminiParams(value as Record<string, unknown>);
     } else {
       result[key] = value;
     }

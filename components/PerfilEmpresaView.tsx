@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { generateWithFallback } from '../services/geminiService';
-import { getUniqueEmpresas, buscarEmpresaNoPiesp, ResumoRelatorio } from '../services/piespDataService';
+import { getUniqueEmpresas, buscarEmpresaNoEmpreendedorismo, ResumoRelatorio } from '../services/empreendedorismoDataService';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import { EmbeddedChart } from './EmbeddedChart';
 import { LoadingPetOverlay, MiniDocSVG } from './LoadingPetOverlay';
@@ -58,31 +58,31 @@ function injectInlineCitations(text: string, supports: any[], indexMap: Record<n
   return decoder.decode(textBytes);
 }
 
-function buildDossiePrompt(empresa: string, piespData: ResumoRelatorio): string {
-const totalFormatado = piespData.total_investimentos > 0
-    ? (piespData.total_investimentos >= 1000
-      ? `R$ ${(piespData.total_investimentos / 1000).toFixed(1).replace('.', ',')} bilhões`
-      : `R$ ${piespData.total_investimentos.toFixed(0)} milhões`)
+function buildDossiePrompt(empresa: string, empreendedorismoData: ResumoRelatorio): string {
+const totalFormatado = empreendedorismoData.total_investimentos > 0
+    ? (empreendedorismoData.total_investimentos >= 1000
+      ? `R$ ${(empreendedorismoData.total_investimentos / 1000).toFixed(1).replace('.', ',')} bilhões`
+      : `R$ ${empreendedorismoData.total_investimentos.toFixed(0)} milhões`)
     : 'Dados não disponíveis';
 
-  const projetosTexto = piespData.projetos.length > 0
-    ? piespData.projetos.map((p, i) => {
+  const projetosTexto = empreendedorismoData.projetos.length > 0
+    ? empreendedorismoData.projetos.map((p, i) => {
         const val = p.valor_milhoes_reais > 0 ? `R$ ${p.valor_milhoes_reais} mi` : 'Não divulgado';
         return `${i + 1}. Ano ${p.ano} | ${p.municipio} (${p.regiao}) | Setor: ${p.setor} | Tipo: ${p.tipo || 'N/I'} | Valor: ${val}\n   Descrição: "${p.descricao}"`;
       }).join('\n\n')
-    : 'Nenhum projeto com valor divulgado encontrado para essa empresa na base PIESP.';
+    : 'Nenhum projeto com valor divulgado encontrado para essa empresa na base Empreendedorismo.';
 
-  const setoresTexto = piespData.setores.map(s => {
+  const setoresTexto = empreendedorismoData.setores.map(s => {
     const val = s.valor > 0 ? `R$ ${s.valor} mi` : 'Valor não divulgado';
     return `- ${s.nome}: ${val} (${s.count} projeto${s.count > 1 ? 's' : ''})`;
   }).join('\n') || '—';
 
-  const municipiosTexto = piespData.municipios.map(m => {
+  const municipiosTexto = empreendedorismoData.municipios.map(m => {
     const val = m.valor > 0 ? `R$ ${m.valor} mi` : 'Valor não divulgado';
     return `- ${m.nome}: ${val}`;
   }).join('\n') || '—';
 
-  const porAnoTexto = piespData.evolucao_anual.map(a => {
+  const porAnoTexto = empreendedorismoData.evolucao_anual.map(a => {
     const val = a.valor > 0 ? `R$ ${a.valor} mi` : 'Valor não divulgado';
     return `- ${a.nome}: ${val} (${a.count} projetos)`;
   }).join('\n') || '—';
@@ -91,19 +91,19 @@ const totalFormatado = piespData.total_investimentos > 0
 
 O usuário solicitou um dossiê completo e aprofundado sobre: **"${empresa}"**
 
-DADOS INTERNOS DO PIESP — investimentos confirmados no Estado de SP:
-- Projetos registrados: ${piespData.total_projetos} | Valor total: ${totalFormatado}
+DADOS INTERNOS DO Empreendedorismo — investimentos confirmados no Estado de SP:
+- Projetos registrados: ${empreendedorismoData.total_projetos} | Valor total: ${totalFormatado}
 
 PROJETOS DETALHADOS:
 ${projetosTexto}
 
-CONCENTRAÇÃO SETORIAL (PIESP):
+CONCENTRAÇÃO SETORIAL (Empreendedorismo):
 ${setoresTexto}
 
-CONCENTRAÇÃO MUNICIPAL (PIESP):
+CONCENTRAÇÃO MUNICIPAL (Empreendedorismo):
 ${municipiosTexto}
 
-EVOLUÇÃO DOS ANÚNCIOS POR ANO (PIESP):
+EVOLUÇÃO DOS ANÚNCIOS POR ANO (Empreendedorismo):
 ${porAnoTexto}
 
 ---
@@ -115,7 +115,7 @@ Use a ferramenta de busca para pesquisar ativamente as seguintes informações s
 2. DESEMPENHO FINANCEIRO — receita líquida, EBITDA, lucro líquido, margem EBITDA, dívida líquida, alavancagem (últimos 2–3 anos disponíveis). Se listada em bolsa: market cap, performance da ação, rating de crédito (Moody's/Fitch/S&P). Se privada e sem dados públicos, declare isso explicitamente.
 3. POSIÇÃO DE MERCADO — market share estimado, principais concorrentes, posicionamento competitivo
 4. FATOS RECENTES — resultados trimestrais, expansões, fusões/aquisições, desinvestimentos, projetos anunciados (últimos 12–18 meses)
-5. ESTRATÉGIA EM SP — o que os dados do PIESP revelam sobre a estratégia da empresa no Estado
+5. ESTRATÉGIA EM SP — o que os dados do Empreendedorismo revelam sobre a estratégia da empresa no Estado
 
 Gere um dossiê estruturado em português, usando markdown rico:
 - ## para seções principais
@@ -135,7 +135,7 @@ O dossiê deve ter exatamente esta estrutura:
 ## Posição de Mercado
 (market share, competidores, posicionamento setorial)
 
-## Histórico no Estado de São Paulo — PIESP
+## Histórico no Estado de São Paulo — Empreendedorismo
 (analise os dados internos: valores, municípios, setores, evolução temporal dos projetos)
 
 ## Fatos Recentes e Estratégia
@@ -394,7 +394,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [empresaPesquisada, setEmpresaPesquisada] = useState<string | null>(null);
-  const [piespStats, setPiespStats] = useState<{ total_projetos: number; total_investimentos: number } | null>(null);
+  const [empreendedorismoStats, setEmpreendedorismoStats] = useState<{ total_projetos: number; total_investimentos: number } | null>(null);
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
   const [streamedText, setStreamedText]   = useState('');
   const [isStreaming, setIsStreaming]     = useState(false);
@@ -491,20 +491,20 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
     setMostrarSugestoes(false);
 
     try {
-      // 1. Busca dados internos do PIESP
-      const piespData = await buscarEmpresaNoPiesp(empresa);
+      // 1. Busca dados internos do Empreendedorismo
+      const empreendedorismoData = await buscarEmpresaNoEmpreendedorismo(empresa);
       
-      if (piespData.total_projetos === 0) {
+      if (empreendedorismoData.total_projetos === 0) {
         setDossie(null);
-        setError('Empresa não encontrada na base PIESP ou sem valores divulgados.');
+        setError('Empresa não encontrada na base Empreendedorismo ou sem valores divulgados.');
         setIsLoading(false);
         return;
       }
 
-      setPiespStats({ total_projetos: piespData.total_projetos, total_investimentos: piespData.total_investimentos });
+      setEmpreendedorismoStats({ total_projetos: empreendedorismoData.total_projetos, total_investimentos: empreendedorismoData.total_investimentos });
 
       // 2. Monta o prompt combinado
-      const prompt = buildDossiePrompt(empresa, piespData);
+      const prompt = buildDossiePrompt(empresa, empreendedorismoData);
 
       // 3. Chama Gemini com Google Search habilitado (fallback OpenRouter sem fontes se 503)
       const response = await generateWithFallback({
@@ -591,7 +591,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
               </div>
               <div className="flex flex-col gap-1.5">
                 <h1 className="text-2xl md:text-3xl font-black text-slate-50 tracking-tight">Perfil de Empresa</h1>
-                <p className="text-sm font-medium text-slate-400">Dados PIESP + pesquisa na internet</p>
+                <p className="text-sm font-medium text-slate-400">Dados Empreendedorismo + pesquisa na internet</p>
               </div>
             </div>
             <button
@@ -607,7 +607,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
         <div className="flex-shrink-0 px-6 py-5 border-b border-slate-700/50">
           <div className="max-w-2xl mx-auto relative">
             <p className="text-xs text-slate-400 mb-2">
-              Digite o nome de uma empresa para gerar um dossiê com dados do PIESP e informações da internet.
+              Digite o nome de uma empresa para gerar um dossiê com dados do Empreendedorismo e informações da internet.
             </p>
             <div className="flex gap-3">
               <div className="flex-grow relative">
@@ -691,19 +691,19 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
             <div className="max-w-6xl mx-auto space-y-4">
 
               {/* Stats rápidos */}
-              {piespStats && (
+              {empreendedorismoStats && (
                 <div className="flex gap-4 flex-wrap">
                   <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
-                    <p className="text-xs text-slate-400">Projetos no PIESP</p>
-                    <p className="text-xl font-bold text-white">{piespStats.total_projetos}</p>
+                    <p className="text-xs text-slate-400">Projetos no Empreendedorismo</p>
+                    <p className="text-xl font-bold text-white">{empreendedorismoStats.total_projetos}</p>
                   </div>
                   <div className="bg-slate-800/60 rounded-lg px-4 py-3 border border-slate-700/50">
                     <p className="text-xs text-slate-400">Valor total investido em SP</p>
-                    <p className={`text-xl font-bold ${piespStats.total_investimentos > 0 ? 'text-rose-400' : 'text-slate-500 text-lg'}`}>
-                      {piespStats.total_investimentos > 0
-                        ? (piespStats.total_investimentos >= 1000
-                          ? `R$ ${(piespStats.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi`
-                          : `R$ ${piespStats.total_investimentos.toFixed(0)} mi`)
+                    <p className={`text-xl font-bold ${empreendedorismoStats.total_investimentos > 0 ? 'text-rose-400' : 'text-slate-500 text-lg'}`}>
+                      {empreendedorismoStats.total_investimentos > 0
+                        ? (empreendedorismoStats.total_investimentos >= 1000
+                          ? `R$ ${(empreendedorismoStats.total_investimentos / 1000).toFixed(1).replace('.', ',')} bi`
+                          : `R$ ${empreendedorismoStats.total_investimentos.toFixed(0)} mi`)
                         : 'Não divulgado'}
                     </p>
                   </div>
@@ -791,7 +791,7 @@ const PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({ onNavigateHome })
 
               {!isStreaming && glassesActive && (
                 <p className="text-xs text-slate-500 text-center pt-1">
-                  Dossiê gerado pela Nadia combinando dados internos do PIESP com pesquisa na internet. Valide informações críticas nas fontes originais.
+                  Dossiê gerado pela Nadia combinando dados internos do Empreendedorismo com pesquisa na internet. Valide informações críticas nas fontes originais.
                 </p>
               )}
 

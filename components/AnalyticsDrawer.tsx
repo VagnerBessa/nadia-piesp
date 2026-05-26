@@ -222,7 +222,7 @@ export const AnalyticsDrawer: React.FC<Props> = ({ metrics, nodes, onHighlight, 
           </summary>
           <ul className="mt-2 space-y-1.5">
             {[
-              'Esta análise refere-se ao recorte filtrado, não ao universo completo da Piesp.',
+              'Esta análise refere-se ao recorte filtrado, não ao universo completo da Empreendedorismo.',
               'Centralidade indica posição na rede, não importância econômica absoluta.',
               'Agrupamentos são estruturais — não equivalem a cadeias produtivas ou vínculos contratuais.',
               'Conexões representam relações derivadas de anúncios, não vínculos societários.',

@@ -1,0 +1,571 @@
+[
+  {
+    "name": "listar_datasets",
+    "description": "Lista todos os conjuntos de dados (datasets) disponíveis da Fundação SEADE.\n\n    A Fundação SEADE (Sistema Estadual de Análise de Dados) é o órgão de\n    estatísticas do Estado de São Paulo.\n\n    Use esta ferramenta PRIMEIRO para descobrir quais datasets existem, seus slugs\n    e seus metadados descritivos (título, descrição, tema, fonte, período, cobertura territorial).\n\n    Estes metadados ajudam a escolher o dataset correto ANTES de consultar dados específicos.\n    Retorna: slug, título, descrição, tema, fonte, período de referência, periodicidade,\n    cobertura territorial, total de linhas e data de atualização.",
+    "annotations": {
+      "title": "Listar datasets SEADE",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "busca": {
+          "type": "string",
+          "description": "Busca textual pelo nome, título ou tema do dataset."
+        },
+        "tema": {
+          "type": "string",
+          "description": "Filtra por tema (ex: 'Economia', 'Saúde', 'Educação', 'Demografia')."
+        },
+        "limite": {
+          "type": "number",
+          "description": "Máximo de resultados (padrão: 50)"
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "consultar_dicionario",
+    "description": "Retorna o dicionário de dados completo de um dataset da Fundação SEADE.\n    \n    O dicionário contém a definição de TODAS as colunas do dataset, incluindo:\n    - Nome da coluna (nome_limpo para queries)\n    - Tipo de dado (texto, numérico, etc.)\n    - Descrição detalhada do que a coluna representa\n    - Fonte\n    - Notas\n    \n    IMPORTANTE: Sempre consulte o dicionário ANTES de buscar ou agregar dados,\n    para entender o significado exato de cada coluna e formular queries corretas.",
+    "annotations": {
+      "title": "Consultar dicionário de dados",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "ID ou slug do dataset. Obtido via listar_datasets (campo id_dataset)."
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "buscar_dados",
+    "description": "Busca e filtra dados em um dataset específico da Fundação SEADE.\n\n    Permite filtrar por qualquer coluna usando operadores:\n    - \"=\" (igual), \"!=\" (diferente)\n    - \">\" , \">=\" , \"<\" , \"<=\" (comparação numérica)\n    - \"LIKE\" (contém texto, use % como curinga)\n    - \"IN\" (lista de valores)\n    - \"BETWEEN\" (intervalo numérico ou de datas)\n\n    DICA: Consulte o dicionário primeiro para saber os nomes exatos das colunas.\n    Nomes de municípios estão geralmente em MAIÚSCULAS (ex: \"SANTOS\", \"SÃO PAULO\").\n    Anos são geralmente inteiros (ex: 2022, não \"2022\").\n\n    Retorna as linhas do dataset que atendem aos filtros, com paginação.\n    Máximo de 10.000 linhas por página. Paginação disponível via parâmetros 'limite' e 'pagina'.\n    A resposta inclui 'total_disponivel' (total de linhas que satisfazem os filtros) e\n    'truncado: true' quando há mais linhas além das retornadas.",
+    "annotations": {
+      "title": "Buscar dados com filtros",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "ID ou slug do dataset"
+        },
+        "filtros": {
+          "type": "array",
+          "description": "Lista de filtros a aplicar",
+          "items": {
+            "type": "object",
+            "properties": {
+              "coluna": {
+                "type": "string",
+                "description": "Nome da coluna"
+              },
+              "operador": {
+                "type": "string",
+                "enum": [
+                  "=",
+                  "!=",
+                  ">",
+                  ">=",
+                  "<",
+                  "<=",
+                  "LIKE",
+                  "IN",
+                  "BETWEEN"
+                ]
+              },
+              "valor": {
+                "description": "Valor para comparação. String, número ou array (para IN/BETWEEN)"
+              }
+            },
+            "required": [
+              "coluna",
+              "operador",
+              "valor"
+            ]
+          }
+        },
+        "colunas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Colunas a retornar. Se vazio, retorna todas."
+        },
+        "ordenar_por": {
+          "type": "string",
+          "description": "Coluna para ordenação"
+        },
+        "ordem": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "default": "ASC"
+        },
+        "limite": {
+          "type": "number",
+          "default": 1000,
+          "description": "Máx linhas por página (até 10000)"
+        },
+        "pagina": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "agregar_dados",
+    "description": "Realiza agregações estatísticas sobre um dataset da Fundação SEADE.\n\n    Funções disponíveis:\n    - SOMA: soma dos valores\n    - MEDIA: média aritmética\n    - CONTAGEM: contagem de registros não-nulos\n    - MINIMO / MAXIMO: extremos\n    - MEDIANA: percentil 50\n    - DESVIO_PADRAO: desvio padrão amostral\n    - VARIANCIA: variância amostral\n    - PERCENTIL: percentil customizado (exige campo 'percentil_p' entre 0 e 1)\n    - CONTAGEM_DISTINTA: COUNT(DISTINCT col)\n\n    Paginação: use 'limite' (até 10.000 grupos) e 'pagina' para navegar conjuntos grandes.\n    Filtro pós-agregação: use 'tendo' (HAVING) para filtrar grupos pelo valor agregado.\n    Resposta inclui 'total_grupos' e 'truncado: true' quando há mais grupos além dos retornados.\n\n    Exemplo: \"qual o PIB total por município da RMSP em 2022?\"\n    - dataset_id: \"pib-municipios\", agrupar_por: [\"municipio\"]\n    - agregacoes: [{ coluna: \"pib\", funcao: \"SOMA\" }]\n    - filtros: [{ coluna: \"ano\", operador: \"=\", valor: 2022 }, { coluna: \"regiao\", operador: \"=\", valor: \"RMSP\" }]",
+    "annotations": {
+      "title": "Agregar dados (estatísticas)",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string"
+        },
+        "agrupar_por": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Colunas para agrupamento (GROUP BY)"
+        },
+        "agregacoes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "coluna": {
+                "type": "string"
+              },
+              "funcao": {
+                "type": "string",
+                "enum": [
+                  "SOMA",
+                  "MEDIA",
+                  "CONTAGEM",
+                  "MINIMO",
+                  "MAXIMO",
+                  "MEDIANA",
+                  "DESVIO_PADRAO",
+                  "VARIANCIA",
+                  "PERCENTIL",
+                  "CONTAGEM_DISTINTA"
+                ]
+              },
+              "alias": {
+                "type": "string",
+                "description": "Nome do resultado (opcional)"
+              },
+              "percentil_p": {
+                "type": "number",
+                "description": "Para PERCENTIL: valor entre 0 e 1 (ex: 0.9 para P90)"
+              }
+            },
+            "required": [
+              "coluna",
+              "funcao"
+            ]
+          }
+        },
+        "filtros": {
+          "type": "array",
+          "description": "Filtros aplicados antes da agregação (WHERE)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "coluna": {
+                "type": "string",
+                "description": "Nome da coluna"
+              },
+              "operador": {
+                "type": "string",
+                "enum": [
+                  "=",
+                  "!=",
+                  ">",
+                  ">=",
+                  "<",
+                  "<=",
+                  "LIKE",
+                  "IN",
+                  "BETWEEN"
+                ]
+              },
+              "valor": {
+                "description": "Valor para comparação. String, número ou array (para IN/BETWEEN)"
+              }
+            },
+            "required": [
+              "coluna",
+              "operador",
+              "valor"
+            ]
+          }
+        },
+        "tendo": {
+          "type": "array",
+          "description": "Filtros pós-agregação (HAVING). Use o alias da agregação como coluna.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "coluna": {
+                "type": "string",
+                "description": "Alias da agregação ou coluna agrupada"
+              },
+              "operador": {
+                "type": "string",
+                "enum": [
+                  "=",
+                  "!=",
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ]
+              },
+              "valor": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "coluna",
+              "operador",
+              "valor"
+            ]
+          }
+        },
+        "ordenar_por": {
+          "type": "string"
+        },
+        "ordem": {
+          "type": "string",
+          "enum": [
+            "ASC",
+            "DESC"
+          ],
+          "default": "ASC"
+        },
+        "limite": {
+          "type": "number",
+          "default": 1000,
+          "description": "Máx grupos por página (até 10000)"
+        },
+        "pagina": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": [
+        "dataset_id",
+        "agregacoes"
+      ]
+    }
+  },
+  {
+    "name": "baixar_csv",
+    "description": "Retorna o conteúdo original do dataset ou instrução de obtenção rápida.\n    \n    Devido a limitações de tamanho em transações para IA, se um dataset tiver \n    mais de milhares de linhas, apenas uma amostra será retornada junto com detalhes \n    de onde baixar a versão em bulk. Para buscas precisas, você DEVE utilizar o buscar_dados.",
+    "annotations": {
+      "title": "Metadados / amostra do dataset",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "ID ou slug do dataset"
+        },
+        "limite": {
+          "type": "number",
+          "default": 1000
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "comparar_dados",
+    "description": "Compara dados entre períodos, regiões ou categorias de um dataset SEADE.\n\n    Tipos de comparação:\n    - TEMPORAL: compara o mesmo indicador em períodos diferentes\n      Ex: \"Compare a população de SP entre 2010 e 2020\"\n    - REGIONAL: compara o mesmo indicador entre regiões\n      Ex: \"Compare o PIB de Santos, Guarujá e São Vicente em 2022\"\n    - CATEGORICA: compara valores agrupados por uma dimensão\n      Ex: \"Compare natalidade por faixa etária da mãe\"\n\n    Retorna dados com paginação. Resposta inclui 'total_disponivel' e 'truncado: true'\n    quando há mais grupos além dos retornados.",
+    "annotations": {
+      "title": "Comparar dados (temporal/regional/categórica)",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string"
+        },
+        "tipo": {
+          "type": "string",
+          "enum": [
+            "TEMPORAL",
+            "REGIONAL",
+            "CATEGORICA"
+          ]
+        },
+        "coluna_valor": {
+          "type": "string",
+          "description": "Coluna numérica a comparar"
+        },
+        "coluna_comparacao": {
+          "type": "string",
+          "description": "Coluna de agrupamento (ano, municipio, etc.)"
+        },
+        "valores_comparar": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valores a comparar (sempre como strings — DuckDB faz cast). Ex: [\"2010\", \"2020\"] ou [\"SANTOS\", \"GUARUJÁ\"]"
+        },
+        "filtros": {
+          "type": "array",
+          "description": "Filtros adicionais (mesmo formato de buscar_dados)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "coluna": {
+                "type": "string",
+                "description": "Nome da coluna"
+              },
+              "operador": {
+                "type": "string",
+                "enum": [
+                  "=",
+                  "!=",
+                  ">",
+                  ">=",
+                  "<",
+                  "<=",
+                  "LIKE",
+                  "IN",
+                  "BETWEEN"
+                ]
+              },
+              "valor": {
+                "description": "Valor para comparação. String, número ou array (para IN/BETWEEN)"
+              }
+            },
+            "required": [
+              "coluna",
+              "operador",
+              "valor"
+            ]
+          }
+        },
+        "funcao_agregacao": {
+          "type": "string",
+          "enum": [
+            "SOMA",
+            "MEDIA",
+            "CONTAGEM"
+          ],
+          "default": "SOMA"
+        },
+        "limite": {
+          "type": "number",
+          "default": 1000,
+          "description": "Máx grupos por página (até 10000)"
+        },
+        "pagina": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": [
+        "dataset_id",
+        "tipo",
+        "coluna_valor",
+        "coluna_comparacao",
+        "valores_comparar"
+      ]
+    }
+  },
+  {
+    "name": "descrever_dataset",
+    "description": "Retorna características estruturais de um dataset (total de linhas, tipos, estatísticas).\n    Útil para entender a dimensão e a qualidade dos dados antes de fazer agregações pesadas.\n\n    Sem 'coluna': usa SUMMARIZE do DuckDB com amostragem (200k linhas) para retornar para TODAS as colunas:\n      min, max, média, desvio padrão, quartis (q25/q50/q75), contagem e % de nulos.\n\n    Com 'coluna': análise específica com MIN, MAX, COUNT DISTINCT e Top-10 valores mais frequentes\n      (usando amostra configurável via 'sample_size').",
+    "annotations": {
+      "title": "Descrever Dataset (Estatísticas Completas)",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "ID ou slug do dataset"
+        },
+        "coluna": {
+          "type": "string",
+          "description": "Opcional: Coluna específica para análise aprofundada (Top-N, Min, Max)"
+        },
+        "sample_size": {
+          "type": "number",
+          "default": 200000,
+          "description": "Tamanho da amostra para estatísticas (default 200k)"
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "amostra_dataset",
+    "description": "Retorna uma amostra aleatória de linhas de um dataset.\n    Útil para entender o formato, conteúdo e exemplos de dados reais presentes, com baixíssimo custo\n    computacional, pois extrai aleatoriamente sem necessidade de ler todo o arquivo (USING SAMPLE).",
+    "annotations": {
+      "title": "Obter Amostra do Dataset",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "ID ou slug do dataset"
+        },
+        "colunas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Colunas a retornar. Se vazio, retorna todas."
+        },
+        "tamanho_amostra": {
+          "type": "number",
+          "default": 100,
+          "description": "Quantidade de linhas na amostra (default 100, max 1000)"
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "executar_sql",
+    "description": "Executa uma consulta SQL customizada (APENAS SELECT) em um ou mais datasets.\n    Ferramenta avançada para subqueries, window functions e JOINs entre datasets.\n\n    Modo simples (um dataset):\n      - Passe 'dataset_id' e use FROM dataset na query.\n      - Ex: SELECT * FROM dataset WHERE ano = 2022 LIMIT 100\n\n    Modo multi-dataset (JOIN entre datasets):\n      - Passe 'datasets': [{\"alias\":\"pib\",\"dataset_id\":\"pib-municipios\"},{\"alias\":\"pop\",\"dataset_id\":\"populacao\"}]\n      - Use os aliases como nomes de tabela na query.\n      - Ex: SELECT p.municipio, p.pib, q.populacao FROM pib p JOIN pop q ON p.cod = q.cod\n\n    Regras:\n    1. Aspas duplas para colunas, aspas simples para valores literais.\n    2. Somente SELECT (sandbox). Outros comandos retornarão erro.\n    3. Limite embutido: 10.000 linhas.\n    4. Todos os datasets em 'datasets' devem estar no escopo do domínio.",
+    "annotations": {
+      "title": "Executar SQL (Avançado / Multi-Dataset)",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "Dataset principal (modo simples). Use FROM dataset na query."
+        },
+        "datasets": {
+          "type": "array",
+          "description": "Múltiplos datasets (modo multi). Cada entrada vira um CTE/alias.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "alias": {
+                "type": "string",
+                "description": "Nome que a query usará como tabela (ex: 'pib')"
+              },
+              "dataset_id": {
+                "type": "string",
+                "description": "Slug do dataset"
+              }
+            },
+            "required": [
+              "alias",
+              "dataset_id"
+            ]
+          }
+        },
+        "query": {
+          "type": "string",
+          "description": "Query SQL SELECT. Use FROM dataset (simples) ou FROM alias (multi)."
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "buscar_coluna",
+    "description": "Busca colunas em todos os datasets usando linguagem natural e similaridade semântica (embeddings VSS).\n    Útil quando você não sabe o nome exato de uma coluna mas sabe o que ela representa.\n\n    Exemplos:\n    - \"rendimento mensal\" → encontra colunas como 'renda_media', 'salario_mensal'\n    - \"código do município\" → encontra 'cod_municipio', 'id_mun', 'codigo_ibge'\n    - \"taxa de mortalidade infantil\" → encontra a coluna certa no dataset de saúde\n\n    Retorna as colunas mais similares com score de similaridade (0–1) e o dataset ao qual pertencem.\n    Filtrado automaticamente pelos datasets permitidos do domínio.",
+    "annotations": {
+      "title": "Buscar Coluna por Descrição (Semântica)",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Texto livre descrevendo a informação que você procura"
+        },
+        "dataset_id": {
+          "type": "string",
+          "description": "Opcional: limita a busca a um dataset específico"
+        },
+        "limite": {
+          "type": "number",
+          "default": 8,
+          "description": "Máx de colunas a retornar (até 20)"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  }
+]

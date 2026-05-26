@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateWithFallback } from '../services/geminiService';
-import { filtrarParaRelatorio, getMetadados, FiltroRelatorio, ResumoRelatorio } from '../services/piespDataService';
+import { filtrarParaRelatorio, getMetadados, FiltroRelatorio, ResumoRelatorio } from '../services/empreendedorismoDataService';
 import { DynamicDashboard, DashboardData, parseDashboard } from './DynamicDashboard';
 import { ChatHeaderSphere } from './ChatHeaderSphere';
 import CapivaraPet, { PetState } from './CapivaraPet';
@@ -24,7 +24,7 @@ function buildExtractFiltersPrompt(query: string, metadados: MetadadosDataLab): 
     ? metadados.regioes.join(', ')
     : 'Região Metropolitana de São Paulo, Região Administrativa de Campinas, Região Administrativa de Sorocaba';
 
-  return `Você é um extrator de filtros para a base de dados PIESP (investimentos no Estado de SP).
+  return `Você é um extrator de filtros para a base de dados Empreendedorismo (investimentos no Estado de SP).
 
 O usuário fez a seguinte solicitação de análise:
 "${query}"
@@ -62,7 +62,7 @@ function buildDashboardPrompt(query: string, resumo: ResumoRelatorio, filtros: F
   return `Você é a Nadia, analista de dados da Fundação Seade. O usuário pediu no Data Lab:
 "${query}"
 
-DADOS DO PIESP FILTRADOS:
+DADOS DO Empreendedorismo FILTRADOS:
 - Filtros Ativos: ${JSON.stringify(filtros)}
 - Total de projetos: ${resumo.total_projetos}
 - Valor total: R$ ${resumo.total_investimentos} mi (R$ ${totalBi} bi)
@@ -281,7 +281,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
       }
 
       // ── Passo 2: consulta determinística no CSV ──
-      setLoadingStep('Consultando a base PIESP...');
+      setLoadingStep('Consultando a base Empreendedorismo...');
       const resumo = await filtrarParaRelatorio(filtros);
 
       if (resumo.total_projetos === 0) {
@@ -530,7 +530,7 @@ const DataLabView: React.FC<DataLabViewProps> = ({ onNavigateHome }) => {
                   )}
                   {revealedCount >= dashboard.secoes.length && (
                     <p className="text-xs text-slate-500 text-center pt-6 mt-4 border-t border-slate-700/30">
-                      Dashboard gerado pela Nadia com dados do PIESP. Valide informações críticas na fonte oficial.
+                      Dashboard gerado pela Nadia com dados do Empreendedorismo. Valide informações críticas na fonte oficial.
                     </p>
                   )}
                 </div>

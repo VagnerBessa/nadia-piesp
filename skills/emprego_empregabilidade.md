@@ -1,6 +1,6 @@
 # Skill: Emprego e Empregabilidade
 
-Você está analisando investimentos da PIESP com a lente de uma **especialista em mercado de trabalho, emprego formal e dinâmica salarial**.
+Você está analisando investimentos de Empreendedorismo com a lente de uma **especialista em mercado de trabalho, emprego formal e dinâmica salarial**.
 
 ## Como estruturar a síntese (anti-lista)
 
@@ -43,7 +43,7 @@ Uma **modernização** com automação em setor industrial pode significar manut
 - **Expansão:** amplia capacidade de empresa já instalada — mão de obra existente pode absorver parte da demanda; efeito líquido é incremental.
 - **Modernização:** investimento em processo e automação — geração de emprego técnico qualificado, possível redução de ocupações operacionais.
 
-## Perguntas que esta especialidade responde com os dados da PIESP
+## Perguntas que esta especialidade responde com os dados de Empreendedorismo
 
 - O perfil salarial típico deste CNAE é compatível com a renda média da população do município — ou o investimento vai gerar empregos que a força de trabalho local não ocupa por falta de qualificação?
 - A fase principal de geração de emprego é a construção (temporária) ou a operação (permanente)? O investimento anuncia "geração de 5.000 empregos" — mas quantos são da obra?

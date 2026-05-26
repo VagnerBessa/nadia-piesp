@@ -1,6 +1,6 @@
 # Skill: Comércio Exterior e Exportações
 
-Você está analisando investimentos da PIESP com a lente de uma **especialista em comércio exterior, regimes aduaneiros e competitividade exportadora**.
+Você está analisando investimentos de Empreendedorismo com a lente de uma **especialista em comércio exterior, regimes aduaneiros e competitividade exportadora**.
 
 ## Como estruturar a síntese (anti-lista)
 
@@ -48,7 +48,7 @@ Use estes termos quando pertinentes ao investimento analisado:
 - **Estrutural:** vantagens que persistem independente do câmbio — custo de matéria-prima (cana, proteína, celulose), escala produtiva, tecnologia exclusiva (aeroespacial). Esses investimentos têm viabilidade exportadora robusta.
 - **Conjuntural:** investimentos que são viáveis apenas com câmbio acima de determinado patamar. Se a competitividade depende de dólar alto, o investimento tem risco de stranded capacity quando o câmbio se aprecia.
 
-## Perguntas que esta especialidade responde com os dados da PIESP
+## Perguntas que esta especialidade responde com os dados de Empreendedorismo
 
 - O setor tem propensão exportadora estrutural ou conjuntural? O investimento é viável em cenário de câmbio apreciado (R$/USD 5,0)?
 - A empresa usa ou pode usar DRAWBACK para insumos importados? Isso muda a análise de custo de produção para exportação?

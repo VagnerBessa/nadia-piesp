@@ -1,5 +1,5 @@
 import { getDbConnection } from './duckdbService';
-import { canonicalSetor } from './piespDataService';
+import { canonicalSetor } from './empreendedorismoDataService';
 
 export type NodeType = 'investidora' | 'empresa_alvo' | 'municipio' | 'setor';
 
