@@ -24,7 +24,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tighter leading-none mb-2">
           Nadia
         </h1>
-        <div className="h-1 w-12 bg-rose-500 rounded-full mb-3 shadow-[0_0_12px_rgba(244,63,94,0.5)]" />
+        <div className="h-1 w-12 bg-[#E07A2F] rounded-full mb-3 shadow-[0_0_12px_rgba(224,122,47,0.35)]" />
         <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-500 font-bold">
           Núcleo de Análise de Dados <br/>e Inteligência Artificial
         </p>
@@ -33,8 +33,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
       {/* Seção Central: A Esfera (Estrela da Tela) */}
       <div className="flex-shrink-0 flex items-center justify-center py-3 my-1">
         <div className="relative group">
-          {/* Brilho de fundo para profundidade */}
-          <div className="absolute inset-0 bg-orange-500/10 blur-[80px] rounded-full group-hover:bg-orange-500/15 transition-all duration-700" />
           <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} size="small" />
         </div>
       </div>
@@ -55,10 +53,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
           <div className="flex flex-col w-full gap-3 pt-2">
             <button
               onClick={handleVoiceClick}
-              className="group relative flex items-center justify-center gap-3 w-full px-6 py-3.5 rounded-2xl bg-slate-800/50 hover:bg-rose-500/10 active:scale-95 border border-white/5 hover:border-rose-500/30 text-slate-200 transition-all duration-300 focus:outline-none shadow-lg overflow-hidden"
+              className="group relative flex items-center justify-center gap-3 w-full px-6 py-3.5 rounded-2xl bg-slate-800/50 hover:bg-orange-500/10 active:scale-95 border border-white/5 hover:border-orange-400/30 text-slate-200 transition-all duration-300 focus:outline-none shadow-lg overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/5 to-rose-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-              <SoundWaveIcon className="h-5 w-5 text-rose-500 group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/0 via-orange-400/8 to-orange-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              <SoundWaveIcon className="h-5 w-5 text-[#E07A2F] group-hover:scale-110 transition-transform" />
               <span className="text-base font-semibold">Conversar por Voz</span>
             </button>
 
@@ -76,7 +74,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
 
         {/* Versão discreta */}
         <div className="mt-5 pt-2 border-t border-white/[0.03] flex flex-col items-center gap-1.5">
-          <div className="w-1 h-1 bg-rose-500/20 rounded-full" />
+          <div className="w-1 h-1 bg-orange-400/20 rounded-full" />
           <span className="text-[10px] text-slate-500 font-mono tracking-wider select-none">
             Nadia-Mobile · v{__APP_VERSION__}
           </span>

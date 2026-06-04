@@ -59,7 +59,7 @@ export const NadiaSphere: React.FC<NadiaSphereProps> = ({ isListening, isSpeakin
   // Default to idle state
   let shape: DitheringShape = 'sphere';
   let speed = 0.2;
-  let colorFront = '#C96F2D'; // muted burnt orange
+  let colorFront = '#E07A2F'; // warm burnt orange, vivid without becoming neon
   let pxSize = 1;
   let pulseLevel = 0;
   
@@ -86,14 +86,14 @@ export const NadiaSphere: React.FC<NadiaSphereProps> = ({ isListening, isSpeakin
 
 
   return (
-    <div className={`${containerClasses} rounded-full overflow-hidden flex items-center justify-center bg-black shadow-xl shadow-black/30`}>
+    <div className={`${containerClasses} rounded-full overflow-hidden flex items-center justify-center bg-transparent`}>
         <DitheringShader
             width={shaderSize}
             height={shaderSize}
             shape={shape}
             speed={speed}
             colorFront={colorFront}
-            colorBack="#000000"
+            colorBack="#0A0502"
             pxSize={pxSize}
             type="random"
             pulseLevel={pulseLevel}

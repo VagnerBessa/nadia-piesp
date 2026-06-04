@@ -14,9 +14,9 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigateHome, onNavigateT
   const activeClass = 'px-3.5 py-1.5 text-xs font-semibold text-white bg-white/[0.10] rounded-full transition-all duration-200';
   // Inactive state: muted, becomes white on hover
   const inactiveClass = 'px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-full transition-all duration-200';
-  // Voz: always accented in rose, brighter when active
-  const vozActiveClass  = 'px-3.5 py-1.5 text-xs font-semibold text-rose-300 bg-rose-500/[0.15] rounded-full transition-all duration-200';
-  const vozInactiveClass = 'px-3.5 py-1.5 text-xs font-medium text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/[0.10] rounded-full transition-all duration-200';
+  // Voz: accented with the Nadia sphere's burnt orange.
+  const vozActiveClass  = 'px-3.5 py-1.5 text-xs font-semibold text-orange-200 bg-orange-500/[0.14] rounded-full transition-all duration-200';
+  const vozInactiveClass = 'px-3.5 py-1.5 text-xs font-medium text-orange-300/75 hover:text-orange-200 hover:bg-orange-500/[0.10] rounded-full transition-all duration-200';
 
   return (
     <header className="flex-shrink-0 w-full px-4 py-2.5">

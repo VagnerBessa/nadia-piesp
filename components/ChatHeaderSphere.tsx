@@ -14,7 +14,7 @@ export const ChatHeaderSphere: React.FC<ChatHeaderSphereProps> = ({ size = 32 })
   return (
     // The wrapper ensures the shader is clipped into a circle.
     <div 
-      className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-slate-900 border border-white/5"
+      className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-transparent"
       style={{ width: size, height: size }}
     >
       <DitheringShader
@@ -22,8 +22,8 @@ export const ChatHeaderSphere: React.FC<ChatHeaderSphereProps> = ({ size = 32 })
         height={size}
         shape="sphere"
         speed={0.2} // A slow speed for a subtle idle animation
-        colorFront="#C96F2D"
-        colorBack="#020617" // slate-950
+        colorFront="#E07A2F"
+        colorBack="#0A0502"
         pxSize={1}
         type="random"
         pulseLevel={0}

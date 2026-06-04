@@ -171,7 +171,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tighter">
           Nadia
         </h2>
-        <div className="h-0.5 w-8 bg-rose-500/50 rounded-full mt-1" />
+        <div className="h-0.5 w-8 bg-[#E07A2F]/60 rounded-full mt-1" />
       </div>
 
       {/* Área Central: Esfera + Histórico de Turnos */}
@@ -185,7 +185,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           {/* Turnos completos — estáticos, levemente esmaecidos para indicar que são histórico */}
           {completedTurns.map((turn, i) => (
             <div key={i} className="mb-5 pb-5 border-b border-white/5">
-              <div className="text-[10px] font-bold text-rose-400/40 uppercase tracking-widest mb-1.5">
+              <div className="text-[10px] font-bold text-orange-300/40 uppercase tracking-widest mb-1.5">
                 Nadia
               </div>
               <p className="text-xl sm:text-2xl font-medium text-white/50 leading-relaxed tracking-tight whitespace-pre-wrap">
@@ -197,13 +197,13 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           {/* Turno ativo — typewriter via ref, texto em destaque total */}
           <div className="pb-16">
             {activeTurnText && (
-              <div className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1.5">
+              <div className="text-[10px] font-bold text-orange-300 uppercase tracking-widest mb-1.5">
                 Nadia
               </div>
             )}
             <p className="text-xl sm:text-2xl font-medium text-white/90 leading-relaxed tracking-tight whitespace-pre-wrap">
               <span ref={transcriptTextRef}></span>
-              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-rose-400 animate-pulse align-middle" />}
+              {isSpeaking && <span className="inline-block w-2 h-5 ml-2 bg-orange-300 animate-pulse align-middle" />}
             </p>
             {/* Elemento âncora invisível para forçar a rolagem correta */}
             <div ref={scrollAnchorRef} className="h-4 w-full" />
@@ -221,10 +221,6 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
             ${isConnected ? 'cursor-pointer' : ''}
           `}
         >
-          <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${
-            isSpeaking ? 'bg-orange-500/20' : isListening ? 'bg-orange-500/10' : 'bg-transparent'
-          }`} />
-
           <NadiaSphere
             size="large"
             isListening={isListening}
@@ -246,7 +242,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           ) : (
             <div className="flex items-center gap-2">
               {isConnected && !isConnecting && (
-                <div className={`w-1.5 h-1.5 rounded-full ${toolProcessing ? 'bg-cyan-400 animate-pulse' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${toolProcessing ? 'bg-cyan-400 animate-pulse' : isListening ? 'bg-[#E07A2F] animate-pulse' : 'bg-slate-600'}`} />
               )}
               <p className="text-slate-400 text-lg sm:text-xl font-medium tracking-tight">
                 {isConnecting ? "Conectando..." : toolProcessing ? "Buscando informações..." : isSpeaking ? "Nadia falando..." : isListening ? "Ouvindo você..." : hasTranscript ? "" : "Pronta para conversar"}
@@ -260,10 +256,10 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           disabled={isConnecting}
           className={`
             relative flex items-center justify-center w-24 h-24 rounded-full transition-all duration-500 ease-elastic
-            focus:outline-none focus:ring-4 focus:ring-rose-500/20
+            focus:outline-none focus:ring-4 focus:ring-orange-500/20
             disabled:opacity-50 disabled:cursor-not-allowed
             ${isConnected && !isConnecting
-              ? 'bg-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.4)] scale-110'
+              ? 'bg-[#E07A2F] shadow-[0_0_28px_rgba(224,122,47,0.28)] scale-110'
               : 'bg-slate-800 border border-white/5 shadow-xl hover:bg-slate-700'}
             active:scale-90
           `}
@@ -273,7 +269,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
             <div className="w-10 h-10 border-[3px] border-t-transparent border-white rounded-full animate-spin" />
           ) : (
             <SoundWaveIcon
-              className={`w-14 h-14 transition-colors duration-300 ${isConnected ? 'text-white' : 'text-rose-500'}`}
+              className={`w-14 h-14 transition-colors duration-300 ${isConnected ? 'text-white' : 'text-[#E07A2F]'}`}
               isListening={isListening}
               isSpeaking={isSpeaking}
               audioLevel={audioLevel}
@@ -281,7 +277,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           )}
 
           {isConnected && isListening && (
-            <div className="absolute inset-0 rounded-full border-2 border-rose-500 animate-ping opacity-20" />
+            <div className="absolute inset-0 rounded-full border-2 border-[#E07A2F] animate-ping opacity-20" />
           )}
         </button>
 
@@ -294,7 +290,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           <button
             onClick={handleDownload}
             aria-label="Baixar transcrição da conversa"
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-800/80 border border-white/10 shadow-lg hover:bg-slate-700/80 hover:border-rose-500/30 text-slate-400 hover:text-white transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-800/80 border border-white/10 shadow-lg hover:bg-slate-700/80 hover:border-orange-400/30 text-slate-400 hover:text-white transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />

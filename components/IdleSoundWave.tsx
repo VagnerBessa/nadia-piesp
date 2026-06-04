@@ -22,9 +22,9 @@ const hexToRgb = (hex: string): number[] => {
 };
 
 const colors = [
-    hexToRgb('#fde047'), // tailwind yellow-300
-    hexToRgb('#f97316'), // tailwind orange-500
-    hexToRgb('#f43f5e'), // tailwind rose-500
+    hexToRgb('#F4A261'),
+    hexToRgb('#E07A2F'),
+    hexToRgb('#9A4F1B'),
 ];
 
 const getBarColor = (index: number) => {
