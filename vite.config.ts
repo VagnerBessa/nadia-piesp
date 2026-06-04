@@ -10,28 +10,36 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        headers: {
-          // Necessário para DuckDB WASM usar SharedArrayBuffer
-          'Cross-Origin-Opener-Policy': 'same-origin',
-          'Cross-Origin-Embedder-Policy': 'credentialless',
-        },
+        proxy: {
+          '/mcp-api': {
+            target: 'https://mcp.seade.gov.br',
+            changeOrigin: true,
+            secure: false,
+            rewrite: (path) => path.replace(/^\/mcp-api/, '/mcp'),
+            configure: (proxy, _options) => {
+              proxy.on('error', (err, _req, _res) => {
+                console.log(`[PROXY ERROR] ${err.message}`);
+              });
+              proxy.on('proxyReq', (proxyReq) => {
+                proxyReq.removeHeader('origin');
+                proxyReq.removeHeader('referer');
+              });
+            }
+          }
+        }
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || env.API_KEY || ''),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || env.API_KEY || ''),
+        'process.env.GOOGLE_MAPS_API_KEY': JSON.stringify(env.VITE_GOOGLE_MAPS_API_KEY || env.GOOGLE_MAPS_API_KEY || ''),
+        'process.env.OPENROUTER_API_KEY': JSON.stringify(env.VITE_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || ''),
         '__APP_VERSION__': JSON.stringify(pkg.version),
       },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-          // Força o Rollup a usar a versão ESM do DuckDB WASM,
-          // evitando que a versão CJS (com require("apache-arrow")) seja bundlada.
-          '@duckdb/duckdb-wasm': path.resolve(__dirname, 'node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser.mjs'),
         }
-      },
-      optimizeDeps: {
-        exclude: ['@duckdb/duckdb-wasm'],
       },
     };
 });

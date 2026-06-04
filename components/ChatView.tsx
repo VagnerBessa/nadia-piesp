@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useChat } from '../hooks/useChat';
-import { getDbConnection } from '../services/duckdbService';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useAutoResizeTextArea } from '../hooks/useAutoResizeTextArea';
 import { SmallNadiaSphere } from './SmallNadiaSphere';
@@ -101,20 +100,15 @@ const Icons = {
 };
 
 const AGENTS: AgentConfig[] = [
-  { name: 'emprego_empregabilidade',   label: 'Emprego e Empregabilidade',  icon: <Icons.Briefcase /> },
-  { name: 'qualificacao_profissional', label: 'Qualificação Profissional',   icon: <Icons.GraduationCap /> },
-  { name: 'logistica_infraestrutura',  label: 'Logística e Infraestrutura', icon: <Icons.Truck /> },
-  { name: 'inovacao_tecnologia',       label: 'Inovação e Tecnologia',      icon: <Icons.Lightbulb /> },
-  { name: 'desenvolvimento_regional',  label: 'Desenvolvimento Regional',   icon: <Icons.MapPin /> },
-  { name: 'cadeias_produtivas',        label: 'Cadeias Produtivas',         icon: <Icons.Network /> },
-  { name: 'transicao_energetica',      label: 'Transição Energética',       icon: <Icons.Leaf /> },
-  { name: 'comercio_exterior',         label: 'Comércio Exterior',          icon: <Icons.Globe /> },
+  { name: 'analise_territorial',       label: 'Território',                 icon: <Icons.MapPin /> },
+  { name: 'analise_setorial',          label: 'Setores',                    icon: <Icons.Network /> },
+  { name: 'mei_formalizacao',          label: 'MEI e Formalização',         icon: <Icons.Briefcase /> },
+  { name: 'perfil_empreendedor',       label: 'Perfil do Empreendedor',     icon: <Icons.GraduationCap /> },
+  { name: 'inova_simples',             label: 'Inova Simples',              icon: <Icons.Lightbulb /> },
+  { name: 'inteligencia_empresarial',  label: 'Inteligência Empresarial',   icon: <Icons.Globe /> },
 ];
 
 const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
-  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
-  useEffect(() => { getDbConnection().catch(() => {}); }, []);
-
   const [activeAgent, setActiveAgent] = useState<AgentConfig | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
@@ -424,7 +418,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                 </div>
                 <h2 className="text-lg font-semibold text-white mb-2 tracking-tight">Como posso ajudar hoje?</h2>
                 <p className="text-sm text-slate-400 max-w-[280px] leading-relaxed">
-                  Explore os dados do PIESP com a Nadia e obtenha insights instantâneos.
+                  Explore dados de empresas, MEIs, setores e municípios com a Nadia.
                 </p>
               </div>
 
@@ -433,9 +427,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome }) => {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 text-center">Sugestões de Consulta</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {[
-                    "Mostre os investimentos confirmados no município de Campinas",
-                    "Há algum projeto de transição energética ou sustentabilidade anunciado?",
-                    "Quais investimentos em logística estão previstos na Baixada Santista?"
+                    "Quantas empresas foram abertas em Campinas em 2026?",
+                    "Qual o ranking de municípios em empresas Inova Simples?",
+                    "Mostre a evolução de MEIs em Franca"
                   ].map((sugestao) => (
                     <button
                       key={sugestao}

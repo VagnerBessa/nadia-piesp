@@ -12,7 +12,7 @@
 import { OPENROUTER_API_KEY } from '../config';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const FALLBACK_MODEL = 'google/gemini-2.0-flash-001';
+const FALLBACK_MODEL = 'openai/gpt-4o-mini';
 
 // ─── Tipos OpenAI-compatíveis ───────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ function geminiContentsToOAI(systemInstruction: string, contents: GeminiContent[
   return messages;
 }
 
-// ─── Conversão: piespTools (Gemini) → tools (OpenAI) ───────────────────────
+// ─── Conversão: tools Gemini → tools OpenAI ────────────────────────────────
 
 type GeminiToolDecl = {
   functionDeclarations: {
@@ -146,7 +146,7 @@ export async function callOpenRouter(
   contents: GeminiContent[],
   systemInstruction: string,
   geminiTools: GeminiToolDecl[],
-  executarFerramenta: (nome: string, args: Record<string, unknown>) => unknown
+  executarFerramenta: (nome: string, args: Record<string, unknown>) => unknown | Promise<unknown>
 ): Promise<OpenRouterResult> {
   if (!OPENROUTER_API_KEY) {
     throw new Error('OPENROUTER_API_KEY não configurada em config.ts');
@@ -165,7 +165,7 @@ export async function callOpenRouter(
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://seade.gov.br',
-        'X-Title': 'Nadia PIESP'
+        'X-Title': 'Nadia Empreendedorismo'
       },
       body: JSON.stringify({
         model: FALLBACK_MODEL,
@@ -199,7 +199,7 @@ export async function callOpenRouter(
       const args = JSON.parse(toolCall.function.arguments || '{}');
       console.log(`🛠️ [OpenRouter] Tool call: ${toolCall.function.name}`, args);
 
-      const resultado = executarFerramenta(toolCall.function.name, args);
+      const resultado = await executarFerramenta(toolCall.function.name, args);
 
       messages.push({
         role: 'tool',

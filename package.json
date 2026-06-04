@@ -1,16 +1,14 @@
 {
-  "name": "nadia-ai",
+  "name": "nadia-empreendedorismo-mobile",
   "private": true,
   "version": "2.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "mcp": "node scripts/piesp-mcp-server.mjs"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@google/genai": "^1.29.0",

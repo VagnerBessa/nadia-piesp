@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Nadia — Seade PIESP",
+  "name": "Nadia — Empreendedorismo",
   "short_name": "Nadia",
-  "description": "Assistente de IA da Fundação Seade para análise de investimentos no Estado de São Paulo (PIESP)",
+  "description": "Assistente de IA da Fundação Seade para análise de empresas e empreendedorismo no Estado de São Paulo",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

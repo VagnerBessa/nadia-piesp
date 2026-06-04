@@ -1,20 +1,17 @@
 // =================================================================================
-//  CONFIGURAÇÃO DE CHAVES DE API - ARQUIVO DE EXEMPLO
+//  CONFIGURACAO DE CHAVES DE API
 // =================================================================================
-// Este é um arquivo de EXEMPLO. Para usar o projeto:
+// O projeto le as chaves de variaveis de ambiente do Vite.
 //
-// 1. Copie este arquivo para "config.ts"
-// 2. Substitua as chaves de API pelas suas próprias chaves
-// 3. NUNCA faça commit do arquivo config.ts (ele está no .gitignore)
+// Em desenvolvimento, crie um arquivo .env na raiz:
 //
+// VITE_GEMINI_API_KEY=SUA_CHAVE_GEMINI
+// VITE_GOOGLE_MAPS_API_KEY=SUA_CHAVE_MAPS
+// VITE_OPENROUTER_API_KEY=SUA_CHAVE_OPENROUTER_OPCIONAL
+//
+// Nao coloque chaves reais neste arquivo.
 // =================================================================================
 
-// Chave para Gemini AI
-// Obtenha em: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "SUA_CHAVE_GEMINI_AQUI";
-
-// Chave para Google Maps
-// Obtenha em: https://console.cloud.google.com/google/maps-apis/credentials
-const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_MAPS_AQUI";
-
-export { GEMINI_API_KEY, GOOGLE_MAPS_API_KEY };
+export const GEMINI_API_KEY = '';
+export const GOOGLE_MAPS_API_KEY = '';
+export const OPENROUTER_API_KEY = '';

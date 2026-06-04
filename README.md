@@ -1,263 +1,83 @@
-# Nadia-PIESP
+# Nadia Empreendedorismo Mobile
 
-**Assistente de IA para análise de investimentos no Estado de São Paulo**  
-Baseado no projeto Nadia (Fundação Seade) — adaptado para a PIESP.
+Assistente mobile da Fundacao Seade para consulta conversacional da base de empresas e empreendedorismo do Estado de Sao Paulo.
 
----
+Esta branch deriva da versao mais atual do Nadia Mobile (`mobile/v2.3`) e preserva as funcionalidades centrais da experiencia mobile: pagina inicial, chat de texto, conversa por voz, fallback de modelo e interface otimizada para smartphones. O conteudo analitico foi migrado para empreendedorismo e para a base cadastral da Receita Federal exposta pelo MCP do Seade.
 
-## ⚠️ Configuração Após Clonar (Leitura Obrigatória)
+## Stack
 
-Este repositório **não inclui** arquivos secretos nem bases de dados grandes por segurança e limite do GitHub. Após clonar, você precisa restaurar manualmente três coisas:
+- React 19 + TypeScript + Vite
+- Tailwind CSS + Material UI
+- Google Gemini 2.5 Flash para chat
+- Gemini Live API para voz
+- OpenRouter como fallback no chat
+- MCP remoto do Seade para consulta deterministica da base
 
-### 1. Chave de API do Gemini (`config.ts`)
-
-Crie o arquivo `config.ts` na raiz do projeto (ele está no `.gitignore` — nunca sobe para o GitHub):
-
-```ts
-const API_KEY = "SUA_CHAVE_ANTIGA_OU_RESERVA";
-
-export const GEMINI_API_KEY = "SUA_CHAVE_GEMINI_VALIDA";
-export const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_GOOGLE_MAPS";
-```
-
-- A chave do Gemini deve ser gerada em: **https://aistudio.google.com/apikey**
-- Certifique-se de que a *Generative Language API* está habilitada no projeto do Google Cloud
-- O modelo usado no modo Voz é: `gemini-2.5-flash-native-audio-preview-12-2025`
-- O modelo usado no modo Chat é: `gemini-2.5-flash`
-
-### 2. Bases de Dados PIESP (`knowledge_base/`)
-
-Copie os seguintes arquivos para a pasta `knowledge_base/` (não estão no repositório por serem grandes demais):
-
-| Arquivo | Tamanho | Usado por | Descrição |
-|---|---|---|---|
-| `piesp_mini.csv` | ~1 MB | `piespDataService.ts` (Tool 1) | Base principal de investimentos **com valor** (5.147 linhas, sem coluna `descr_investimento`) |
-| `piesp_confirmados_sem_valor.csv` | ~1,8 MB | `piespDataService.ts` (Tool 2) | Anúncios confirmados **sem valor financeiro** divulgado |
-| `piesp_confirmados_com_valor.csv` | ~2,1 MB | — (backup/fonte) | Base original completa com todas as colunas |
-
-> **Onde encontrar:** Esses arquivos estão na pasta `/Seade/Piesp/` no iCloud Drive do autor.
-
-### 3. Instalar dependências e rodar
+## Como Rodar
 
 ```bash
 npm install
 npm run dev
 ```
 
-O projeto estará disponível em **http://localhost:3000**
+Aplicativo local:
 
----
-
-## Repositório GitHub
-
-- **URL:** https://github.com/VagnerBessa/nadia-piesp
-- **Visibilidade:** Privado
-- **Criado em:** Abril de 2026
-- **Branch principal:** `main`
-
-Para salvar novas alterações:
-```bash
-git add .
-git commit -m "descrição da mudança"
-git push
+```text
+http://localhost:3000
 ```
 
----
+## Configuracao
 
- - Assistente de IA com Voz e Mapas 3D
+Crie um arquivo `.env` na raiz.
 
-Nadia é uma assistente de IA interativa que combina conversação por voz usando a API Gemini 2.5 Flash Native Audio com visualização de mapas 3D do Google Maps. O projeto oferece uma experiência imersiva para análise de dados econômicos, geolocalização e exploração urbana.
-
-## ✨ Funcionalidades
-
-- **Conversação por Voz**: Interação natural com a IA usando o Gemini 2.5 Flash Native Audio API
-- **Mapas 3D Interativos**: Navegação por mapas 3D controlada por voz usando Google Maps JavaScript API
-- **Análise Econômica**: Visualização de dados econômicos com gráficos interativos
-- **Interface Responsiva**: Design moderno com Material-UI e Tailwind CSS
-- **Esfera 3D Animada**: Visualização da Nadia com shaders personalizados usando Three.js
-
-## 🚀 Como Executar Localmente
-
-### Pré-requisitos
-
-- Node.js (versão 16 ou superior)
-- npm ou yarn
-- Google Chrome, Firefox ou Edge (para suporte a microfone)
-
-### 1. Instalar Dependências
+Campos esperados:
 
 ```bash
-npm install
+VITE_GEMINI_API_KEY=SUA_CHAVE_GEMINI
+VITE_GOOGLE_MAPS_API_KEY=SUA_CHAVE_MAPS
+VITE_OPENROUTER_API_KEY=SUA_CHAVE_OPENROUTER_OPCIONAL
 ```
 
-### 2. Configurar Chaves de API
+O `.env` fica fora do controle de versao. Depois de criar ou alterar o `.env`, reinicie o servidor Vite.
 
-O projeto requer **duas chaves de API diferentes**:
+## Funcionalidades Mobile
 
-#### a) Chave para Gemini AI (Google AI Studio)
+- Home mobile com identidade visual "Deep Ocean".
+- Chat de texto com function calling para a base de empreendedorismo.
+- Conversa por voz usando Gemini Live API.
+- Agentes/lentes analiticas para territorio, setores, MEI, perfil empreendedor, Inova Simples e inteligencia empresarial.
+- Fallback OpenRouter para manter o chat disponivel quando a API direta do Gemini falhar.
+- Service worker e manifesto PWA para instalacao mobile.
 
-1. Acesse: https://aistudio.google.com/app/apikey
-2. Clique em "Create API Key"
-3. Copie a chave gerada
+## Base de Dados
 
-#### b) Chave para Google Maps (Google Cloud Console)
+A aplicacao nao carrega CSV ou Parquet no browser. As consultas tabulares passam por `services/empreendedorismoDataService.ts`, que chama o MCP remoto via `services/mcpService.ts`.
 
-1. Acesse: https://console.cloud.google.com/apis/credentials
-2. Clique em "Create Credentials" → "API Key"
-3. Clique em "Restrict Key" e habilite:
-   - Maps JavaScript API
-   - Places API
-   - Geocoding API
-4. Copie a chave gerada
+Dataset ativo:
 
-#### c) Criar arquivo de configuração
+```text
+empresas-sp-mar26-20260522
+```
 
-1. Copie o arquivo de exemplo:
-   ```bash
-   cp config.example.ts config.ts
-   ```
+Principios de uso:
 
-2. Edite o arquivo `config.ts` e insira suas chaves:
-   ```typescript
-   const GEMINI_API_KEY = "SUA_CHAVE_GEMINI_AQUI";
-   const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_MAPS_AQUI";
-   export { GEMINI_API_KEY, GOOGLE_MAPS_API_KEY };
-   ```
+- Empresas abertas usam `Data do inicio de atividade`.
+- Empresas ativas usam `Situacao cadastral = Ativa`.
+- MEI e identificado por `Opcao MEI = Sim`, nao por porte.
+- Inova Simples e `Natureza juridica = Empresa Simples de Inovacao`.
+- `Nao se aplica` em MEI/sexo deve ser explicado como classificacao cadastral, sem inferir genero ou perfil societario.
 
-⚠️ **IMPORTANTE**: O arquivo `config.ts` está no `.gitignore` e **nunca deve ser commitado** para evitar expor suas chaves de API.
-
-### 3. Executar o Servidor de Desenvolvimento
+## Validacao
 
 ```bash
-npm run dev
+npm run build
 ```
 
-O aplicativo estará disponível em: http://localhost:3001
+Smoke test recomendado:
 
-### 4. Usar a Aplicação
-
-1. **Abra no navegador**: Use Google Chrome, Firefox ou Edge
-2. **Permita o microfone**: Quando solicitado, clique em "Permitir"
-3. **Interaja com a Nadia**:
-   - Clique no ícone de microfone para ativar a conversa por voz
-   - No modo Municipal, use comandos como "vá para Campinas" ou "mostre São Paulo"
-
-## 📁 Estrutura do Projeto
-
-```
-Nadia-2/
-├── components/          # Componentes React
-│   ├── NadiaSphere.tsx         # Esfera 3D animada
-│   ├── GoogleMaps3DView.tsx    # Visualização de mapas 3D
-│   ├── PerfilMunicipalView.tsx # Modo de navegação municipal
-│   └── ...
-├── hooks/               # Custom React Hooks
-│   └── useLiveConnection.ts    # Hook para Gemini Live API
-├── shaders/             # Shaders GLSL para Three.js
-├── utils/               # Utilitários e constantes
-├── config.ts            # Chaves de API (não versionado)
-├── config.example.ts    # Template de configuração
-└── ...
-```
-
-## 🛠️ Tecnologias Utilizadas
-
-- **React 19** com TypeScript
-- **Vite** para build e HMR
-- **Google Gemini 2.5 Flash** (Native Audio API)
-- **Google Maps JavaScript API** com renderização 3D
-- **Three.js** para gráficos 3D
-- **Material-UI** para componentes de interface
-- **Tailwind CSS** para estilização
-- **Web Speech API** para reconhecimento de voz
-
-## 🐛 Troubleshooting
-
-### Nadia não responde aos comandos de voz
-
-1. Verifique se você está usando Chrome, Firefox ou Edge
-2. Confirme que deu permissão para o microfone
-3. Abra o Console (F12) e procure por erros com o prefixo `[Nadia]`
-4. Verifique se a chave `GEMINI_API_KEY` está correta no `config.ts`
-
-### Mapas não carregam no modo Municipal
-
-1. Verifique se a chave `GOOGLE_MAPS_API_KEY` está correta no `config.ts`
-2. Confirme que as APIs necessárias estão habilitadas no Google Cloud Console:
-   - Maps JavaScript API
-   - Places API
-   - Geocoding API
-3. Aguarde 2-3 minutos após habilitar as APIs (tempo de propagação)
-4. Limpe o cache do navegador (Cmd+Shift+R ou Ctrl+Shift+F5)
-
-### Erro: "API has not been used in project before or it is disabled"
-
-Isso significa que a API não está habilitada no projeto da sua chave:
-
-1. Para Gemini: Acesse https://aistudio.google.com/app/apikey
-2. Para Maps: Acesse https://console.cloud.google.com/apis/library
-3. Habilite as APIs necessárias
-4. Aguarde alguns minutos para a propagação
-
-### Erro no Console: "Cannot read properties of undefined (reading 'lat')"
-
-Esse erro foi corrigido. Se ainda aparecer:
-1. Recarregue a página completamente
-2. Certifique-se de que está usando a versão mais recente do código
-
-## 🔒 Segurança
-
-- **Nunca faça commit** do arquivo `config.ts`
-- As chaves de API são pessoais e não devem ser compartilhadas
-- Em produção, use variáveis de ambiente ao invés de arquivos de configuração
-- Monitore o uso das suas APIs em:
-  - Gemini: https://aistudio.google.com/app/apikey
-  - Maps: https://console.cloud.google.com/apis/dashboard
-
-## 💰 Custos
-
-### Google Gemini AI
-- Plano gratuito disponível com limites generosos
-- Verifique os limites em: https://ai.google.dev/pricing
-
-### Google Maps
-- **Gratuito** até 28.000 carregamentos de mapa por mês
-- Plano gratuito inclui $200 de crédito mensal
-- Monitore o uso em: https://console.cloud.google.com/apis/dashboard
-
-## 📚 Documentação Adicional
-
-- [COMO_ABRIR.md](COMO_ABRIR.md) - Guia detalhado para abrir o projeto
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Soluções para problemas comuns
-- [HABILITAR_API.md](HABILITAR_API.md) - Como habilitar a API do Gemini
-- [CRIAR_API_KEY_MAPS.md](CRIAR_API_KEY_MAPS.md) - Como criar chave para Google Maps
-- [DEBUG_CONSOLE.md](DEBUG_CONSOLE.md) - Como usar o console para debug
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
-4. Push para a branch (`git push origin feature/MinhaFeature`)
-5. Abra um Pull Request
-
-## 📄 Licença
-
-Este projeto é privado e proprietário. Todos os direitos reservados.
-
-## 🙋 Suporte
-
-Se encontrar problemas ou tiver dúvidas:
-
-1. Consulte a documentação na pasta do projeto
-2. Verifique o Console do navegador (F12) para mensagens de erro
-3. Abra uma issue no GitHub com:
-   - Descrição do problema
-   - Mensagens de erro do console
-   - Passos para reproduzir o problema
-
----
-
-Desenvolvido com ❤️ usando Google Gemini AI e Google Maps
+- Abrir `http://localhost:3000`.
+- Conferir Home, Chat e Voz.
+- No Chat, testar perguntas como:
+  - "Quantas empresas foram abertas em Campinas em 2026?"
+  - "Qual o ranking de municipios com empresas Inova Simples em 2026?"
+  - "Mostre a evolucao de MEIs em Franca."

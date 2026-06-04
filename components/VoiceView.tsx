@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveConnection } from '../hooks/useLiveConnection';
-import { consultarPiespData, consultarAnunciosSemValor, canonicalSetor } from '../services/piespDataService';
-import { getDbConnection } from '../services/duckdbService';
+import { consultarEmpreendedorismoData, canonicalSetor } from '../services/empreendedorismoDataService';
 import { NadiaSphere } from './NadiaSphere';
 import SoundWaveIcon from './SoundWaveIcon';
 
@@ -11,9 +10,6 @@ interface VoiceViewProps {
 }
 
 const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
-  // Aquece o DuckDB assim que a view monta — evita falha de CDN na primeira pergunta
-  useEffect(() => { getDbConnection().catch(() => {}); }, []);
-
   const [hasSpokenOnce, setHasSpokenOnce] = useState(false);
   const [isImmersive, setIsImmersive] = useState(false);
 
@@ -33,7 +29,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
       const VALID_SECTORS = new Set(['Agropecuária', 'Comércio', 'Indústria', 'Infraestrutura', 'Serviços']);
 
       function normalizarArgs(args: any) {
-        let { ano, municipio, regiao, setor, termo_busca } = args;
+        let { ano, ano_inicio, ano_fim, data_inicio, data_fim, municipio, regiao, setor, termo_busca, porte, opcao_mei, sexo, natureza_juridica, situacao } = args;
         if (setor) {
           const canonical = canonicalSetor(setor);
           if (!VALID_SECTORS.has(canonical)) {
@@ -44,20 +40,19 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
             setor = canonical;
           }
         }
-        return { ano, municipio, regiao, setor, termo_busca };
+        const termoNormalizado = `${termo_busca || ''} ${natureza_juridica || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (termoNormalizado.includes('inova-simples') || termoNormalizado.includes('inova simples')) {
+          natureza_juridica = 'Empresa Simples de Inovação';
+          if (termo_busca?.toLowerCase().includes('inova')) termo_busca = undefined;
+        }
+        return { ano, ano_inicio, ano_fim, data_inicio, data_fim, municipio, regiao, setor, termo_busca, porte, opcao_mei, sexo, natureza_juridica, situacao };
       }
 
-      if (toolCall.name === 'consultar_projetos_piesp') {
+      if (toolCall.name === 'consultar_empresas_empreendedorismo') {
         const filtro = normalizarArgs(toolCall.args);
-        console.log("🛠️ Tool Executado: Filtrando PIESP Principal:", filtro);
-        const resultados = await consultarPiespData(filtro);
-        return { sucesso: true, total_projetos: resultados.total_projetos, valor_total_milhoes: resultados.valor_total_milhoes, projetos: resultados.projetos };
-      }
-      if (toolCall.name === 'consultar_anuncios_sem_valor') {
-        const filtro = normalizarArgs(toolCall.args);
-        console.log("🛠️ Tool Executado: Anúncios Sem Valor divulgado:", filtro);
-        const resultados = await consultarAnunciosSemValor(filtro);
-        return { sucesso: true, total_anuncios: resultados.total_anuncios, anuncios: resultados.anuncios };
+        console.log("🛠️ Tool Executado: Empreendedorismo:", filtro);
+        const resultados = await consultarEmpreendedorismoData(filtro);
+        return { sucesso: true, ...resultados };
       }
       if (toolCall.name === 'encerrar_sessao') {
         console.log("🛠️ Tool Executado: Encerrar sessão");

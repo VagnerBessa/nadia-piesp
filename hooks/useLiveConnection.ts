@@ -4,7 +4,7 @@ import { GoogleGenAI, LiveServerMessage, Modality, Blob, Tool, FunctionDeclarati
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { SYSTEM_INSTRUCTION as DEFAULT_SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { getMetadados } from '../services/piespDataService';
+import { getMetadados } from '../services/empreendedorismoDataService';
 
 // Lazy: só chama getMetadados() quando o chat de voz for usado de fato
 let _regiaoDescCache: string | null = null;
@@ -253,7 +253,7 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
       }
 
       // Adicionando a Diretriz de UX/Voice com Trava Psicológica, Desocultamento Progressivo e Graceful Fallback Flexível
-      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa te chamando pelo nome (Nadia), NUNCA se apresente dizendo quem você é. Vá direto ao assunto.\nIMPORTANTE SOBRE FERRAMENTAS: Se você precisar consultar a base de dados do PIESP, você OBRIGATORIAMENTE deve avisar o usuário ANTES de chamar a ferramenta, usando uma frase preenchedora MUITO CURTA (ex: "Só um segundo.", "Buscando."). Fale APENAS essa frase curta de no máximo 3 palavras e acione a ferramenta. É proibido dizer frases longas como "vou procurar os dados".\nREGRAS DE EXPOSIÇÃO PROGRESSIVA (CRÍTICO): Ao retornar dados da base, NUNCA vomite uma lista de projetos. Dê APENAS o resumo Macro (Total de Bilhões/Milhões e a tendência geral). Finalize SEMPRE com uma pergunta suave para ancorar a navegação do usuário (Ex: "Encontrei X bilhões. Deseja que eu detalhe as principais empresas envolvidas?"). ATENÇÃO: APÓS FAZER A PERGUNTA, VOCÊ DEVE PARAR DE FALAR IMEDIATAMENTE. É ESTRITAMENTE PROIBIDO detalhar as empresas logo em seguida na mesma fala. Espere o usuário responder "Sim".\nREGRA DE CONTINUIDADE (MEMÓRIA CONVERSACIONAL): Quando o usuário pedir para detalhar uma informação que você acabou de dar, NÃO repita o valor macro. Entre direto nos detalhes solicitados (Ex: "Claro! As principais empresas são...").\nTRATAMENTO DE NULOS (GRACEFUL FALLBACK): Se a pesquisa retornar zerada, sugira uma alternativa. Se o usuário aceitar com um "Sim", aja imediatamente (dispare a ferramenta) sem hesitar. NUNCA DISPARE A FERRAMENTA DE FALLBACK OU SECUNDÁRIA ANTES DE OUVIR O "SIM" DO USUÁRIO.`;
+      finalSystemInstruction += `\n\n[COMPORTAMENTO ACÚSTICO E BUSCA DE DADOS]\nREGRA DE APRESENTAÇÃO: Se o usuário iniciar a conversa te chamando pelo nome (Nadia), NUNCA se apresente dizendo quem você é. Vá direto ao assunto.\nIMPORTANTE SOBRE FERRAMENTAS: Se você precisar consultar a base de empreendedorismo, avise ANTES com uma frase muito curta, de no máximo 3 palavras, como "Buscando." ou "Só um segundo.", e acione a ferramenta. É proibido dizer frases longas como "vou procurar os dados".\nREGRAS DE EXPOSIÇÃO PROGRESSIVA: Ao retornar dados da base, dê primeiro o resumo central: total de empresas, recorte temporal e principal destaque territorial ou setorial. Finalize com uma pergunta curta para continuar, por exemplo: "Quer que eu detalhe os municípios?". Depois da pergunta, pare de falar.\nREGRA DE CONTINUIDADE: Quando o usuário pedir para detalhar algo que você acabou de mencionar, não repita todo o resumo. Entre direto nos detalhes solicitados.\nTRATAMENTO DE NULOS: Se a pesquisa retornar zerada, explique o critério usado e sugira uma alternativa mais ampla. Se o usuário aceitar com "sim", aja imediatamente e dispare a ferramenta corrigida.`;
 
       console.log('[Nadia] Connecting to Gemini API...');
       sessionPromiseRef.current = ai.live.connect({
@@ -456,30 +456,25 @@ export const useLiveConnection = ({ systemInstruction, tools, onToolCall }: UseL
             {
               functionDeclarations: [
                 {
-                  name: 'consultar_projetos_piesp',
-                  description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Retorna os principais projetos confirmados com montante financeiro. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Buscando." ANTES de invocar.',
+                  name: 'consultar_empresas_empreendedorismo',
+                  description: 'Use esta ferramenta sempre que o usuário perguntar sobre empresas, empresas abertas, fechadas, ativas, MEIs, porte, setor, natureza jurídica ou rankings territoriais no Estado de SP. INSTRUÇÃO VITAL: diga apenas "Buscando." antes de invocar.',
                   parameters: {
                     type: Type.OBJECT,
                     properties: {
-                      ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+                      ano: { type: Type.STRING, description: 'Ano exato de abertura, ex: 2026.' },
+                      ano_inicio: { type: Type.STRING, description: 'Ano inicial do período de abertura.' },
+                      ano_fim: { type: Type.STRING, description: 'Ano final do período de abertura.' },
+                      data_inicio: { type: Type.STRING, description: 'Data inicial YYYY-MM-DD para abertura de empresas.' },
+                      data_fim: { type: Type.STRING, description: 'Data final YYYY-MM-DD para abertura de empresas.' },
                       municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
                       regiao: { type: Type.STRING, description: rd },
-                      setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-                      termo_busca: { type: Type.STRING, description: 'Termos separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
-                    }
-                  }
-                },
-                {
-                  name: 'consultar_anuncios_sem_valor',
-                  description: 'Usa esta ferramenta para consultar projetos anunciados pelas empresas em SP dos quais *ainda não se sabe o valor financeiro*. INSTRUÇÃO VITAL: Diga EXATAMENTE APENAS "Só um segundo." ANTES de invocar. REGRA CRÍTICA DE FILTRO: Se o usuário mencionar um tipo específico de empresa ou atividade (hospital, farmácia, escola, montadora, data center, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os 20 exibidos não representarão o tipo solicitado.',
-                  parameters: {
-                    type: Type.OBJECT,
-                    properties: {
-                      ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
-                      municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
-                      regiao: { type: Type.STRING, description: rd },
-                      setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-                      termo_busca: { type: Type.STRING, description: 'Termos separados por vírgula para buscar em descrição, CNAE e nome da empresa. Aceita múltiplos sinônimos — ex: "agua,esgoto,abastecimento" para saneamento; "hospital,clinica,saude" para saúde. Use seu conhecimento de CNAE para gerar os termos equivalentes ao vocabulário técnico da base sem depender de exemplos fixos.' }
+                      setor: { type: Type.STRING, description: 'Setor amplo: Agropecuária, Comércio, Indústria, Infraestrutura ou Serviços.' },
+                      termo_busca: { type: Type.STRING, description: 'Termo de atividade econômica específica, como tecnologia, software, saúde, restaurante ou comércio varejista.' },
+                      porte: { type: Type.STRING, description: 'Porte cadastral: ME, EPP ou DEMAIS. Não use para MEI.' },
+                      opcao_mei: { type: Type.STRING, description: 'Sim para MEI, Não para não optante, Não se aplica quando o campo não se aplica.' },
+                      sexo: { type: Type.STRING, description: 'Homem ou Mulher. Use somente quando o usuário pedir perfil por sexo/gênero.' },
+                      natureza_juridica: { type: Type.STRING, description: 'Natureza jurídica. Para Inova Simples, use Empresa Simples de Inovação.' },
+                      situacao: { type: Type.STRING, description: 'Ativa para empresas existentes; Inativa para fechadas ou baixadas.' }
                     }
                   }
                 },

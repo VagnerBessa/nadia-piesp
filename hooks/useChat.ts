@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
-import { consultarPiespData, consultarAnunciosSemValor, getMetadados } from '../services/piespDataService';
+import { consultarEmpreendedorismoData, getMetadados } from '../services/empreendedorismoDataService';
 import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
 import { callOpenRouter } from '../services/openrouterService';
 import { OPENROUTER_API_KEY } from '../config';
@@ -28,55 +28,50 @@ interface HistoryItem {
 
 const initialMessage: Message = {
     role: 'model',
-    text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar o banco de dados de investimentos confirmados no Estado de São Paulo (PIESP), incluindo uma base secundária de anúncios sem valores divulgados. O que gostaria de saber?'
+    text: 'Olá! Sou a Nadia, assistente de IA da Fundação Seade. Posso consultar dados de empresas, aberturas, MEIs, setores, portes e municípios no Estado de São Paulo. O que gostaria de saber?'
 };
 
 // Cache lazy para os metadados e tools — carregados sob demanda
-let _piespToolsCache: any[] | null = null;
+let _empreendedorismoToolsCache: any[] | null = null;
 
-async function getPiespTools() {
-  if (_piespToolsCache) return _piespToolsCache;
+async function getEmpreendedorismoTools() {
+  if (_empreendedorismoToolsCache) return _empreendedorismoToolsCache;
 
   const meta = await getMetadados();
   const regiaoDesc = meta.regioes.length > 0
     ? `Região administrativa do Estado de SP. Valores válidos: ${meta.regioes.join(', ')}. Usar quando o usuário perguntar por região, não por município específico.`
     : 'A região administrativa do Estado de SP, ex: "Região Metropolitana de São Paulo". Usar quando o usuário perguntar por região, não por município.';
 
-  _piespToolsCache = [
+  _empreendedorismoToolsCache = [
     {
       functionDeclarations: [
         {
-          name: 'consultar_projetos_piesp',
-          description: 'Usa esta ferramenta SEMPRE que o usuário perguntar sobre números, soma, listar ou consultar investimentos com valor divulgado do estado de SP (PIESP). Para filtrar por setor (Indústria, Infraestrutura etc.), use o parâmetro `setor`. Retorna os principais projetos confirmados com montante financeiro.',
+          name: 'consultar_empresas_empreendedorismo',
+          description: 'Use esta ferramenta sempre que o usuário perguntar sobre empresas, aberturas, fechamentos, empresas ativas, MEIs, porte, setor, natureza jurídica, rankings por município ou região no Estado de SP.',
           parameters: {
             type: Type.OBJECT,
             properties: {
-              ano: { type: Type.STRING, description: 'Ano EXATO. Use SOMENTE quando o usuário pede especificamente "em [ano]" ou "no ano [ano]". NUNCA use para expressões de período: "depois de", "após", "desde", "a partir de", "entre", "últimos N anos", "recentes". Nesses casos OMITA este campo completamente — a ferramenta retorna todos os anos disponíveis.' },
+              ano: { type: Type.STRING, description: 'Ano exato de abertura, ex: 2026. Use quando o usuário pedir empresas abertas em um ano.' },
+              ano_inicio: { type: Type.STRING, description: 'Ano inicial para intervalo de abertura.' },
+              ano_fim: { type: Type.STRING, description: 'Ano final para intervalo de abertura.' },
+              data_inicio: { type: Type.STRING, description: 'Data inicial YYYY-MM-DD para abertura de empresas.' },
+              data_fim: { type: Type.STRING, description: 'Data final YYYY-MM-DD para abertura de empresas.' },
               municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
               regiao: { type: Type.STRING, description: regiaoDesc },
-              setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". ATENÇÃO: atividades específicas como saúde, educação, tecnologia, farmácia, hospital NÃO são setores — use termo_busca para essas buscas.' },
-              termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos, incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia", "energia solar", "data center", "veículo elétrico" etc. PREFIRA este campo quando o usuário mencionar uma atividade que não é um dos 5 setores gerais.' }
-            }
-          }
-        },
-        {
-          name: 'consultar_anuncios_sem_valor',
-          description: 'Consulta a base secundária de anúncios de investimento sem valor financeiro divulgado. Chame SEMPRE em conjunto com consultar_projetos_piesp quando o usuário pedir uma descrição ampla de investimentos por região, setor ou município — para ter a visão completa do PIESP. Omita apenas se o usuário estiver claramente focado só em valores e somas. REGRA CRÍTICA: Se o usuário mencionar um tipo específico de empresa (hospital, farmácia, montadora, data center, escola, etc.), OBRIGATORIAMENTE passe esse tipo como `termo_busca`. Sem esse filtro, a ferramenta retorna 2000+ registros mistos e os resultados não representarão o tipo solicitado.',
-          parameters: {
-            type: Type.OBJECT,
-            properties: {
-              ano: { type: Type.STRING, description: 'Ano EXATO. OMITA para "depois de", "após", "desde", "a partir de", "entre", "período".' },
-              municipio: { type: Type.STRING, description: 'O nome do município, se fornecido' },
-              regiao: { type: Type.STRING, description: regiaoDesc },
-              setor: { type: Type.STRING, description: 'Setor econômico GERAL. Valores válidos EXATOS: "Agropecuária", "Comércio", "Indústria", "Infraestrutura", "Serviços". Para atividades específicas (saúde, educação, farmácia etc.) use termo_busca.' },
-              termo_busca: { type: Type.STRING, description: 'Busca por atividade econômica específica em múltiplos campos incluindo CNAE. Use para: "saúde", "hospital", "farmácia", "educação", "tecnologia" etc.' }
+              setor: { type: Type.STRING, description: 'Setor amplo: Agropecuária, Comércio, Indústria, Infraestrutura ou Serviços.' },
+              termo_busca: { type: Type.STRING, description: 'Termo de atividade econômica específica, ex: tecnologia, software, saúde, restaurante, comércio varejista.' },
+              porte: { type: Type.STRING, description: 'Porte cadastral: ME, EPP ou DEMAIS. Não use para MEI.' },
+              opcao_mei: { type: Type.STRING, description: 'Use Sim para MEI, Não para não optante e Não se aplica quando o campo não se aplica.' },
+              sexo: { type: Type.STRING, description: 'Homem ou Mulher. Use somente quando o usuário pedir perfil por sexo/gênero.' },
+              natureza_juridica: { type: Type.STRING, description: 'Natureza jurídica. Para Inova Simples, use Empresa Simples de Inovação.' },
+              situacao: { type: Type.STRING, description: 'Ativa ou Inativa. Use Ativa para total de empresas existentes; Inativa para fechadas/baixadas.' }
             }
           }
         }
       ]
     }
   ];
-  return _piespToolsCache;
+  return _empreendedorismoToolsCache;
 }
 
 // Ferramentas de pesquisa: Google Search para contexto externo
@@ -85,24 +80,10 @@ const searchTools = [
   { googleSearch: {} }
 ];
 
-// Executa a ferramenta localmente e retorna o resultado (async — DuckDB queries)
+// Executa a ferramenta de Empreendedorismo via MCP.
 async function executarFerramenta(nome: string, args: any): Promise<any> {
-  if (nome === 'consultar_projetos_piesp') {
-    let resultados = await consultarPiespData({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    // Se retornou 0 com filtro de ano, tenta sem — o modelo pode ter adicionado
-    // um ano específico para uma consulta de período ("depois de 2020", "desde 2021")
-    if (resultados.total_projetos === 0 && args.ano) {
-      const semAno = await consultarPiespData({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total_projetos > 0) resultados = semAno;
-    }
-    return { sucesso: true, ...resultados };
-  }
-  if (nome === 'consultar_anuncios_sem_valor') {
-    let resultados = await consultarAnunciosSemValor({ ano: args.ano, municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-    if (resultados.total_anuncios === 0 && args.ano) {
-      const semAno = await consultarAnunciosSemValor({ municipio: args.municipio, regiao: args.regiao, setor: args.setor, termo_busca: args.termo_busca });
-      if (semAno.total_anuncios > 0) resultados = semAno;
-    }
+  if (nome === 'consultar_empresas_empreendedorismo') {
+    const resultados = await consultarEmpreendedorismoData(args);
     return { sucesso: true, ...resultados };
   }
   return { error: 'Ferramenta não reconhecida' };
@@ -166,8 +147,8 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
 
     const detectedSkill = selectedSkillName ? null : detectSkill(text);
     const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
-    const piespTools = await getPiespTools();
-    const ferramentasAtivas = usarPesquisa ? searchTools : piespTools;
+    const empreendedorismoTools = await getEmpreendedorismoTools();
+    const ferramentasAtivas = usarPesquisa ? searchTools : empreendedorismoTools;
 
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });

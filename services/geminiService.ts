@@ -68,7 +68,7 @@ async function tryOpenRouter(options: GenerateOptions): Promise<GenerateResult> 
       'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': 'https://seade.gov.br',
-      'X-Title': 'Nadia PIESP',
+      'X-Title': 'Nadia Empreendedorismo',
     },
     body: JSON.stringify({ model: FALLBACK_MODEL, messages }),
   });
