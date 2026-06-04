@@ -136,7 +136,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
   const InputBox = (
     <div className="relative w-full">
       {/* Caixa */}
-      <div className="bg-slate-800/60 rounded-2xl border border-slate-700 focus-within:border-rose-500/70 transition-colors duration-200 overflow-hidden">
+      <div className="bg-slate-800/60 rounded-2xl border border-slate-700 focus-within:border-orange-400/70 transition-colors duration-200 overflow-hidden">
         {/* Textarea */}
         <div className="flex items-end gap-2 px-4 pt-4 pb-2">
           <textarea
@@ -156,7 +156,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
               onClick={handleMicClick}
               disabled={isLoading}
               className={`flex-shrink-0 p-1.5 rounded-full transition-colors ${
-                isListening ? 'bg-rose-500/20 text-rose-500' : 'text-slate-400 hover:bg-slate-700'
+                isListening ? 'bg-orange-500/15 text-[#E07A2F]' : 'text-slate-400 hover:bg-slate-700'
               }`}
             >
               <SoundWaveIcon className="w-5 h-5" isListening={isListening} />
@@ -165,7 +165,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
           <button
             onClick={handleSend}
             disabled={isLoading || !inputValue.trim()}
-            className="flex-shrink-0 p-1.5 rounded-full bg-rose-500 text-white disabled:bg-slate-700 disabled:cursor-not-allowed hover:bg-rose-400 transition-colors"
+            className="flex-shrink-0 p-1.5 rounded-full bg-[#E07A2F] text-white disabled:bg-slate-700 disabled:cursor-not-allowed hover:bg-[#F08A3B] transition-colors"
           >
             <SendIcon className="w-5 h-5" />
           </button>
@@ -200,11 +200,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
                   <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tighter leading-none mb-2">
                     Nadia
                   </h1>
-                  <div className="h-0.5 w-10 bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                  <div className="h-0.5 w-10 bg-[#E07A2F] rounded-full shadow-[0_0_10px_rgba(224,122,47,0.35)]" />
                 </div>
 
                 <div className="relative mb-5">
-                  <div className="absolute inset-0 bg-rose-500/20 blur-3xl rounded-full" />
+                  <div className="absolute inset-0 bg-orange-500/10 blur-3xl rounded-full" />
                   <ChatHeaderSphere size={120} />
                 </div>
                 <h2 className="text-lg font-semibold text-white mb-2 tracking-tight">Como posso ajudar hoje?</h2>
@@ -229,7 +229,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
                         // Pequeno delay para efeito visual antes de enviar
                         setTimeout(() => handleSend(), 150);
                       }}
-                      className="px-4 py-2 rounded-full bg-slate-800/40 border border-white/5 text-slate-300 text-xs font-medium hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-95"
+                      className="px-4 py-2 rounded-full bg-slate-800/40 border border-white/5 text-slate-300 text-xs font-medium hover:bg-orange-500/10 hover:border-orange-400/30 transition-all active:scale-95"
                     >
                       {sugestao}
                     </button>
@@ -251,7 +251,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
                 <ChatHeaderSphere size={28} />
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-extrabold text-white tracking-tight leading-none">Nadia</span>
-                  <div className="h-0.5 w-5 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(244,63,94,0.5)]" />
+                  <div className="h-0.5 w-5 bg-[#E07A2F] rounded-full shadow-[0_0_6px_rgba(224,122,47,0.35)]" />
                 </div>
               </div>
               <main ref={scrollContainerRef} className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-6">
@@ -266,7 +266,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
                     {msg.role === 'model' && <div className="flex-shrink-0"><ChatHeaderSphere /></div>}
                     <div className={`max-w-xl rounded-2xl px-4 py-3 ${
                       msg.role === 'user'
-                        ? 'bg-rose-500 text-white rounded-br-none shadow-[0_4px_12px_rgba(244,63,94,0.2)]'
+                        ? 'bg-[#E07A2F] text-white rounded-br-none shadow-[0_4px_12px_rgba(224,122,47,0.18)]'
                         : 'bg-slate-700 text-slate-200 rounded-bl-none'
                     }`}>
                       <MarkdownRenderer content={msg.text} />
@@ -294,7 +294,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onNavigateHome: _onNavigateHome }) 
                     <div className="flex-shrink-0"><ChatHeaderSphere /></div>
                     <div className="max-w-xl rounded-2xl px-4 py-3 bg-slate-700 text-slate-200 rounded-bl-none">
                       <span className="whitespace-pre-wrap leading-relaxed">{displayText}</span>
-                      <span className="inline-block w-[2px] h-[1em] bg-rose-400/70 ml-0.5 align-middle animate-pulse" />
+                      <span className="inline-block w-[2px] h-[1em] bg-orange-300/70 ml-0.5 align-middle animate-pulse" />
                     </div>
 
                   </div>
