@@ -45,7 +45,7 @@ O `.env` fica fora do controle de versao. Depois de criar ou alterar o `.env`, r
 - Home mobile com identidade visual "Deep Ocean".
 - Chat de texto com function calling para a base de empreendedorismo.
 - Conversa por voz usando Gemini Live API.
-- Agentes/lentes analiticas para territorio, setores, MEI, perfil empreendedor, Inova Simples e inteligencia empresarial.
+- Regras metodologicas embutidas para MEI, Inova Simples, sexo/genero, setores amplos e atividades economicas detalhadas.
 - Fallback OpenRouter para manter o chat disponivel quando a API direta do Gemini falhar.
 - Service worker e manifesto PWA para instalacao mobile.
 

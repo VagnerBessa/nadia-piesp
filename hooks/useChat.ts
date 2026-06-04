@@ -4,7 +4,6 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { SYSTEM_INSTRUCTION } from '../utils/prompts';
 import { GEMINI_API_KEY } from '../config';
 import { consultarEmpreendedorismoData, getMetadados } from '../services/empreendedorismoDataService';
-import { buildSystemInstructionWithSkill, buildSystemInstructionWithSkillByName, detectSkill } from '../services/skillDetector';
 import { callOpenRouter } from '../services/openrouterService';
 import { OPENROUTER_API_KEY } from '../config';
 
@@ -89,10 +88,6 @@ async function executarFerramenta(nome: string, args: any): Promise<any> {
   return { error: 'Ferramenta não reconhecida' };
 }
 
-interface UseChatOptions {
-  selectedSkillName?: string | null;
-}
-
 // Retry com backoff para erros 503 — tenta até maxRetries vezes com pausa crescente
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 2000): Promise<T> {
   let lastError: any;
@@ -112,7 +107,35 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, baseDelayMs = 
   throw lastError;
 }
 
-export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
+function shouldUseExternalSearch(text: string): boolean {
+  const normalized = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const profileTriggers = [
+    'quem e',
+    'quem sao',
+    'o que e',
+    'o que sao',
+    'me fale sobre',
+    'me conte sobre',
+    'historia da empresa',
+    'quem controla',
+    'quem e o dono',
+    'acionista',
+    'socio',
+    'faturamento',
+    'receita',
+    'capital aberto',
+    'grupo economico',
+    'grupo empresarial',
+  ];
+
+  return profileTriggers.some(trigger => normalized.includes(trigger));
+}
+
+export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,12 +164,8 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       { role: 'user', parts: [{ text: text }] }
     ];
 
-    const systemInstructionWithSkill = selectedSkillName
-      ? buildSystemInstructionWithSkillByName(SYSTEM_INSTRUCTION, selectedSkillName)
-      : buildSystemInstructionWithSkill(SYSTEM_INSTRUCTION, text);
-
-    const detectedSkill = selectedSkillName ? null : detectSkill(text);
-    const usarPesquisa = detectedSkill?.name === 'inteligencia_empresarial';
+    const systemInstructionWithSkill = SYSTEM_INSTRUCTION;
+    const usarPesquisa = shouldUseExternalSearch(text);
     const empreendedorismoTools = await getEmpreendedorismoTools();
     const ferramentasAtivas = usarPesquisa ? searchTools : empreendedorismoTools;
 
@@ -156,16 +175,7 @@ export const useChat = ({ selectedSkillName }: UseChatOptions = {}) => {
       const modelName = 'gemini-2.5-flash';
       const thinkingConfig = { thinkingConfig: { thinkingBudget: 0 } };
 
-      if (selectedSkillName) {
-        console.log(`🎯 [Agente manual] Skill "${selectedSkillName}" injetada. System instruction: ${systemInstructionWithSkill.length} chars.`);
-      } else {
-        const autoSkill = detectSkill(text);
-        if (autoSkill) {
-          console.log(`🎯 [Agente auto] Skill "${autoSkill.label}" detectada por keywords. System instruction: ${systemInstructionWithSkill.length} chars.`);
-        } else {
-          console.log(`ℹ️ [Sem agente] Nenhuma skill ativa. System instruction: ${systemInstructionWithSkill.length} chars.`);
-        }
-      }
+      console.log(`ℹ️ [Chat] Modo ${usarPesquisa ? 'pesquisa externa' : 'base de empreendedorismo'}. System instruction: ${systemInstructionWithSkill.length} chars.`);
 
       // Loop de function calling com streaming na resposta final.
       // Itera até 4 vezes; function calls usam generateContent (necessário para detectar o call

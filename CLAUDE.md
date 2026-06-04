@@ -46,7 +46,6 @@ MCP remoto
 | `services/mcpService.ts` | Cliente JSON-RPC/SSE para o MCP remoto |
 | `utils/prompts.ts` | Prompt base de empreendedorismo |
 | `skills/empreendedorismo_receita_federal.md` | Conhecimento metodologico da base |
-| `services/skillDetector.ts` | Lentes analiticas do chat |
 
 ## Conceitos da Base
 
@@ -58,14 +57,9 @@ MCP remoto
 - Sexo/genero: usar apenas quando o usuario pedir perfil de homens, mulheres ou genero.
 - `Nao se aplica`: classificacao cadastral. No campo MEI, indica fora do universo MEI; no campo sexo, nao deve virar inferencia societaria.
 
-## Agentes/Lentes
+## Regras Analiticas
 
-- `analise_territorial`: municipios, regioes, rankings e concentracao territorial.
-- `analise_setorial`: setores amplos e atividades economicas detalhadas.
-- `mei_formalizacao`: MEI e formalizacao.
-- `perfil_empreendedor`: homens, mulheres e perfil por sexo quando solicitado.
-- `inova_simples`: natureza juridica Empresa Simples de Inovacao.
-- `inteligencia_empresarial`: contexto publico sobre empresas e grupos economicos.
+Nao ha agentes manuais no chat mobile. As regras relevantes ficam no prompt base e em `skills/empreendedorismo_receita_federal.md`, porque elas afetam diretamente a interpretacao da base. A consulta externa so e usada automaticamente quando a pergunta pede perfil publico de empresa ou grupo economico.
 
 ## Function Calling
 
