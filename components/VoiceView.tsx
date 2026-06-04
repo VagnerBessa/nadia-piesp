@@ -222,7 +222,7 @@ const VoiceView: React.FC<VoiceViewProps> = ({ onNavigateHome }) => {
           `}
         >
           <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-1000 ${
-            isSpeaking ? 'bg-rose-500/30' : isListening ? 'bg-rose-500/10' : 'bg-transparent'
+            isSpeaking ? 'bg-orange-500/20' : isListening ? 'bg-orange-500/10' : 'bg-transparent'
           }`} />
 
           <NadiaSphere

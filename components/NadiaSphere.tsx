@@ -59,7 +59,7 @@ export const NadiaSphere: React.FC<NadiaSphereProps> = ({ isListening, isSpeakin
   // Default to idle state
   let shape: DitheringShape = 'sphere';
   let speed = 0.2;
-  let colorFront = '#F43F5E'; // Rose
+  let colorFront = '#C96F2D'; // muted burnt orange
   let pxSize = 1;
   let pulseLevel = 0;
   

@@ -22,7 +22,7 @@ export const ChatHeaderSphere: React.FC<ChatHeaderSphereProps> = ({ size = 32 })
         height={size}
         shape="sphere"
         speed={0.2} // A slow speed for a subtle idle animation
-        colorFront="#F43F5E" // rose-500
+        colorFront="#C96F2D"
         colorBack="#020617" // slate-950
         pxSize={1}
         type="random"

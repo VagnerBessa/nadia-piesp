@@ -34,7 +34,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToVoice, onNavigate
       <div className="flex-shrink-0 flex items-center justify-center py-3 my-1">
         <div className="relative group">
           {/* Brilho de fundo para profundidade */}
-          <div className="absolute inset-0 bg-rose-500/15 blur-[80px] rounded-full group-hover:bg-rose-500/20 transition-all duration-700" />
+          <div className="absolute inset-0 bg-orange-500/10 blur-[80px] rounded-full group-hover:bg-orange-500/15 transition-all duration-700" />
           <NadiaSphere isListening={false} isSpeaking={false} isConnecting={false} audioLevel={0} size="small" />
         </div>
       </div>
