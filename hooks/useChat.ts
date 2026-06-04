@@ -47,7 +47,7 @@ async function getEmpreendedorismoTools() {
       functionDeclarations: [
         {
           name: 'consultar_empresas_empreendedorismo',
-          description: 'Use esta ferramenta sempre que o usuário perguntar sobre empresas, aberturas, fechamentos, empresas ativas, MEIs, porte, setor, natureza jurídica, rankings por município ou região no Estado de SP.',
+          description: 'Use esta ferramenta sempre que o usuário perguntar sobre empresas, aberturas, fechamentos, empresas ativas, MEIs, porte, setor, segmentos/atividades detalhadas, natureza jurídica, rankings por município ou região no Estado de SP. A resposta inclui rankings por setor amplo e por Atividade econômica detalhada.',
           parameters: {
             type: Type.OBJECT,
             properties: {
@@ -58,8 +58,8 @@ async function getEmpreendedorismoTools() {
               data_fim: { type: Type.STRING, description: 'Data final YYYY-MM-DD para abertura de empresas.' },
               municipio: { type: Type.STRING, description: 'O nome do município específico, se fornecido. Não usar para regiões administrativas.' },
               regiao: { type: Type.STRING, description: regiaoDesc },
-              setor: { type: Type.STRING, description: 'Setor amplo: Agropecuária, Comércio, Indústria, Infraestrutura ou Serviços.' },
-              termo_busca: { type: Type.STRING, description: 'Termo de atividade econômica específica, ex: tecnologia, software, saúde, restaurante, comércio varejista.' },
+              setor: { type: Type.STRING, description: 'Setor amplo: Agropecuária, Comércio, Indústria, Infraestrutura ou Serviços. Para "setor de serviços", use Serviços.' },
+              termo_busca: { type: Type.STRING, description: 'Termo de atividade econômica específica, ex: tecnologia, software, saúde, restaurante, comércio varejista. Não use termo_busca quando o usuário pedir todos os segmentos detalhados de um setor; deixe o ranking de Atividade econômica retornar os segmentos.' },
               porte: { type: Type.STRING, description: 'Porte cadastral: ME, EPP ou DEMAIS. Não use para MEI.' },
               opcao_mei: { type: Type.STRING, description: 'Use Sim para MEI, Não para não optante e Não se aplica quando o campo não se aplica.' },
               sexo: { type: Type.STRING, description: 'Homem ou Mulher. Use somente quando o usuário pedir perfil por sexo/gênero.' },

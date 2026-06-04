@@ -12,3 +12,5 @@ Use estas regras sempre que interpretar os dados cadastrais de empresas:
 - `Inova Simples` corresponde à natureza jurídica `Empresa Simples de Inovação`; não é setor nem atividade econômica.
 - `Porte da empresa`, `Natureza jurídica`, `Setor de atividade econômica` e `Atividade econômica` são dimensões cadastrais distintas.
 - Para perguntas sobre tecnologia, software, saúde, comércio, serviços ou outros temas setoriais específicos, use `termo_busca` na atividade econômica quando não houver natureza jurídica específica.
+- Para perguntas sobre "segmentos", "atividades detalhadas", "ramos" ou "subatividades", use a dimensão `Atividade econômica`. Não diga que a base não detalha segmentos: o retorno da ferramenta inclui o ranking `atividades`.
+- Quando o usuário pedir MEIs por segmento dentro de um setor, filtre `Opção MEI = Sim`, filtre o setor amplo solicitado e responda usando o ranking `atividades`.

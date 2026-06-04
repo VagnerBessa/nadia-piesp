@@ -37,6 +37,7 @@ export interface ResumoEmpreendedorismo {
   total_empresas: number;
   empresas: EmpresaResumo[];
   setores: { nome: string; count: number; valor: number }[];
+  atividades: { nome: string; count: number; valor: number }[];
   municipios: { nome: string; count: number; valor: number }[];
   regioes: { nome: string; count: number; valor: number }[];
   portes: { nome: string; count: number; valor: number }[];
@@ -163,6 +164,7 @@ export async function consultarEmpreendedorismoData(args: FiltroEmpreendedorismo
   if (totalRes?.error) throw new Error(totalRes.error);
 
   const setores = await aggregate(filters, 'Setor de atividade econômica');
+  const atividades = await aggregate(filters, 'Atividade econômica', 20);
   const municipios = await aggregate(filters, 'Nome do município');
   const regioes = await aggregate(filters, 'Região Administrativa');
   const portes = await aggregate(filters, 'Porte da empresa');
@@ -176,6 +178,7 @@ export async function consultarEmpreendedorismoData(args: FiltroEmpreendedorismo
   return {
     total_empresas: Number(totalRes?.data?.dados?.[0]?.contagem_CNPJ || totalRes?.dados?.[0]?.contagem_CNPJ || 0),
     setores,
+    atividades,
     municipios,
     regioes,
     portes,
